@@ -1,0 +1,11 @@
+{
+  "name": "KALLAX",
+  "category": "storage",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/kallax-shelf-unit-white__0601747_pe681619_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/10409932/PS01_S01_NV01/rqp3/glb/10409932_PS01_S01_NV01_RQP3_3.0_c7ff13a9a1f14a8e8f1ba56a0a3701ce.glb"
+}

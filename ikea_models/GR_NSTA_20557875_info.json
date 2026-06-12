@@ -1,0 +1,11 @@
+{
+  "name": "GRÖNSTA",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/groensta-armchair-in-outdoor-gray-turquoise__1498966_pe1006477_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/20557875/PS01_S01_NV01/rqp3/glb_draco/20557875_PS01_S01_NV01_RQP3_3.0_51d9708b6cb24b90b3f1871f524471e1.glb"
+}

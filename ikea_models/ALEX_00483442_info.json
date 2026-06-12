@@ -1,0 +1,11 @@
+{
+  "name": "ALEX",
+  "category": "desk",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/alex-desk-black-brown__0977660_pe813727_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/00483442/PS01_S01_NV01/rqp3/glb/00483442_PS01_S01_NV01_RQP3_3.0_04efd388f3c54e25bd813acf0411687b.glb"
+}

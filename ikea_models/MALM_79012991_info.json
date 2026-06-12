@@ -1,0 +1,11 @@
+{
+  "name": "MALM",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/malm-high-bed-frame-2-storage-boxes-white__1154404_pe886051_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/geomagical/69068224/PS01_S01_NV01/simple/glb_draco/G-69068224-177c270557a45596d7673d3df4ac4cda3e704e63_ae19698db33b4f47aca0f5d8e715d888.glb"
+}

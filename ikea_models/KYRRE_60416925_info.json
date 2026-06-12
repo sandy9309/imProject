@@ -1,0 +1,11 @@
+{
+  "name": "KYRRE",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/kyrre-stool-birch__1488024_pe1003293_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/60416925/PS01_S01_NV01/rqp3/glb/60416925_PS01_S01_NV01_RQP3_3.0_492be750d40f4cc7b8e6b8ec8cd3efa4.glb"
+}

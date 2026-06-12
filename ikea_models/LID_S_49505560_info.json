@@ -1,0 +1,11 @@
+{
+  "name": "LIDÅS",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/lidas-chair-black-sefast-black__1167042_pe891344_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/rendera/49505560/PS01_S01_NV01/simple/glb/49505560-rendera_d732bc157ac44a28966af6b9ea3badb7.glb"
+}

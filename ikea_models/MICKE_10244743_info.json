@@ -1,0 +1,11 @@
+{
+  "name": "MICKE",
+  "category": "table",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/micke-desk-black-brown__0735981_pe740299_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/80489850/PS01_S01_NV01/rqp3/glb/80489850_PS01_S01_NV01_RQP3_3.0_2ec133a393084800a706dd0b82d74ace.glb"
+}

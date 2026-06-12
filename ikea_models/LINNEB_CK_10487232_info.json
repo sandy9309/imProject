@@ -1,0 +1,11 @@
+{
+  "name": "LINNEBÄCK",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/linnebaeck-chair-orrsta-olive-green__0933454_pe791910_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/10487227/PS01_S01_NV01/iqp3/glb/10487227_PS01_S01_NV01_IQP3_2.0_afc32d05b5354af7b3d608c4a74556cd.glb"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "KALLAX",
+  "category": "storage",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/kallax-shelf-unit-high-gloss-white__0625357_pe692208_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/20305745/PS01_S01_NV01/rqp3/glb/20305745_PS01_S01_NV01_RQP3_3.0_3e032fd46374447c9f9b029c613b5fc4.glb"
+}

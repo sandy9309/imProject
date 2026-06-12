@@ -1,0 +1,11 @@
+{
+  "name": "KALLAX",
+  "category": "storage",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/kallax-shelf-unit-black-brown__0601749_pe681620_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/70477937/PS01_S01_NV01/rqp3/glb/70477937_PS01_S01_NV01_RQP3_3.0_18364dd0c2cb43d5924ce11a586597c8.glb"
+}

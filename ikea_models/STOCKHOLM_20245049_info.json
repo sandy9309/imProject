@@ -1,0 +1,11 @@
+{
+  "name": "STOCKHOLM",
+  "category": "sofa",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/stockholm-sofa-seglora-natural__0183763_pe334809_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/80245051/PS01_S01_NV01/rqp3/glb/80245051_PS01_S01_NV01_RQP3_3.0_310a854f79624ceb8d2102d670378cb2.glb"
+}

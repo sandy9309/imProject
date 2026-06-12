@@ -1,0 +1,11 @@
+{
+  "name": "POÄNG",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/poaeng-armchair-brown-knisa-light-beige__0571543_pe666957_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/29240797/PS01_S01_NV01/isp1/glb_draco/29240797_PS01_S01_NV01_ISP1_2.0_baabe1dd6a7c4aff8c2fddf9dfd0cfb8.glb"
+}

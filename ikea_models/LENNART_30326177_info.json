@@ -1,0 +1,11 @@
+{
+  "name": "LENNART",
+  "category": "storage",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/lennart-drawer-unit-white__0395412_pe564513_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/30326177/PS01_S01_NV01/rqp3/glb/30326177_PS01_S01_NV01_RQP3_3.0_9307b9c34dd143b597c28852ff3dca20.glb"
+}

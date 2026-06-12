@@ -1,0 +1,11 @@
+{
+  "name": "ALEX",
+  "category": "storage",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/alex-drawer-unit-black-brown__0977786_pe813770_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/60473548/PS01_S01_NV01/rqp3/glb_draco/60473548_PS01_S01_NV01_RQP3_3.0_366de50db1a5fc14d7f46eead77ab5a6.glb"
+}

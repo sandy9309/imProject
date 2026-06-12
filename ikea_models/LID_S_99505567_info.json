@@ -1,0 +1,11 @@
+{
+  "name": "LIDÅS",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/lidas-chair-black-sefast-chrome-plated__1167047_pe891349_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/rendera/99505567/PS01_S01_NV01/simple/glb/99505567-rendera_bd2f41045b6945838c96c14d6a96bf1b.glb"
+}

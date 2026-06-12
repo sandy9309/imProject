@@ -1,0 +1,412 @@
+.catalog-container {
+  padding: 40px 8%;
+  background-color: #f8fafc;
+  min-height: 100vh;
+}
+
+.catalog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.catalog-header h1 {
+  color: #1e293b;
+  font-size: 2rem;
+}
+
+.search-bar {
+  display: flex;
+  gap: 15px;
+}
+
+.search-input {
+  display: flex;
+  align-items: center;
+  background: white;
+  padding: 10px 15px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  gap: 10px;
+  width: 300px;
+}
+
+.search-input input {
+  border: none;
+  outline: none;
+  width: 100%;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+/* 網格系統 */
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 30px;
+}
+
+.furniture-card {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  transition: transform 0.3s;
+}
+
+.furniture-card:hover {
+  transform: translateY(-8px);
+}
+
+.image-wrapper {
+  position: relative;
+  height: 200px;
+}
+
+.image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.category-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #2563eb;
+}
+
+.card-info {
+  padding: 20px;
+}
+
+.card-info h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: #1e293b;
+}
+
+.price {
+  color: #2563eb;
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+}
+
+.preview-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background-color: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.preview-btn:hover {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* 1. 背景遮罩：加入模糊效果提升質感 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+/* 2. 彈窗主體：【大修正】拿掉卡死高度的 max-height，改用 flex 垂直自動撐開 */
+.modal-content {
+  background: white;
+  padding: 25px;
+  border-radius: 24px;
+  width: 95%;
+  max-width: 460px; /* 稍微拓寬一點點，讓 3D 比例更好看 */
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: modalShow 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 3. 關閉按鈕：移到右上角稍微內縮 */
+.close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.close-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+  transform: rotate(90deg);
+}
+
+/* 4. 調整 3D 模型容器 */
+.model-container {
+  background: #f8fafc;
+  border-radius: 16px;
+  margin: 20px 0 10px 0;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+  height: 300px; /* 稍微調高到 300px，展示沙發更精緻 */
+  width: 100%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 確保模型標籤填滿容器 */
+.model-container model-viewer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  --poster-color: transparent;
+}
+
+/* 🚀 補上讀取提示層樣式：讓它絕對定位，穩穩貼在 3D 灰框正中央 */
+.model-loading-poster {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1;
+}
+
+/* 5. 底部資訊區 */
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  width: 100%;
+}
+
+.modal-price {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #2563eb;
+  margin: 0;
+}
+
+.action-btn {
+  padding: 12px 24px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.action-btn:hover {
+  background: #1d4ed8;
+}
+
+/* 簡單的彈出動畫 */
+@keyframes modalShow {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* 分類按鈕列樣式 */
+.category-filter {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.filter-tag {
+  padding: 8px 20px;
+  border-radius: 20px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s;
+}
+
+.filter-tag:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.filter-tag.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 100px 0;
+  color: #94a3b8;
+}
+
+.dimension-filter {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  border: 1px solid #e2e8f0;
+}
+
+.filter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+  color: #1e293b;
+  margin-bottom: 15px;
+}
+
+.dim-inputs {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.input-field label {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.input-field input {
+  width: 100px;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+}
+
+.input-field input:focus {
+  border-color: #2563eb;
+}
+
+.reset-btn {
+  padding: 10px 15px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  color: #475569;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.reset-btn:hover { background: #e2e8f0; }
+
+.dim-tag {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.75rem;
+}
+
+/* 讓篩選按鈕被點擊時有變色效果 */
+.filter-btn.active {
+  background-color: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* 下拉式篩選區塊樣式 */
+.dimension-filter-dropdown {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.add-to-cart-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  background-color: #ffffff;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+}

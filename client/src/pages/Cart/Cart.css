@@ -1,0 +1,73 @@
+.cart-container { padding: 40px 8%; min-height: 80vh; }
+.cart-header { margin-bottom: 30px; }
+.cart-header h1 { display: flex; align-items: center; gap: 10px; color: #1e293b; }
+
+.cart-content { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+
+.cart-item {
+  display: flex; align-items: center; background: white;
+  padding: 20px; border-radius: 15px; margin-bottom: 15px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.cart-item img { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; }
+.item-info { flex: 1; margin-left: 20px; }
+.item-info h3 { margin: 0 0 5px 0; color: #334155; }
+.item-price { color: #2563eb; font-weight: bold; }
+
+.remove-btn { background: none; border: none; color: #ef4444; cursor: pointer; transition: 0.3s; }
+.remove-btn:hover { transform: scale(1.1); }
+
+.cart-summary {
+  background: white; padding: 30px; border-radius: 20px;
+  height: fit-content; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; color: #64748b; }
+.summary-row.total { border-top: 1px solid #e2e8f0; padding-top: 15px; font-weight: bold; color: #1e293b; font-size: 1.2rem; }
+
+/* 原本漂亮的藍色進入場景按鈕 */
+.checkout-btn {
+  width: 100%; padding: 15px; background: #2563eb; color: white;
+  border: none; border-radius: 10px; font-weight: bold; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.checkout-btn:hover {
+  background-color: #1d4ed8; /* 補上藍色按鈕滑鼠懸停變深藍，更有互動感 */
+}
+
+/* ==========================================================================
+   新增：儲存配置清單按鈕與外殼樣式
+   ========================================================================== */
+.cart-action-area {
+  margin-top: 20px;
+}
+
+/* 儲存配置清單按鈕（修正打字錯誤並優化） */
+.save-btn {
+  width: 100%;
+  padding: 15px;             /* 💡 從 12px 改成 15px，這樣高度才會跟藍色按鈕完全一樣高！ */
+  background-color: #10b981; /* 漂亮的綠色 */
+  color: white;
+  border: none;              /* 💡 修正：刪除原本打錯的 border: some */
+  border-radius: 10px;       /* 💡 從 8px 改成 10px，圓角跟藍色按鈕完美對齊 */
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.save-btn:hover {
+  background-color: #059669; /* 滑鼠移上去變深綠 */
+}
+
+/* 當按鈕在載入中（同步後端時）的停用狀態 */
+.save-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MR 家具助手測試面板</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e24;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* 修改這個區塊，就能讓對話框像真正的線上客服一樣縮在右下角 */
+        #chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 380px;
+            height: 550px;
+            background: #2a2a35;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            z-index: 9999;
+            /* 確保它在 MR 網頁的最上層 */
+        }
+
+        #chat-header {
+            background: #3f3f54;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 1px solid #4e4e66;
+        }
+
+        #chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .msg {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+
+        .msg.user {
+            background: #007bff;
+            align-self: flex-end;
+        }
+
+        .msg.ai {
+            background: #4e4e66;
+            align-self: flex-start;
+        }
+
+        #chat-input-area {
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            background: #23232c;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background: #3a3a4a;
+            color: white;
+        }
+
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #218838;
+        }
+
+        .spawn-btn {
+            background: #ffc107;
+            color: #23232c;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin-top: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="chat-container">
+        <div id="chat-header">🤖 MR 空間設計助手 (測試版)</div>
+        <div id="chat-messages">
+            <div class="msg ai">哈囉！我是專題的 AI 助手。你可以問我：「我想看現代極簡風的桌子」或「客廳很小有推薦的沙發嗎？」</div>
+        </div>
+        <div id="chat-input-area">
+            <input type="text" id="user-input" placeholder="輸入訊息...">
+            <button id="send-btn">發送</button>
+        </div>
+    </div>
+
+    <script>
+        const sendBtn = document.getElementById('send-btn');
+        const userInput = document.getElementById('user-input');
+        const chatMessages = document.getElementById('chat-messages');
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // 1. 顯示使用者的話
+            appendMessage(text, 'user');
+            userInput.value = '';
+
+            // 2. 呼叫你的 Node.js 後端 API
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await res.json();
+
+                // 3. 顯示 AI 的回答
+                appendMessage(data.reply, 'ai');
+            } catch (e) {
+                appendMessage('連線失敗，請檢查後端是否開啟。', 'ai');
+            }
+        }
+
+        function appendMessage(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('msg', sender);
+
+            if (sender === 'ai') {
+                // 使用 /g 進行全域搜尋，找出對話裡所有的 [FurnitureID: X]
+                const allMatches = [...text.matchAll(/\[FurnitureID:\s*(\d+)\]/g)];
+
+                // 把 [FurnitureID: X] 這些醜醜的程式暗號從對話文字中濾掉，讓畫面乾淨
+                let cleanText = text.replace(/\[FurnitureID:\s*(\d+)\]/g, '');
+                msgDiv.innerHTML = cleanText;
+
+                // 如果有抓到任何 ID，用迴圈把每一顆按鈕都生出來！
+                if (allMatches.length > 0) {
+                    allMatches.forEach(match => {
+                        const furnitureId = match[1]; // 抓到的數字 ID
+
+                        const spawnBtn = document.createElement('button');
+                        spawnBtn.classList.add('spawn-btn');
+                        spawnBtn.innerText = `✨ 在 MR 場景中生成家具 (ID: ${furnitureId})`;
+                        spawnBtn.onclick = () => {
+                            alert(`🎯 成功觸發 MR 系統！即將下載並生成資料庫中 ID 為 ${furnitureId} 的 3D 家具模型！`);
+                        };
+                        msgDiv.appendChild(spawnBtn);
+                    });
+                }
+            } else {
+                msgDiv.innerText = text;
+            }
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        sendBtn.onclick = sendMessage;
+        userInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+    </script>
+</body>
+
+</html>

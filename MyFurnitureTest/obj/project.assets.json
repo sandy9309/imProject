@@ -537,11 +537,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/zhixuan/-/MyFurnitureTest/MyFurnitureTest.csproj",
+      "projectUniqueName": "/Users/zhixuan/imProject/MyFurnitureTest/MyFurnitureTest.csproj",
       "projectName": "MyFurnitureTest",
-      "projectPath": "/Users/zhixuan/-/MyFurnitureTest/MyFurnitureTest.csproj",
+      "projectPath": "/Users/zhixuan/imProject/MyFurnitureTest/MyFurnitureTest.csproj",
       "packagesPath": "/Users/zhixuan/.nuget/packages/",
-      "outputPath": "/Users/zhixuan/-/MyFurnitureTest/obj/",
+      "outputPath": "/Users/zhixuan/imProject/MyFurnitureTest/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/zhixuan/.nuget/NuGet/NuGet.Config"

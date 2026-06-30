@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zDFmMThabhY=",
+  "dgSpecHash": "EJuOaSdIAj4=",
   "success": true,
-  "projectFilePath": "/Users/zhixuan/-/MyFurnitureTest/MyFurnitureTest.csproj",
+  "projectFilePath": "/Users/zhixuan/imProject/MyFurnitureTest/MyFurnitureTest.csproj",
   "expectedPackageFiles": [
     "/Users/zhixuan/.nuget/packages/bouncycastle.cryptography/2.6.2/bouncycastle.cryptography.2.6.2.nupkg.sha512",
     "/Users/zhixuan/.nuget/packages/google.protobuf/3.32.0/google.protobuf.3.32.0.nupkg.sha512",

@@ -55,16 +55,16 @@ public static class FurnitureEndpoints
                 while (reader.Read())
                 {
                     list.Add(new {
-                        _id       = Convert.ToInt32(reader["id"]),
+                        _id       = reader["id"] == DBNull.Value ? 0 : Convert.ToInt32(reader["id"]),
                         name      = reader["name"]?.ToString() ?? "",
-                        price     = Convert.ToDecimal(reader["price"]),
+                        price     = reader["price"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["price"]),
                         category  = reader["category"]?.ToString() ?? "",
                         thumbnail = reader["thumb_path"]?.ToString() ?? "",
                         modelPath = reader["model_url"]?.ToString() ?? "",
                         dimensions = new {
-                            l = Convert.ToDecimal(reader["length_cm"]),
-                            w = Convert.ToDecimal(reader["width"]),
-                            h = Convert.ToDecimal(reader["height"])
+                            l = reader["length_cm"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["length_cm"]),
+                            w = reader["width"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["width"]),
+                            h = reader["height"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["height"])
                         }
                     });
                 }
@@ -132,13 +132,13 @@ public static class FurnitureEndpoints
                 while (reader.Read())
                 {
                     list.Add(new {
-                        id          = Convert.ToInt32(reader["id"]),
+                        id          = reader["id"] == DBNull.Value ? 0 : Convert.ToInt32(reader["id"]),
                         name        = reader["name"]?.ToString() ?? "",
                         category    = reader["category"]?.ToString() ?? "",
-                        width       = Convert.ToDecimal(reader["width"]),
-                        length_cm   = Convert.ToDecimal(reader["length_cm"]),
-                        height      = Convert.ToDecimal(reader["height"]),
-                        price       = Convert.ToDecimal(reader["price"]),
+                        width       = reader["width"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["width"]),
+                        length_cm   = reader["length_cm"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["length_cm"]),
+                        height      = reader["height"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["height"]),
+                        price       = reader["price"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["price"]),
                         description = reader["description"]?.ToString() ?? "",
                         image_url   = reader["image_url"]?.ToString() ?? "",
                         thumb_path  = reader["thumb_path"]?.ToString() ?? "",

@@ -1,6 +1,7 @@
 using MyProject.Models;
 using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 public static class ProjectEndpoints
 {
@@ -72,21 +73,20 @@ public static class ProjectEndpoints
             {
                 using var conn = db.GetConnection();
                 conn.Open();
-
-                string itemsJson = JsonConvert.SerializeObject(data.items ?? new object[0]);
+                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;          
                 string sql = @"INSERT INTO projects (user_id, name, l, w, items, status) 
                                VALUES (@user_id, @name, @l, @w, @items, 'draft')";
 
                 using var cmd = new MySqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@user_id", data.user_id);
                 cmd.Parameters.AddWithValue("@name", data.name);
-                cmd.Parameters.AddWithValue("@l", data.l);
-                cmd.Parameters.AddWithValue("@w", data.w);
+                cmd.Parameters.AddWithValue("@l", data.l ?? 0);
+                cmd.Parameters.AddWithValue("@w", data.w ?? 0);
                 cmd.Parameters.AddWithValue("@items", itemsJson);
                 cmd.ExecuteNonQuery();
 
-                return Results.Ok(new { 
-                    success = true, 
+                return Results.Ok(new {
+                    success = true,
                     message = "待定清單建立成功",
                     project_id = cmd.LastInsertedId
                 });
@@ -99,34 +99,42 @@ public static class ProjectEndpoints
 
         // ── 3. 更新清單內容（加/改家具、改名）────────────────────
         // PUT /api/projects/1
-        group.MapPut("/{id}", (int id, ProjectData data, DbService db) =>
+        group.MapPut("/{id}", (int id, ProjectUpdateData data, DbService db) =>
         {
             try
             {
                 using var conn = db.GetConnection();
                 conn.Open();
 
-                // 確認狀態，已 confirmed 的不能再改
                 var checkCmd = new MySqlCommand(
                     "SELECT status FROM projects WHERE id = @id", conn);
                 checkCmd.Parameters.AddWithValue("@id", id);
                 string? currentStatus = checkCmd.ExecuteScalar()?.ToString();
 
+                if (currentStatus == null)
+                    return Results.NotFound(new { error = "找不到該專案空間" });
+
                 if (currentStatus == "confirmed")
                     return Results.BadRequest(new { success = false, message = "已確認的專案無法修改" });
 
-                string itemsJson = JsonConvert.SerializeObject(data.items ?? new object[0]);
-                string sql = "UPDATE projects SET name = @name, l = @l, w = @w, items = @items WHERE id = @id";
+                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;                string sql = "UPDATE projects SET name = @name, items = @items WHERE id = @id";
 
                 using var cmd = new MySqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.Parameters.AddWithValue("@name", data.name);
-                cmd.Parameters.AddWithValue("@l", data.l);
-                cmd.Parameters.AddWithValue("@w", data.w);
                 cmd.Parameters.AddWithValue("@items", itemsJson);
                 cmd.ExecuteNonQuery();
 
-                return Results.Ok(new { success = true, message = "更新成功" });
+                return Results.Ok(new
+                {
+                    message = "專案更新成功",
+                    data = new
+                    {
+                        _id = id,
+                        name = data.name,
+                        items = data.itemsRaw
+                    }
+                });
             }
             catch (Exception ex)
             {

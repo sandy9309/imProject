@@ -53,7 +53,7 @@ public static class ProjectEndpoints
                         w          = reader["w"],
                         status     = reader["status"]?.ToString() ?? "draft",
                         created_at = reader["updated_at"]?.ToString() ?? "",
-                        items      = JsonConvert.DeserializeObject(rawItems)
+                        items      = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(rawItems)
                     });
                 }
                 return Results.Ok(new { success = true, data = projects });

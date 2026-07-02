@@ -110,15 +110,13 @@ public static class ProjectEndpoints
                     created_at = r.createdAt,
                     items      = r.items.Select(it =>
                     {
-                        var enriched = new Dictionary<string, object?>();
-                        foreach (var prop in it.EnumerateObject())
-                            enriched[prop.Name] = prop.Value;
-
                         int fid = it.TryGetProperty("furniture_id", out var fidEl) ? fidEl.GetInt32() : 0;
                         var (fname, imageUrl) = furnitureMap.TryGetValue(fid, out var info) ? info : ("", "");
-                        enriched["name"] = fname;
-                        enriched["image_url"] = imageUrl;
-                        return enriched;
+                        return (object)new {
+                            furniture_id = fid,
+                            name = fname,
+                            image_url = imageUrl
+                        };
                     }).ToList()
                 }).ToList();
 

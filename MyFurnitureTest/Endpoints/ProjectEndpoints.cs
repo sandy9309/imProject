@@ -14,119 +14,115 @@ public static class ProjectEndpoints
         // GET /api/projects?userId=5&status=draft → 只看待定中
         // GET /api/projects?userId=5&status=confirmed → 只看已確認
         group.MapGet("/", (HttpContext http, DbService db) =>
+{
+    var q = http.Request.Query;
+    string? userIdStr = q["userId"];
+    string? status    = q["status"];
+
+    if (string.IsNullOrEmpty(userIdStr))
+        return Results.BadRequest(new { message = "缺少 userId" });
+
+    try
+    {
+        using var conn = db.GetConnection();
+        conn.Open();
+
+        string sql = "SELECT id, name, l, w, items, status, updated_at FROM projects WHERE user_id = @userId";
+        using var cmd = new MySqlCommand();
+        cmd.Connection = conn;
+        cmd.Parameters.AddWithValue("@userId", int.Parse(userIdStr));
+
+        if (!string.IsNullOrEmpty(status))
         {
-            var q = http.Request.Query;
-            string? userIdStr = q["userId"];
-            string? status    = q["status"];
+            sql += " AND status = @status";
+            cmd.Parameters.AddWithValue("@status", status);
+        }
+        sql += " ORDER BY id DESC";
+        cmd.CommandText = sql;
 
-            if (string.IsNullOrEmpty(userIdStr))
-                return Results.BadRequest(new { message = "缺少 userId" });
-
-            try
+        var rows = new List<(int id, string name, object l, object w, string status, string createdAt, List<System.Text.Json.JsonElement> items)>();
+        using (var reader = cmd.ExecuteReader())
+        {
+            while (reader.Read())
             {
-                using var conn = db.GetConnection();
-                conn.Open();
-
-                string sql = "SELECT id, name, l, w, items, status, updated_at FROM projects WHERE user_id = @userId";
-                using var cmd = new MySqlCommand();
-                cmd.Connection = conn;
-                cmd.Parameters.AddWithValue("@userId", int.Parse(userIdStr));
-
-                if (!string.IsNullOrEmpty(status))
+                string rawItems = reader["items"]?.ToString() ?? "[]";
+                List<System.Text.Json.JsonElement> parsedItems;
+                try
                 {
-                    sql += " AND status = @status";
-                    cmd.Parameters.AddWithValue("@status", status);
+                    parsedItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(rawItems)
+                                  ?? new List<System.Text.Json.JsonElement>();
                 }
-                sql += " ORDER BY id DESC";
-                cmd.CommandText = sql;
-
-                // 1. 先讀出所有 project 資料，並把 items 解析成 JsonElement 清單
-                var rows = new List<(int id, string name, object l, object w, string status, string createdAt, List<System.Text.Json.JsonElement> items)>();
-                using (var reader = cmd.ExecuteReader())
+                catch
                 {
-                    while (reader.Read())
-                    {
-                        string rawItems = reader["items"]?.ToString() ?? "[]";
-                        List<System.Text.Json.JsonElement> parsedItems;
-                        try
-                        {
-                            parsedItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(rawItems)
-                                          ?? new List<System.Text.Json.JsonElement>();
-                        }
-                        catch
-                        {
-                            parsedItems = new List<System.Text.Json.JsonElement>();
-                        }
-
-                        rows.Add((
-                            Convert.ToInt32(reader["id"]),
-                            reader["name"]?.ToString() ?? "",
-                            reader["l"],
-                            reader["w"],
-                            reader["status"]?.ToString() ?? "draft",
-                            reader["updated_at"]?.ToString() ?? "",
-                            parsedItems
-                        ));
-                    }
+                    parsedItems = new List<System.Text.Json.JsonElement>();
                 }
 
-                // 2. 收集所有 items 用到的 furniture_id
-                var furnitureIds = rows
-                    .SelectMany(r => r.items)
-                    .Where(it => it.TryGetProperty("furniture_id", out _))
-                    .Select(it => it.GetProperty("furniture_id").GetInt32())
-                    .Distinct()
-                    .ToList();
-
-                // 3. 用 IN 查詢 furnitures 表補上 name / image_url
-                var furnitureMap = new Dictionary<int, (string name, string imageUrl)>();
-                if (furnitureIds.Count > 0)
-                {
-                    var paramNames = furnitureIds.Select((_, i) => $"@fid{i}").ToList();
-                    using var furnitureCmd = new MySqlCommand(
-                        $"SELECT id, name, image_url, thumb_path FROM furnitures WHERE id IN ({string.Join(", ", paramNames)})", conn);
-                    for (int i = 0; i < furnitureIds.Count; i++)
-                        furnitureCmd.Parameters.AddWithValue($"@fid{i}", furnitureIds[i]);
-
-                    using var furnitureReader = furnitureCmd.ExecuteReader();
-                    while (furnitureReader.Read())
-                    {
-                        int fid = Convert.ToInt32(furnitureReader["id"]);
-                        furnitureMap[fid] = (
-                            furnitureReader["name"]?.ToString() ?? "",
-                            furnitureReader["image_url"]?.ToString() ?? ""
-                        );
-                    }
-                }
-
-                // 4. 組合最終回傳資料，每個 item 補上 name / image_url
-                var projects = rows.Select(r => new
-                {
-                    id         = r.id,
-                    name       = r.name,
-                    l          = r.l,
-                    w          = r.w,
-                    status     = r.status,
-                    created_at = r.createdAt,
-                    items      = r.items.Select(it =>
-                    {
-                        int fid = it.TryGetProperty("furniture_id", out var fidEl) ? fidEl.GetInt32() : 0;
-                        var (fname, imageUrl) = furnitureMap.TryGetValue(fid, out var info) ? info : ("", "");
-                        return (object)new {
-                            furniture_id = fid,
-                            name = fname,
-                            image_url = imageUrl
-                        };
-                    }).ToList()
-                }).ToList();
-
-                return Results.Ok(new { success = true, data = projects });
+                rows.Add((
+                    Convert.ToInt32(reader["id"]),
+                    reader["name"]?.ToString() ?? "",
+                    reader["l"],
+                    reader["w"],
+                    reader["status"]?.ToString() ?? "draft",
+                    reader["updated_at"]?.ToString() ?? "",
+                    parsedItems
+                ));
             }
-            catch (Exception ex)
+        }
+
+        var furnitureIds = rows
+            .SelectMany(r => r.items)
+            .Where(it => it.TryGetProperty("furniture_id", out _))
+            .Select(it => it.GetProperty("furniture_id").GetInt32())
+            .Distinct()
+            .ToList();
+
+        var furnitureMap = new Dictionary<int, (string name, string imageUrl)>();
+        if (furnitureIds.Count > 0)
+        {
+            var paramNames = furnitureIds.Select((_, i) => $"@fid{i}").ToList();
+            using var furnitureCmd = new MySqlCommand(
+                $"SELECT id, name, image_url FROM furnitures WHERE id IN ({string.Join(", ", paramNames)})", conn);
+            for (int i = 0; i < furnitureIds.Count; i++)
+                furnitureCmd.Parameters.AddWithValue($"@fid{i}", furnitureIds[i]);
+
+            using var furnitureReader = furnitureCmd.ExecuteReader();
+            while (furnitureReader.Read())
             {
-                return Results.Problem(ex.Message);
+                int fid = Convert.ToInt32(furnitureReader["id"]);
+                furnitureMap[fid] = (
+                    furnitureReader["name"]?.ToString() ?? "",
+                    furnitureReader["image_url"]?.ToString() ?? ""
+                );
             }
-        });
+        }
+
+        var projects = rows.Select(r => new
+        {
+            id         = r.id,
+            name       = r.name,
+            l          = r.l,
+            w          = r.w,
+            status     = r.status,
+            created_at = r.createdAt,
+            items      = r.items.Select(it =>
+            {
+                int fid = it.TryGetProperty("furniture_id", out var fidEl) ? fidEl.GetInt32() : 0;
+                var (fname, imageUrl) = furnitureMap.TryGetValue(fid, out var info) ? info : ("", "");
+                return (object)new {
+                    furniture_id = fid,
+                    name = fname,
+                    image_url = imageUrl
+                };
+            }).ToList()
+        }).ToList();
+
+        return Results.Ok(new { success = true, data = projects });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
 
         // ── 2. 建立新的待定清單（status 預設 draft）───────────────
         // POST /api/projects

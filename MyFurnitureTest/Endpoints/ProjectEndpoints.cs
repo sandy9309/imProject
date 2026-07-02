@@ -22,7 +22,6 @@ public static class ProjectEndpoints
             if (string.IsNullOrEmpty(userIdStr))
                 return Results.BadRequest(new { message = "缺少 userId" });
 
-            var projects = new List<object>();
             try
             {
                 using var conn = db.GetConnection();
@@ -41,21 +40,88 @@ public static class ProjectEndpoints
                 sql += " ORDER BY id DESC";
                 cmd.CommandText = sql;
 
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
+                // 1. 先讀出所有 project 資料，並把 items 解析成 JsonElement 清單
+                var rows = new List<(int id, string name, object l, object w, string status, string createdAt, List<System.Text.Json.JsonElement> items)>();
+                using (var reader = cmd.ExecuteReader())
                 {
-                    string rawItems = reader["items"]?.ToString() ?? "[]";
-                    projects.Add(new
+                    while (reader.Read())
                     {
-                        id         = Convert.ToInt32(reader["id"]),
-                        name       = reader["name"]?.ToString() ?? "",
-                        l          = reader["l"],
-                        w          = reader["w"],
-                        status     = reader["status"]?.ToString() ?? "draft",
-                        created_at = reader["updated_at"]?.ToString() ?? "",
-                        items      = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(rawItems)
-                    });
+                        string rawItems = reader["items"]?.ToString() ?? "[]";
+                        List<System.Text.Json.JsonElement> parsedItems;
+                        try
+                        {
+                            parsedItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(rawItems)
+                                          ?? new List<System.Text.Json.JsonElement>();
+                        }
+                        catch
+                        {
+                            parsedItems = new List<System.Text.Json.JsonElement>();
+                        }
+
+                        rows.Add((
+                            Convert.ToInt32(reader["id"]),
+                            reader["name"]?.ToString() ?? "",
+                            reader["l"],
+                            reader["w"],
+                            reader["status"]?.ToString() ?? "draft",
+                            reader["updated_at"]?.ToString() ?? "",
+                            parsedItems
+                        ));
+                    }
                 }
+
+                // 2. 收集所有 items 用到的 furniture_id
+                var furnitureIds = rows
+                    .SelectMany(r => r.items)
+                    .Where(it => it.TryGetProperty("furniture_id", out _))
+                    .Select(it => it.GetProperty("furniture_id").GetInt32())
+                    .Distinct()
+                    .ToList();
+
+                // 3. 用 IN 查詢 furnitures 表補上 name / image_url
+                var furnitureMap = new Dictionary<int, (string name, string imageUrl)>();
+                if (furnitureIds.Count > 0)
+                {
+                    var paramNames = furnitureIds.Select((_, i) => $"@fid{i}").ToList();
+                    using var furnitureCmd = new MySqlCommand(
+                        $"SELECT id, name, image_url, thumb_path FROM furnitures WHERE id IN ({string.Join(", ", paramNames)})", conn);
+                    for (int i = 0; i < furnitureIds.Count; i++)
+                        furnitureCmd.Parameters.AddWithValue($"@fid{i}", furnitureIds[i]);
+
+                    using var furnitureReader = furnitureCmd.ExecuteReader();
+                    while (furnitureReader.Read())
+                    {
+                        int fid = Convert.ToInt32(furnitureReader["id"]);
+                        furnitureMap[fid] = (
+                            furnitureReader["name"]?.ToString() ?? "",
+                            furnitureReader["image_url"]?.ToString() ?? ""
+                        );
+                    }
+                }
+
+                // 4. 組合最終回傳資料，每個 item 補上 name / image_url
+                var projects = rows.Select(r => new
+                {
+                    id         = r.id,
+                    name       = r.name,
+                    l          = r.l,
+                    w          = r.w,
+                    status     = r.status,
+                    created_at = r.createdAt,
+                    items      = r.items.Select(it =>
+                    {
+                        var enriched = new Dictionary<string, object?>();
+                        foreach (var prop in it.EnumerateObject())
+                            enriched[prop.Name] = prop.Value;
+
+                        int fid = it.TryGetProperty("furniture_id", out var fidEl) ? fidEl.GetInt32() : 0;
+                        var (fname, imageUrl) = furnitureMap.TryGetValue(fid, out var info) ? info : ("", "");
+                        enriched["name"] = fname;
+                        enriched["image_url"] = imageUrl;
+                        return enriched;
+                    }).ToList()
+                }).ToList();
+
                 return Results.Ok(new { success = true, data = projects });
             }
             catch (Exception ex)

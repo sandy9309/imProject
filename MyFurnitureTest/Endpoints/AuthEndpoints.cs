@@ -22,10 +22,11 @@ public static class AuthEndpoints
                 }
 
                 // 插入新使用者
+                string hashedPassword = BCrypt.Net.BCrypt.HashPassword(data.password);
                 string sql = "INSERT INTO users (username, password, email, phone) VALUES (@uname, @pword, @mail, @phone)";
                 using (var cmd = new MySqlCommand(sql, conn)) {
                     cmd.Parameters.AddWithValue("@uname", data.username);
-                    cmd.Parameters.AddWithValue("@pword", data.password);
+                    cmd.Parameters.AddWithValue("@pword", hashedPassword);
                     cmd.Parameters.AddWithValue("@mail", data.email);
                     cmd.Parameters.AddWithValue("@phone", data.phone);
                     cmd.ExecuteNonQuery();
@@ -46,23 +47,26 @@ public static class AuthEndpoints
                 using var conn = db.GetConnection();
                 conn.Open();
                 
-                // 這裡才是真正的檢查：帳號 AND 密碼都要對
-                string sql = "SELECT user_id, username, email, phone FROM users WHERE email = @uname AND password = @pword";                using (var cmd = new MySqlCommand(sql, conn)) {
+                // 只用帳號查使用者，密碼另外用 BCrypt 驗證
+                string sql = "SELECT user_id, username, email, phone, password FROM users WHERE email = @uname OR username = @uname";
+                using (var cmd = new MySqlCommand(sql, conn)) {
                     cmd.Parameters.AddWithValue("@uname", identifier);
-                    cmd.Parameters.AddWithValue("@pword", data.password);
-                    
+
                     using (var readerDb = cmd.ExecuteReader()) {
                         if (readerDb.Read()) {
-                            string myToken = Guid.NewGuid().ToString();
-                            return Results.Ok(new { 
-                                success = true,
-                                message = "登入成功", 
-                                token = myToken,
-                                user_id = readerDb["user_id"],
-                                username = readerDb["username"],
-                                email = readerDb["email"],    
-                                phone = readerDb["phone"]     
-                            });
+                            string storedHash = readerDb["password"].ToString() ?? "";
+                            if (BCrypt.Net.BCrypt.Verify(data.password, storedHash)) {
+                                string myToken = Guid.NewGuid().ToString();
+                                return Results.Ok(new {
+                                    success = true,
+                                    message = "登入成功",
+                                    token = myToken,
+                                    user_id = readerDb["user_id"],
+                                    username = readerDb["username"],
+                                    email = readerDb["email"],
+                                    phone = readerDb["phone"]
+                                });
+                            }
                         }
                     }
                 }

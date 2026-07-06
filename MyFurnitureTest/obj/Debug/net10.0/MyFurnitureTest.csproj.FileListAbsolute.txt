@@ -139,3 +139,4 @@
 /Users/zhixuan/imProject/MyFurnitureTest/obj/Debug/net10.0/MyFurnitureTest.pdb
 /Users/zhixuan/imProject/MyFurnitureTest/obj/Debug/net10.0/MyFurnitureTest.genruntimeconfig.cache
 /Users/zhixuan/imProject/MyFurnitureTest/obj/Debug/net10.0/ref/MyFurnitureTest.dll
+/Users/zhixuan/imProject/MyFurnitureTest/bin/Debug/net10.0/BCrypt-Net-Next.dll

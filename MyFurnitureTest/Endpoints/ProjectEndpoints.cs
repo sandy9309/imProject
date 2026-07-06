@@ -133,8 +133,8 @@ public static class ProjectEndpoints
             {
                 using var conn = db.GetConnection();
                 conn.Open();
-                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;          
-                string sql = @"INSERT INTO projects (user_id, name, l, w, items, status) 
+                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;
+                string sql = @"INSERT INTO projects (user_id, name, l, w, items, status)
                                VALUES (@user_id, @name, @l, @w, @items, 'draft')";
 
                 using var cmd = new MySqlCommand(sql, conn);
@@ -159,6 +159,8 @@ public static class ProjectEndpoints
 
         // ── 3. 更新清單內容（加/改家具、改名）────────────────────
         // PUT /api/projects/1
+        // 設計：不論專案目前是 draft 或 confirmed，都允許修改 items，
+        // id 保持不變；改完後前端可再呼叫一次 PATCH /confirm 重新送 VR。
         group.MapPut("/{id}", (int id, ProjectUpdateData data, DbService db) =>
         {
             try
@@ -174,10 +176,8 @@ public static class ProjectEndpoints
                 if (currentStatus == null)
                     return Results.NotFound(new { error = "找不到該專案空間" });
 
-                if (currentStatus == "confirmed")
-                    return Results.BadRequest(new { success = false, message = "已確認的專案無法修改" });
-
-                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;                string sql = "UPDATE projects SET name = @name, items = @items WHERE id = @id";
+                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;
+                string sql = "UPDATE projects SET name = @name, items = @items WHERE id = @id";
 
                 using var cmd = new MySqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@id", id);

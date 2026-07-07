@@ -19,19 +19,18 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true); // 備註：開始連線，進入載入狀態
+    setIsLoading(true); // 開始連線，進入載入狀態
 
-    // 1. 設定妳們後端的 Ngrok 網址
-    const BASE_URL = "https://refulgently-unavailing-mathilda.ngrok-free.dev";
+    // 🌐 1. 已更新為學校伺服器的正式內網 IP 網址
+    const BASE_URL = "http://163.13.202.116:5050";
 
     try {
       // 2. 發送 POST 請求給後端
       const response = await fetch(`${BASE_URL}/api/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          // 提示：加上這個 header 可以跳過 Ngrok 的警告頁面
-          'ngrok-skip-browser-warning': 'true' 
+          'Content-Type': 'application/json'
+          // 💡 已移除 Ngrok 專用的破防標頭
         },
         body: JSON.stringify(loginData) 
       });
@@ -49,7 +48,7 @@ const Login = () => {
         // 4. 把後端回傳的 Token 存入瀏覽器暫存
         localStorage.setItem('token', data.token || '');
         
-        // 🚀 關鍵修改點 1：獨立儲存單獨的 username 與 user_id，讓 Navbar 與 Cart.js 能直接、安全地讀取
+        // 關鍵修改點 1：獨立儲存單獨的 username 與 user_id，讓 Navbar 與 Cart.js 能直接、安全地讀取
         const realUserId = data.user_id || data.userId || data.id;
         const realUserName = data.username || '會員';
         
@@ -66,7 +65,7 @@ const Login = () => {
           user_id: realUserId || ''    
         }));
 
-        // 🚀 關鍵修改點 2：安全防禦！在登入新帳號時，強制洗掉前一個人殘留的購物車本地快取，杜絕隱私大混亂
+        // 關鍵修改點 2：安全防禦！在登入新帳號時，強制洗掉前一個人殘留的購物車本地快取，杜絕隱私大混亂
         localStorage.removeItem('cart');
         localStorage.removeItem('cart_user_id');
         
@@ -81,9 +80,9 @@ const Login = () => {
       }
     } catch (error) {
       console.error("連線出錯：", error);
-      alert("無法連線到伺服器，請確認後端同學的 Ngrok 是否有開，或者網路是否正常。");
+      alert("無法連線到伺服器，請確認學校伺服器（163.13.202.116:5050）是否正常在線，或確認網路是否正常。");
     } finally {
-      setIsLoading(false); // 備註：不管成功還是失敗，最後都要結束連線狀態
+      setIsLoading(false); // 不管成功還是失敗，最後都要結束連線狀態
     }
   };
 
@@ -128,7 +127,6 @@ const Login = () => {
             <Link to="/forgot-password">忘記密碼？</Link>
           </div>
 
-          {/* 修正：綁定 disabled={isLoading}，並在連線中時將文字改成「登入中...」 */}
           <button type="submit" className="login-btn" disabled={isLoading}>
             {isLoading ? "登入中..." : "登入系統"}
           </button>

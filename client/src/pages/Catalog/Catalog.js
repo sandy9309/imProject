@@ -1,7 +1,10 @@
 // src/pages/Catalog/Catalog.js
 import React, { useState, useEffect } from 'react'; 
-import { Search, Filter, Box, X, Maximize } from 'lucide-react';
+import { Search, Filter, Box, X, Maximize, PackagePlus } from 'lucide-react';
 import './Catalog.css';
+
+// 🌐 學校伺服器的正式內網 IP 網址
+const API_BASE = 'http://163.13.202.116:5050';
 
 const Catalog = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -13,6 +16,12 @@ const Catalog = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // 🚀 每次加入購物車後 +1，用來強制卡片重新渲染，即時反映最新數量
+  const [cartVersion, setCartVersion] = useState(0);
+
+  // 🚀 偵測是不是從「我的專案」點「新增家具」進來的，是的話顯示編輯中提示
+  const editProjectId = localStorage.getItem('editProjectId');
+  const editProjectName = localStorage.getItem('editProjectName');
 
   useEffect(() => {
     const fetchFurnitures = async () => {
@@ -20,15 +29,9 @@ const Catalog = () => {
         setLoading(true);
         setError(null);
 
-        // 🚀 加上破防機制的 fetch，穿透 Ngrok 免費版警告頁
-        const response = await fetch('https://refulgently-unavailing-mathilda.ngrok-free.dev/api/furnitures', {
+        const response = await fetch(`${API_BASE}/api/furnitures`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-            // 🔥 【核心關鍵】加入這行 Ngrok 專用破防標頭
-            'ngrok-skip-browser-warning': 'true'
-          }
+          headers: { 'Content-Type': 'application/json' },
         });
 
         if (!response.ok) {
@@ -36,7 +39,7 @@ const Catalog = () => {
         }
 
         const data = await response.json();
-        console.log("從 Ngrok 後端成功撈到的原始家具資料：", data);
+        console.log("後端成功撈到的原始家具資料：", data);
         
         setItems(data || []);
       } catch (err) {
@@ -77,18 +80,33 @@ const Catalog = () => {
     setDims({ ...dims, [e.target.name]: e.target.value });
   };
 
-  // 🛒 翻新後的 addToCart：建立與後端完全相容的格式
+  // 🛒 翻新後的 addToCart：支援同一家具重複加入(上限10個)，第二次以上會先跟使用者確認
+  const MAX_QTY = 10;
   const addToCart = (product) => {
     const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
-    
-    // 💡 雙重檢查：同時比對 id 或 product_id，避免重複加入
-    const isExist = currentCart.find(item => 
-      (item.id === product.id) || 
-      (item.product_id === product.id)
+
+    const existingIndex = currentCart.findIndex(item =>
+      (item.id === product.id) || (item.product_id === product.id)
     );
-    
-    if (isExist) {
-      alert("此家具已在您的配置清單中囉！");
+
+    if (existingIndex > -1) {
+      const existingItem = currentCart[existingIndex];
+      const currentQty = existingItem.quantity || 1;
+
+      if (currentQty >= MAX_QTY) {
+        alert(`「${product.name}」已達單款上限（${MAX_QTY} 個），無法再加入囉！`);
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `目前已加入 ${currentQty} 個「${product.name}」，是否要繼續增加？`
+      );
+      if (!confirmed) return;
+
+      const updatedCart = [...currentCart];
+      updatedCart[existingIndex] = { ...existingItem, quantity: currentQty + 1 };
+      localStorage.setItem('cart', JSON.stringify(updatedCart));
+      setCartVersion(v => v + 1);
     } else {
       // 🔥 核心關鍵：轉換格式，讓暫存結構跟後端回傳的欄位完全一致
       const formattedProduct = {
@@ -100,17 +118,36 @@ const Catalog = () => {
         image_url: product.image_url || '',
         length_cm: product.length_cm,          // 長度對齊後端 length_cm
         width: product.width,
-        height: product.height
+        height: product.height,
+        quantity: 1,                            // 🚀 新增：這件家具目前的加入件數
       };
 
       const updatedCart = [...currentCart, formattedProduct];
       localStorage.setItem('cart', JSON.stringify(updatedCart));
+      setCartVersion(v => v + 1);
       alert(`🎉 ${product.name} 已成功加入配置清單！`);
     }
   };
 
+  const cancelEditMode = () => {
+    localStorage.removeItem('editProjectId');
+    localStorage.removeItem('editProjectName');
+    window.location.href = '/projects';
+  };
+
   return (
     <div className="catalog-container">
+      {/* 🚀 編輯既有專案中的提示橫幅 */}
+      {editProjectId && (
+        <div className="catalog-edit-banner">
+          <span>
+            <PackagePlus size={18} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+            正在為專案「{editProjectName || editProjectId}」挑選新家具，選好後請到「配置清單」按送出
+          </span>
+          <button onClick={cancelEditMode}>取消，返回專案</button>
+        </div>
+      )}
+
       {/* 頂部搜尋與篩選列 */}
       <div className="catalog-header">
         <h1>家具型錄</h1>
@@ -181,8 +218,9 @@ const Catalog = () => {
         </div>
       ) : (
         /* 家具展示網格 */
-        <div className="catalog-grid">
-          {filteredItems.map(item => (
+        <div className="catalog-grid" key={`grid-${cartVersion}`}>
+          {filteredItems.map(item => {
+            return (
             <div key={item.id} className="furniture-card">
               <div className="image-wrapper">
                 <img src={item.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'} alt={item.name} />
@@ -201,7 +239,8 @@ const Catalog = () => {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

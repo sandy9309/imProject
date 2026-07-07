@@ -71,3 +71,104 @@
   background-color: #94a3b8;
   cursor: not-allowed;
 }
+/* ════════════════════════════════════════════
+   配置清單頁：取消編輯既有專案按鈕
+   👉 請加到現有 Cart.css 裡
+   ════════════════════════════════════════════ */
+
+.cancel-edit-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-edit-btn:hover {
+  background: #f1f5f9;
+}
+/* ════════════════════════════════════════════
+   配置清單頁：既有家具 vs 新增家具 的視覺區分
+   👉 請加到現有 Cart.css 裡
+   ════════════════════════════════════════════ */
+
+.cart-list-section-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  margin: 12px 0 6px;
+}
+
+/* 既有家具：維持原本白底樣式，唯讀 */
+.cart-item-existing {
+  background: #ffffff;
+  opacity: 0.85;
+}
+
+.item-existing-tag {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* 新增家具：淡綠色底色，讓使用者一眼看出「這次改了什麼」 */
+.cart-item-new {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.item-new-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #16a34a;
+  background: #dcfce7;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+/* ════════════════════════════════════════════
+   配置清單頁：數量 +/- 調整按鈕
+   👉 請加到現有 Cart.css 裡
+   ════════════════════════════════════════════ */
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qty-value {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 700;
+  color: #1e293b;
+}

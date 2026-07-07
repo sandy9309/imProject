@@ -1,7 +1,8 @@
-// src/componentss/Navbar/Navbar.js
+// src/components/Navbar/Navbar.js
 import React, { useState, useEffect } from 'react'; // 修正 1: 引入 useEffect 用於監聽瀏覽器暫存
 import { Link, useNavigate } from 'react-router-dom'; 
-import { Home, Layout, LogIn, UserPlus, ShoppingCart, User, LogOut, ChevronDown } from 'lucide-react'; 
+// 🚀 這裡幫妳多引入了 Folder 圖示，用於「我的專案」
+import { Home, Layout, Folder, LogIn, UserPlus, ShoppingCart, User, LogOut, ChevronDown } from 'lucide-react'; 
 import './Navbar.css';
 
 const Navbar = () => {
@@ -55,6 +56,11 @@ const Navbar = () => {
         {isLoggedIn ? (
           // --- 已登入狀態 ---
           <>
+            {/* 🚀 這裡就是新加入的：我的專案連結（限定登入後才會顯示） */}
+            <Link to="/projects" className="nav-item">
+              <Folder size={18} /> 我的專案
+            </Link>
+
             {/* 備註：購物車連結 */}
             <Link to="/cart" className="nav-item">
               <ShoppingCart size={18} /> 配置清單

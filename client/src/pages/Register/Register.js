@@ -14,14 +14,13 @@ const Register = () => {
     confirmPassword: ''
   });
 
-  // 修正 1: 新增載入中狀態控制，避免連線時使用者瘋狂重複點擊註冊
+  // 新增載入中狀態控制，避免連線時使用者瘋狂重複點擊註冊
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 修正 2: 將函式改為 async 非同步函式，以便使用 await 等待網路回應
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -42,19 +41,20 @@ const Register = () => {
       return;
     }
 
-    // --- 修正 3: 通過前端驗證後，正式啟動後端 API 串接 ---
+    // --- 正式啟動後端 API 串接 ---
     setIsLoading(true); // 進入連線中狀態
-    const BASE_URL = "https://refulgently-unavailing-mathilda.ngrok-free.dev";
+    
+    // 🌐 1. 已更新為學校伺服器的正式內網 IP 網址
+    const BASE_URL = "http://163.13.202.116:5050";
 
     try {
-      // 修正 4: 使用 fetch 發送 POST 請求到 /api/register
+      // 2. 使用 fetch 發送 POST 請求到 /api/register
       const response = await fetch(`${BASE_URL}/api/register`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true' // 備註：繞過 Ngrok 的免費版安全提示頁面
+          'Content-Type': 'application/json'
+          // 💡 已移除 Ngrok 專用的破防標頭
         },
-        // 備註：依據資料庫規格，把後端需要的欄位打包成 JSON 字串送出
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
@@ -66,19 +66,19 @@ const Register = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // 修正 5: 當後端回傳 status 200~299 (成功寫入 MySQL)
+        // 當後端回傳 status 200~299 (成功寫入 MySQL)
         alert("註冊成功！準備前往登入頁面。");
         navigate('/login'); 
       } else {
-        // 修正 6: 當後端回傳錯誤（例如：此 Email 已經被註冊過）
+        // 當後端回傳錯誤（例如：此 Email 已經被註冊過）
         alert(`註冊失敗：${data.message || '請檢查輸入欄位'}`);
       }
     } catch (error) {
-      // 修正 7: 攔截連線失敗（例如後端同學沒開 Server 或 Ngrok 斷掉）
+      // 攔截連線失敗
       console.error("連線出錯：", error);
-      alert("無法連線到伺服器。請確認後端同學的 Ngrok 是否正常啟動！");
+      alert("無法連線到伺服器。請確認學校伺服器（163.13.202.116:5050）是否正常在線！");
     } finally {
-      setIsLoading(false); // 備註：不論連線成功或失敗，最後都要解除鎖定狀態
+      setIsLoading(false); // 不論連線成功或失敗，最後都要解除鎖定狀態
     }
   };
 
@@ -143,7 +143,6 @@ const Register = () => {
             />
           </div>
 
-          {/* 修正 8: 綁定 disabled 與動態文字，註冊時按鈕會變成灰色不可點擊 */}
           <button type="submit" className="submit-btn" disabled={isLoading}>
             {isLoading ? "註冊中..." : "註冊"}
           </button>

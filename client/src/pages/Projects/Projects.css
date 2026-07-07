@@ -1,0 +1,295 @@
+/* ── 外框 ─────────────────────────────────────────────────── */
+.projects-container { padding: 40px 8%; min-height: 80vh; }
+.projects-header { margin-bottom: 30px; }
+.projects-header h1 {
+  display: flex; align-items: center; gap: 10px;
+  color: #1e293b; margin-bottom: 4px;
+}
+.projects-loading  { color: #64748b; }
+.projects-login-warn { color: #dc2626; font-weight: bold; }
+
+/* ── 空狀態 ───────────────────────────────────────────────── */
+.projects-empty { text-align: center; padding: 60px 0; color: #64748b; }
+.projects-empty button {
+  margin-top: 16px; padding: 10px 24px;
+  background: #2563eb; color: white;
+  border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+}
+
+/* ── 專案卡片 ─────────────────────────────────────────────── */
+.projects-list { display: flex; flex-direction: column; gap: 20px; }
+
+.project-card {
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.project-card.confirmed {
+  border-color: #86efac; /* 已送 VR 的卡片顯示綠色邊框 */
+}
+
+/* ── 標題列 ───────────────────────────────────────────────── */
+.project-card-header {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-card-title {
+  display: flex; align-items: center; gap: 10px;
+}
+
+.project-id {
+  background: #ede9fe; color: #6d28d9;
+  font-size: 0.8rem; font-weight: bold;
+  padding: 2px 8px; border-radius: 6px;
+}
+
+.project-card-title h2 {
+  margin: 0; font-size: 1.2rem; color: #1e293b;
+}
+
+.badge-confirmed {
+  background: #dcfce7; color: #16a34a;
+  font-size: 0.75rem; font-weight: bold;
+  padding: 2px 10px; border-radius: 20px;
+}
+
+.project-card-meta {
+  display: flex; gap: 20px;
+  font-size: 0.85rem; color: #64748b;
+}
+
+.project-card-actions {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ── 按鈕 ─────────────────────────────────────────────────── */
+.btn-secondary {
+  padding: 8px 16px;
+  background: white; color: #475569;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+  transition: background 0.2s;
+}
+.btn-secondary:hover { background: #f1f5f9; }
+
+.btn-vr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 18px;
+  background: #10b981; color: white;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-weight: bold; font-size: 0.9rem;
+  transition: background 0.2s;
+}
+.btn-vr:hover { background: #059669; }
+
+.btn-delete-project {
+  padding: 8px 12px;
+  background: none; color: #ef4444;
+  border: 1.5px solid #fecaca;
+  border-radius: 8px; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-delete-project:hover { background: #fef2f2; }
+
+/* ── 展開面板 ─────────────────────────────────────────────── */
+.project-panel {
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 20px 24px;
+}
+
+.project-panel-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+
+.panel-title { font-weight: bold; color: #334155; }
+
+.btn-add-furniture {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  background: #2563eb; color: white;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-weight: bold; font-size: 0.85rem;
+  transition: background 0.2s;
+}
+.btn-add-furniture:hover { background: #1d4ed8; }
+
+.panel-subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 12px; }
+.panel-empty    { color: #94a3b8; font-size: 0.9rem; }
+
+/* ── 家具列表（面板內） ───────────────────────────────────── */
+.panel-furniture-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.panel-furniture-item {
+  display: flex; align-items: center; gap: 10px;
+  background: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.furniture-id-badge {
+  background: #f1f5f9; color: #475569;
+  font-size: 0.78rem; padding: 2px 8px;
+  border-radius: 6px; white-space: nowrap;
+}
+
+.furniture-name { flex: 1; color: #334155; font-size: 0.9rem; }
+
+.btn-remove-furniture {
+  background: none; border: none;
+  color: #ef4444; cursor: pointer;
+  padding: 4px; border-radius: 6px;
+  transition: background 0.2s;
+}
+.btn-remove-furniture:hover { background: #fef2f2; }
+
+/* ── Cart.css 補丁：project-name-input ───────────────────── */
+.project-name-label {
+  display: block;
+  font-size: 0.85rem; color: #475569;
+  margin-bottom: 6px; font-weight: 600;
+}
+
+.project-name-input {
+  width: 100%; padding: 10px 14px;
+  border: 1.5px solid #cbd5e1; border-radius: 8px;
+  font-size: 0.95rem; color: #334155;
+  margin-bottom: 14px; box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.project-name-input:focus {
+  outline: none; border-color: #2563eb;
+}
+/* ════════════════════════════════════════════
+   VR 編碼彈窗樣式
+   👉 請把這整段複製貼到現有 Projects.css 的最下面
+   ════════════════════════════════════════════ */
+
+.vr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.vr-modal-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.vr-modal-success {
+  font-size: 15px;
+  color: #16a34a;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.vr-modal-subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+.vr-modal-label {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.vr-modal-code {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #4f46e5;
+  background: #eef2ff;
+  border-radius: 12px;
+  padding: 16px 12px;
+  margin-bottom: 20px;
+  font-family: monospace;
+}
+
+.vr-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.vr-modal-btn-copy,
+.vr-modal-btn-close {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.vr-modal-btn-copy {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.vr-modal-btn-copy.copied {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.vr-modal-btn-close {
+  border: none;
+  background: #4f46e5;
+  color: #fff;
+}
+
+.vr-modal-btn-close:hover {
+  background: #4338ca;
+}
+
+.vr-modal-hint {
+  color: #cbd5e1;
+  font-size: 12px;
+  margin-top: 16px;
+}
+/* ════════════════════════════════════════════
+   家具清單項目：縮圖 + 名稱 排版
+   👉 請加到現有 Projects.css 裡
+   若你原本已經有 .panel-furniture-item 的樣式，
+   這段會覆蓋/補上 flex 對齊與縮圖尺寸，兩者合併即可
+   ════════════════════════════════════════════ */
+
+.panel-furniture-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-furniture-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}

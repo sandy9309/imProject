@@ -30,5 +30,6 @@ app.MapAuthEndpoints();
 app.MapFurnitureEndpoints();
 app.MapProjectEndpoints();
 app.MapCartEndpoints();
+app.MapUserEndpoints();
 
 app.Run();

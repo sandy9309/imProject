@@ -1,41 +1,41 @@
 .cart-container { padding: 40px 8%; min-height: 80vh; }
 .cart-header { margin-bottom: 30px; }
-.cart-header h1 { display: flex; align-items: center; gap: 10px; color: #1e293b; }
+.cart-header h1 { display: flex; align-items: center; gap: 10px; color: var(--color-text); }
 
 .cart-content { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
 
 .cart-item {
-  display: flex; align-items: center; background: white;
+  display: flex; align-items: center; background: var(--color-surface);
   padding: 20px; border-radius: 15px; margin-bottom: 15px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
 .cart-item img { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; }
 .item-info { flex: 1; margin-left: 20px; }
-.item-info h3 { margin: 0 0 5px 0; color: #334155; }
-.item-price { color: #2563eb; font-weight: bold; }
+.item-info h3 { margin: 0 0 5px 0; color: var(--color-text-strong); }
+.item-price { color: var(--color-primary); font-weight: bold; }
 
-.remove-btn { background: none; border: none; color: #ef4444; cursor: pointer; transition: 0.3s; }
+.remove-btn { background: none; border: none; color: var(--color-danger); cursor: pointer; transition: 0.3s; }
 .remove-btn:hover { transform: scale(1.1); }
 
 .cart-summary {
-  background: white; padding: 30px; border-radius: 20px;
+  background: var(--color-surface); padding: 30px; border-radius: 20px;
   height: fit-content; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
-.summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; color: #64748b; }
-.summary-row.total { border-top: 1px solid #e2e8f0; padding-top: 15px; font-weight: bold; color: #1e293b; font-size: 1.2rem; }
+.summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; color: var(--color-text-muted); }
+.summary-row.total { border-top: 1px solid var(--color-border); padding-top: 15px; font-weight: bold; color: var(--color-text); font-size: 1.2rem; }
 
 /* 原本漂亮的藍色進入場景按鈕 */
 .checkout-btn {
-  width: 100%; padding: 15px; background: #2563eb; color: white;
+  width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-surface);
   border: none; border-radius: 10px; font-weight: bold; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   transition: background-color 0.2s ease;
 }
 
 .checkout-btn:hover {
-  background-color: #1d4ed8; /* 補上藍色按鈕滑鼠懸停變深藍，更有互動感 */
+  background-color: var(--color-primary-hover); /* 補上藍色按鈕滑鼠懸停變深藍，更有互動感 */
 }
 
 /* ==========================================================================
@@ -49,8 +49,8 @@
 .save-btn {
   width: 100%;
   padding: 15px;             /* 💡 從 12px 改成 15px，這樣高度才會跟藍色按鈕完全一樣高！ */
-  background-color: #10b981; /* 漂亮的綠色 */
-  color: white;
+  background-color: var(--color-success); /* 漂亮的綠色 */
+  color: var(--color-surface);
   border: none;              /* 💡 修正：刪除原本打錯的 border: some */
   border-radius: 10px;       /* 💡 從 8px 改成 10px，圓角跟藍色按鈕完美對齊 */
   font-weight: bold;
@@ -63,12 +63,12 @@
 }
 
 .save-btn:hover {
-  background-color: #059669; /* 滑鼠移上去變深綠 */
+  background-color: var(--color-success-hover); /* 滑鼠移上去變深綠 */
 }
 
 /* 當按鈕在載入中（同步後端時）的停用狀態 */
 .save-btn:disabled {
-  background-color: #94a3b8;
+  background-color: var(--color-text-faint);
   cursor: not-allowed;
 }
 /* ════════════════════════════════════════════
@@ -81,15 +81,15 @@
   margin-top: 8px;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
   font-weight: 600;
   cursor: pointer;
 }
 
 .cancel-edit-btn:hover {
-  background: #f1f5f9;
+  background: var(--color-bg-muted);
 }
 /* ════════════════════════════════════════════
    配置清單頁：既有家具 vs 新增家具 的視覺區分
@@ -99,39 +99,19 @@
 .cart-list-section-label {
   font-size: 13px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 12px 0 6px;
 }
 
-/* 既有家具：維持原本白底樣式，唯讀 */
-.cart-item-existing {
-  background: #ffffff;
-  opacity: 0.85;
-}
 
-.item-existing-tag {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
-}
 
-/* 新增家具：淡綠色底色，讓使用者一眼看出「這次改了什麼」 */
-.cart-item-new {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-}
 
-.item-new-badge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #16a34a;
-  background: #dcfce7;
-  border-radius: 999px;
-  vertical-align: middle;
-}
+
+
+
+
+
+
 /* ════════════════════════════════════════════
    配置清單頁：數量 +/- 調整按鈕
    👉 請加到現有 Cart.css 裡
@@ -148,9 +128,9 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #334155;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,7 +138,7 @@
 }
 
 .qty-btn:hover:not(:disabled) {
-  background: #e2e8f0;
+  background: var(--color-border);
 }
 
 .qty-btn:disabled {
@@ -170,17 +150,13 @@
   min-width: 20px;
   text-align: center;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--color-text);
 }
-/* ════════════════════════════════════════════
-   配置清單頁：空清單狀態美化
-   👉 請加到現有 Cart.css 裡
-   ════════════════════════════════════════════ */
-
+/* ── 空清單狀態美化 ───────────────────────────────────────── */
 .empty-cart {
   text-align: center;
   padding: 80px 0;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .empty-cart p {
@@ -190,10 +166,10 @@
 
 .empty-cart-btn {
   padding: 12px 28px;
-  background: #2563eb;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-surface);
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-weight: bold;
   font-size: 0.95rem;
@@ -201,5 +177,13 @@
 }
 
 .empty-cart-btn:hover {
-  background: #1d4ed8;
+  background: var(--color-primary-hover);
+}
+
+
+
+/* ── 有任何變動(新增/調整數量,尚未儲存)的統一底色 ────────── */
+.cart-item-changed {
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-border);
 }

@@ -352,63 +352,73 @@ const Cart = () => {
       {currentUserId && (cartItems.length > 0 || (editProjectId && existingItems.length > 0)) ? (
         <div className="cart-content">
           <div className="cart-list">
-            {/* 🚀 既有家具（依 furniture_id 分組計數）：白底，+/- 直接呼叫後端更新 */}
-            {editProjectId && Object.entries(
-              existingItems.reduce((acc, it) => {
+            {/* 🚀 既有家具（依 furniture_id 分組計數）：數量被調整過的會變底色 */}
+            {editProjectId && (() => {
+              // 目前數量 與 剛載入時的原始數量,兩張對照表
+              const countMap = existingItems.reduce((acc, it) => {
                 const fid = getExistingId(it);
                 acc[fid] = (acc[fid] || 0) + 1;
                 return acc;
-              }, {})
-            ).map(([fidKey, count]) => {
-              const furnitureId = isNaN(Number(fidKey)) ? fidKey : Number(fidKey);
-              const info = furnitureMap[furnitureId];
-              return (
-                <div key={`existing-${fidKey}`} className="cart-item cart-item-existing">
-                  <img
-                    src={info?.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'}
-                    alt={info?.name || '家具'}
-                  />
-                  <div className="item-info">
-                    <h3>{info?.name || '未知家具'}</h3>
-                    <p className="item-existing-tag">已在專案中</p>
+              }, {});
+              const originalCountMap = originalExistingItems.reduce((acc, it) => {
+                const fid = getExistingId(it);
+                acc[fid] = (acc[fid] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(countMap).map(([fidKey, count]) => {
+                const furnitureId = isNaN(Number(fidKey)) ? fidKey : Number(fidKey);
+                const info = furnitureMap[furnitureId];
+                const originalCount = originalCountMap[fidKey] || 0;
+                const isModified = count !== originalCount;
+                return (
+                  <div
+                    key={`existing-${fidKey}`}
+                    className={`cart-item ${isModified ? 'cart-item-changed' : ''}`}
+                  >
+                    <img
+                      src={info?.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'}
+                      alt={info?.name || '家具'}
+                    />
+                    <div className="item-info">
+                      <h3>{info?.name || '未知家具'}</h3>
+                      <p>尺寸：{info?.length_cm || '-'} x {info?.width || '-'} x {info?.height || '-'} cm</p>
+                      <p className="item-price">NT$ {Number(info?.price || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="qty-stepper">
+                      <button
+                        className="qty-btn"
+                        onClick={() => changeExistingQty(furnitureId, -1)}
+                        aria-label="減少數量"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="qty-value">{count}</span>
+                      <button
+                        className="qty-btn"
+                        onClick={() => changeExistingQty(furnitureId, 1)}
+                        aria-label="增加數量"
+                        disabled={count >= MAX_QTY}
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="qty-stepper">
-                    <button
-                      className="qty-btn"
-                      onClick={() => changeExistingQty(furnitureId, -1)}
-                      aria-label="減少數量"
-                    >
-                      <Minus size={16} />
-                    </button>
-                    <span className="qty-value">{count}</span>
-                    <button
-                      className="qty-btn"
-                      onClick={() => changeExistingQty(furnitureId, 1)}
-                      aria-label="增加數量"
-                      disabled={count >= MAX_QTY}
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
 
             {/* 這次新選的家具：底色標示，讓使用者清楚看到「這次改了什麼」 */}
             {cartItems.map(item => (
               <div
                 key={item.id}
-                className={`cart-item ${editProjectId ? 'cart-item-new' : ''}`}
+                className={`cart-item ${editProjectId ? 'cart-item-changed' : ''}`}
               >
                 <img
                   src={item.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'}
                   alt={item.name}
                 />
                 <div className="item-info">
-                  <h3>
-                    {item.name}
-                    {editProjectId && <span className="item-new-badge">新增</span>}
-                  </h3>
+                  <h3>{item.name}</h3>
                   <p>尺寸：{item.length_cm || '-'} x {item.width || '-'} x {item.height || '-'} cm</p>
                   <p className="item-price">NT$ {(item.price || 0).toLocaleString()}</p>
                 </div>

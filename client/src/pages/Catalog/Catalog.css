@@ -1,6 +1,6 @@
 .catalog-container {
   padding: 40px 8%;
-  background-color: #f8fafc;
+  background-color: var(--color-bg-subtle);
   min-height: 100vh;
 }
 
@@ -12,7 +12,7 @@
 }
 
 .catalog-header h1 {
-  color: #1e293b;
+  color: var(--color-text);
   font-size: 2rem;
 }
 
@@ -24,10 +24,10 @@
 .search-input {
   display: flex;
   align-items: center;
-  background: white;
+  background: var(--color-surface);
   padding: 10px 15px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   gap: 10px;
   width: 300px;
 }
@@ -43,11 +43,11 @@
   align-items: center;
   gap: 5px;
   padding: 10px 20px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   cursor: pointer;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 /* 網格系統 */
@@ -58,7 +58,7 @@
 }
 
 .furniture-card {
-  background: white;
+  background: var(--color-surface);
   border-radius: 15px;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0,0,0,0.05);
@@ -84,12 +84,12 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(20, 14, 8, 0.65);
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: bold;
-  color: #2563eb;
+  color: #ffffff;
 }
 
 .card-info {
@@ -99,11 +99,11 @@
 .card-info h3 {
   font-size: 1.1rem;
   margin-bottom: 8px;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 .price {
-  color: #2563eb;
+  color: var(--color-primary);
   font-weight: bold;
   font-size: 1.2rem;
   margin-bottom: 15px;
@@ -116,18 +116,18 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background-color: #f1f5f9;
+  background-color: var(--color-bg-muted);
   border: none;
   border-radius: 8px;
-  color: #475569;
+  color: var(--color-text-strong);
   font-weight: bold;
   cursor: pointer;
   transition: 0.3s;
 }
 
 .preview-btn:hover {
-  background-color: #2563eb;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-surface);
 }
 
 /* 1. 背景遮罩：加入模糊效果提升質感 */
@@ -148,7 +148,7 @@
 
 /* 2. 彈窗主體：【大修正】拿掉卡死高度的 max-height，改用 flex 垂直自動撐開 */
 .modal-content {
-  background: white;
+  background: var(--color-surface);
   padding: 25px;
   border-radius: 24px;
   width: 95%;
@@ -166,8 +166,8 @@
   top: 20px;
   right: 20px;
   border: none;
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -180,18 +180,18 @@
 }
 
 .close-btn:hover {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: var(--color-border);
+  color: var(--color-text);
   transform: rotate(90deg);
 }
 
 /* 4. 調整 3D 模型容器 */
 .model-container {
-  background: #f8fafc;
+  background: var(--color-bg-subtle);
   border-radius: 16px;
   margin: 20px 0 10px 0;
   overflow: hidden;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--color-bg-muted);
   height: 300px; /* 稍微調高到 300px，展示沙發更精緻 */
   width: 100%;
   position: relative;
@@ -218,8 +218,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
   font-size: 14px;
   font-weight: 500;
   z-index: 1;
@@ -237,14 +237,14 @@
 .modal-price {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #2563eb;
+  color: var(--color-primary);
   margin: 0;
 }
 
 .action-btn {
   padding: 12px 24px;
-  background: #2563eb;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-surface);
   border: none;
   border-radius: 12px;
   font-weight: 600;
@@ -253,7 +253,7 @@
 }
 
 .action-btn:hover {
-  background: #1d4ed8;
+  background: var(--color-primary-hover);
 }
 
 /* 簡單的彈出動畫 */
@@ -274,38 +274,38 @@
 .filter-tag {
   padding: 8px 20px;
   border-radius: 20px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  color: #64748b;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.3s;
 }
 
 .filter-tag:hover {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .filter-tag.active {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
 }
 
 .no-results {
   grid-column: 1 / -1;
   text-align: center;
   padding: 100px 0;
-  color: #94a3b8;
+  color: var(--color-text-faint);
 }
 
 .dimension-filter {
-  background: white;
+  background: var(--color-surface);
   padding: 20px;
   border-radius: 15px;
   margin-bottom: 30px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
 }
 
 .filter-title {
@@ -313,7 +313,7 @@
   align-items: center;
   gap: 8px;
   font-weight: bold;
-  color: #1e293b;
+  color: var(--color-text);
   margin-bottom: 15px;
 }
 
@@ -332,39 +332,39 @@
 
 .input-field label {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .input-field input {
   width: 100px;
   padding: 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   outline: none;
 }
 
 .input-field input:focus {
-  border-color: #2563eb;
+  border-color: var(--color-primary);
 }
 
 .reset-btn {
   padding: 10px 15px;
-  background: #f1f5f9;
+  background: var(--color-bg-muted);
   border: none;
   border-radius: 8px;
-  color: #475569;
+  color: var(--color-text-strong);
   cursor: pointer;
   transition: 0.3s;
 }
 
-.reset-btn:hover { background: #e2e8f0; }
+.reset-btn:hover { background: var(--color-border); }
 
 .dim-tag {
   position: absolute;
   bottom: 10px;
   left: 10px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
+  background: rgba(20, 14, 8, 0.65);
+  color: #ffffff;
   padding: 3px 8px;
   border-radius: 5px;
   font-size: 0.75rem;
@@ -372,18 +372,18 @@
 
 /* 讓篩選按鈕被點擊時有變色效果 */
 .filter-btn.active {
-  background-color: #2563eb;
-  color: white;
-  border-color: #2563eb;
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
 }
 
 /* 下拉式篩選區塊樣式 */
 .dimension-filter-dropdown {
-  background: white;
+  background: var(--color-surface);
   padding: 20px;
   border-radius: 15px;
   margin-bottom: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   animation: slideDown 0.3s ease-out;
 }
@@ -397,9 +397,9 @@
   width: 100%;
   padding: 10px;
   margin-top: 10px;
-  background-color: #ffffff;
-  color: #2563eb;
-  border: 1px solid #2563eb;
+  background-color: var(--color-surface);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
   border-radius: 8px;
   font-weight: bold;
   cursor: pointer;
@@ -407,8 +407,8 @@
 }
 
 .add-to-cart-btn:hover {
-  background-color: #2563eb;
-  color: #ffffff;
+  background-color: var(--color-primary);
+  color: var(--color-surface);
 }
 /* ════════════════════════════════════════════
    型錄頁：編輯既有專案中的提示橫幅
@@ -420,9 +420,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
-  color: #4338ca;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary-hover);
   font-weight: 600;
   font-size: 14px;
   padding: 12px 16px;
@@ -432,9 +432,9 @@
 
 .catalog-edit-banner button {
   flex-shrink: 0;
-  background: #fff;
-  border: 1px solid #c7d2fe;
-  color: #4338ca;
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary-hover);
   font-weight: 600;
   font-size: 13px;
   padding: 6px 12px;
@@ -443,7 +443,7 @@
 }
 
 .catalog-edit-banner button:hover {
-  background: #e0e7ff;
+  background: var(--color-accent-soft);
 }
 /* ════════════════════════════════════════════
    型錄頁：尺寸區間 & 金額範圍 篩選輸入框
@@ -459,17 +459,17 @@
 .range-pair input {
   width: 90px;
   padding: 8px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 14px;
 }
 
 .range-pair input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--color-primary);
 }
 
 .range-sep {
-  color: #94a3b8;
+  color: var(--color-text-faint);
   font-weight: 600;
 }

@@ -1,6 +1,8 @@
 // src/pages/Register/Register.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; 
+import { Eye, EyeOff } from 'lucide-react';
+import PasswordStrength from '../../components/PasswordStrength/PasswordStrength';
 import './Register.css';
 
 const Register = () => {
@@ -16,6 +18,8 @@ const Register = () => {
 
   // 新增載入中狀態控制，避免連線時使用者瘋狂重複點擊註冊
   const [isLoading, setIsLoading] = useState(false);
+  // 🚀 顯示/隱藏密碼(兩個欄位各自獨立控制)
+  const [showPw, setShowPw] = useState({ password: false, confirm: false });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -122,25 +126,47 @@ const Register = () => {
           </div>
           <div className="form-group">
             <label>密碼</label>
-            <input 
-              name="password" 
-              type="password" 
-              placeholder="請輸入密碼" 
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
-            />
+            <div className="pw-input-wrap">
+              <input 
+                name="password" 
+                type={showPw.password ? 'text' : 'password'} 
+                placeholder="請輸入密碼" 
+                value={formData.password} 
+                onChange={handleChange} 
+                required 
+              />
+              <button
+                type="button"
+                className="pw-toggle-btn"
+                onClick={() => setShowPw({ ...showPw, password: !showPw.password })}
+                aria-label={showPw.password ? '隱藏密碼' : '顯示密碼'}
+              >
+                {showPw.password ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {/* 🚀 密碼安全性即時檢測 */}
+            <PasswordStrength password={formData.password} />
           </div>
           <div className="form-group">
             <label>確認密碼</label>
-            <input 
-              name="confirmPassword" 
-              type="password" 
-              placeholder="請再次輸入密碼" 
-              value={formData.confirmPassword} 
-              onChange={handleChange} 
-              required 
-            />
+            <div className="pw-input-wrap">
+              <input 
+                name="confirmPassword" 
+                type={showPw.confirm ? 'text' : 'password'} 
+                placeholder="請再次輸入密碼" 
+                value={formData.confirmPassword} 
+                onChange={handleChange} 
+                required 
+              />
+              <button
+                type="button"
+                className="pw-toggle-btn"
+                onClick={() => setShowPw({ ...showPw, confirm: !showPw.confirm })}
+                aria-label={showPw.confirm ? '隱藏密碼' : '顯示密碼'}
+              >
+                {showPw.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button type="submit" className="submit-btn" disabled={isLoading}>

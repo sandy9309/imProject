@@ -1,5 +1,5 @@
 // src/components/Navbar/Navbar.js
-import React, { useState, useEffect } from 'react'; // 修正 1: 引入 useEffect 用於監聽瀏覽器暫存
+import React, { useState, useEffect, useRef } from 'react'; // 修正 1: 引入 useEffect 用於監聽瀏覽器暫存
 import { Link, useNavigate } from 'react-router-dom'; 
 // 🚀 這裡幫妳多引入了 Folder 圖示，用於「我的專案」
 import { Home, Layout, Folder, LogIn, UserPlus, ShoppingCart, User, LogOut, ChevronDown } from 'lucide-react'; 
@@ -18,17 +18,40 @@ const Navbar = () => {
   // 備註：控制頭像下拉選單顯示的狀態維持不變
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  // 修正 4: 新增 useEffect 區塊。網頁一載入，就去撈 localStorage 裡面的 user 物件
+  // 🚀 選單容器的參照,用來判斷「點擊是否發生在選單外面」
+  const userMenuRef = useRef(null);
+
+  // 🚀 點擊選單以外的任何地方,自動關閉下拉選單
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const userObj = JSON.parse(savedUser);
-        setUserName(userObj.name || '會員'); // 備註：成功拿到後端給的姓名就套用
-      } catch (e) {
-        setUserName('會員');
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
       }
+    };
+    // 選單開著的時候才需要監聽,關著就把監聽拆掉,避免浪費效能
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
     }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
+
+  // 修正 4: 網頁載入時撈 localStorage 的 user 物件,
+  // 🚀 並監聽「user-updated」事件:會員中心改名後會發出這個事件,Navbar 立刻同步新名稱
+  useEffect(() => {
+    const loadUserName = () => {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          setUserName(userObj.name || '會員');
+        } catch (e) {
+          setUserName('會員');
+        }
+      }
+    };
+    loadUserName();
+    window.addEventListener('user-updated', loadUserName);
+    return () => window.removeEventListener('user-updated', loadUserName);
   }, []);
 
   const handleLogout = () => {
@@ -67,7 +90,7 @@ const Navbar = () => {
             </Link>
 
             {/* 備註：頭像與下拉選單 */}
-            <div className="user-menu-container">
+            <div className="user-menu-container" ref={userMenuRef}>
               <div 
                 className="nav-avatar-wrapper" 
                 onClick={() => setShowUserMenu(!showUserMenu)}

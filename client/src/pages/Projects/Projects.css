@@ -3,16 +3,16 @@
 .projects-header { margin-bottom: 30px; }
 .projects-header h1 {
   display: flex; align-items: center; gap: 10px;
-  color: #1e293b; margin-bottom: 4px;
+  color: var(--color-text); margin-bottom: 4px;
 }
-.projects-loading  { color: #64748b; }
-.projects-login-warn { color: #dc2626; font-weight: bold; }
+.projects-loading  { color: var(--color-text-muted); }
+.projects-login-warn { color: var(--color-danger); font-weight: bold; }
 
 /* ── 空狀態 ───────────────────────────────────────────────── */
-.projects-empty { text-align: center; padding: 60px 0; color: #64748b; }
+.projects-empty { text-align: center; padding: 60px 0; color: var(--color-text-muted); }
 .projects-empty button {
   margin-top: 16px; padding: 10px 24px;
-  background: #2563eb; color: white;
+  background: var(--color-primary); color: var(--color-surface);
   border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
 }
 
@@ -20,15 +20,15 @@
 .projects-list { display: flex; flex-direction: column; gap: 20px; }
 
 .project-card {
-  background: white;
-  border: 1.5px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .project-card.confirmed {
-  border-color: #86efac; /* 已送 VR 的卡片顯示綠色邊框 */
+  border-color: var(--color-success-border); /* 已送 VR 的卡片顯示綠色邊框 */
 }
 
 /* ── 標題列 ───────────────────────────────────────────────── */
@@ -44,24 +44,24 @@
 }
 
 .project-id {
-  background: #ede9fe; color: #6d28d9;
+  background: var(--color-primary-soft); color: var(--color-primary);
   font-size: 0.8rem; font-weight: bold;
   padding: 2px 8px; border-radius: 6px;
 }
 
 .project-card-title h2 {
-  margin: 0; font-size: 1.2rem; color: #1e293b;
+  margin: 0; font-size: 1.2rem; color: var(--color-text);
 }
 
 .badge-confirmed {
-  background: #dcfce7; color: #16a34a;
+  background: var(--color-success-soft); color: var(--color-success);
   font-size: 0.75rem; font-weight: bold;
   padding: 2px 10px; border-radius: 20px;
 }
 
 .project-card-meta {
   display: flex; gap: 20px;
-  font-size: 0.85rem; color: #64748b;
+  font-size: 0.85rem; color: var(--color-text-muted);
 }
 
 .project-card-actions {
@@ -73,36 +73,36 @@
 /* ── 按鈕 ─────────────────────────────────────────────────── */
 .btn-secondary {
   padding: 8px 16px;
-  background: white; color: #475569;
-  border: 1.5px solid #cbd5e1;
+  background: var(--color-surface); color: var(--color-text-strong);
+  border: 1.5px solid var(--color-border-strong);
   border-radius: 8px; cursor: pointer; font-size: 0.9rem;
   transition: background 0.2s;
 }
-.btn-secondary:hover { background: #f1f5f9; }
+.btn-secondary:hover { background: var(--color-bg-muted); }
 
 .btn-vr {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 18px;
-  background: #10b981; color: white;
+  background: var(--color-primary); color: var(--color-surface);
   border: none; border-radius: 8px; cursor: pointer;
   font-weight: bold; font-size: 0.9rem;
   transition: background 0.2s;
 }
-.btn-vr:hover { background: #059669; }
+.btn-vr:hover { background: var(--color-primary-hover); }
 
 .btn-delete-project {
   padding: 8px 12px;
-  background: none; color: #ef4444;
-  border: 1.5px solid #fecaca;
+  background: none; color: var(--color-danger);
+  border: 1.5px solid var(--color-danger-border);
   border-radius: 8px; cursor: pointer;
   transition: background 0.2s;
 }
-.btn-delete-project:hover { background: #fef2f2; }
+.btn-delete-project:hover { background: var(--color-danger-soft); }
 
 /* ── 展開面板 ─────────────────────────────────────────────── */
 .project-panel {
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
   padding: 20px 24px;
 }
 
@@ -111,73 +111,72 @@
   margin-bottom: 12px;
 }
 
-.panel-title { font-weight: bold; color: #334155; }
+.panel-title { font-weight: bold; color: var(--color-text-strong); }
 
 .btn-add-furniture {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 16px;
-  background: #2563eb; color: white;
+  background: var(--color-primary); color: var(--color-surface);
   border: none; border-radius: 8px; cursor: pointer;
   font-weight: bold; font-size: 0.85rem;
   transition: background 0.2s;
 }
-.btn-add-furniture:hover { background: #1d4ed8; }
+.btn-add-furniture:hover { background: var(--color-primary-hover); }
 
-.panel-subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 12px; }
-.panel-empty    { color: #94a3b8; font-size: 0.9rem; }
+.panel-subtitle { font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 12px; }
+.panel-empty    { color: var(--color-text-faint); font-size: 0.9rem; }
 
-/* ── 家具列表（面板內）：縮圖 + 名稱 排版 ─────────────────── */
+/* ── 家具列表（面板內） ───────────────────────────────────── */
 .panel-furniture-list {
   display: flex; flex-direction: column; gap: 8px;
 }
 
 .panel-furniture-item {
-  display: flex; align-items: center; gap: 12px;
-  background: white;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--color-surface);
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
 }
 
-.panel-furniture-thumb {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
-  flex-shrink: 0;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+.furniture-id-badge {
+  background: var(--color-bg-muted); color: var(--color-text-strong);
+  font-size: 0.78rem; padding: 2px 8px;
+  border-radius: 6px; white-space: nowrap;
 }
 
-.furniture-name { flex: 1; color: #334155; font-size: 0.9rem; }
+.furniture-name { flex: 1; color: var(--color-text-strong); font-size: 0.9rem; }
 
 .btn-remove-furniture {
   background: none; border: none;
-  color: #ef4444; cursor: pointer;
+  color: var(--color-danger); cursor: pointer;
   padding: 4px; border-radius: 6px;
   transition: background 0.2s;
 }
-.btn-remove-furniture:hover { background: #fef2f2; }
+.btn-remove-furniture:hover { background: var(--color-danger-soft); }
 
 /* ── Cart.css 補丁：project-name-input ───────────────────── */
 .project-name-label {
   display: block;
-  font-size: 0.85rem; color: #475569;
+  font-size: 0.85rem; color: var(--color-text-strong);
   margin-bottom: 6px; font-weight: 600;
 }
 
 .project-name-input {
   width: 100%; padding: 10px 14px;
-  border: 1.5px solid #cbd5e1; border-radius: 8px;
-  font-size: 0.95rem; color: #334155;
+  border: 1.5px solid var(--color-border-strong); border-radius: 8px;
+  font-size: 0.95rem; color: var(--color-text-strong);
   margin-bottom: 14px; box-sizing: border-box;
   transition: border-color 0.2s;
 }
 .project-name-input:focus {
-  outline: none; border-color: #2563eb;
+  outline: none; border-color: var(--color-primary);
 }
+/* ════════════════════════════════════════════
+   VR 編碼彈窗樣式
+   👉 請把這整段複製貼到現有 Projects.css 的最下面
+   ════════════════════════════════════════════ */
 
-/* ── VR 編碼彈窗 ──────────────────────────────────────────── */
 .vr-modal-overlay {
   position: fixed;
   inset: 0;
@@ -190,30 +189,30 @@
 }
 
 .vr-modal-box {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 16px;
   padding: 32px;
   width: 100%;
   max-width: 380px;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-modal);
 }
 
 .vr-modal-success {
   font-size: 15px;
-  color: #16a34a;
+  color: var(--color-success);
   font-weight: 700;
   margin-bottom: 4px;
 }
 
 .vr-modal-subtitle {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 14px;
   margin: 0 0 20px;
 }
 
 .vr-modal-label {
-  color: #94a3b8;
+  color: var(--color-text-faint);
   font-size: 13px;
   margin: 0 0 8px;
 }
@@ -222,12 +221,12 @@
   font-size: 36px;
   font-weight: 800;
   letter-spacing: 2px;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
   border-radius: 12px;
   padding: 16px 12px;
   margin-bottom: 20px;
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .vr-modal-actions {
@@ -241,16 +240,46 @@
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+
+
+
+
+.vr-modal-btn-close {
   border: none;
-  background: #4f46e5;
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--color-surface);
 }
 
 .vr-modal-btn-close:hover {
-  background: #4338ca;
+  background: var(--color-primary-hover);
 }
 
+
+/* ════════════════════════════════════════════
+   家具清單項目：縮圖 + 名稱 排版
+   👉 請加到現有 Projects.css 裡
+   若你原本已經有 .panel-furniture-item 的樣式，
+   這段會覆蓋/補上 flex 對齊與縮圖尺寸，兩者合併即可
+   ════════════════════════════════════════════ */
+
+.panel-furniture-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-furniture-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+}
 /* ── 專案搜尋框 ───────────────────────────────────────────── */
 .projects-search-bar {
   position: relative;
@@ -263,24 +292,25 @@
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #94a3b8;
+  color: var(--color-text-faint);
   pointer-events: none;
 }
 
 .projects-search-bar input {
   width: 100%;
   padding: 11px 14px 11px 42px;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 10px;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
   font-size: 0.95rem;
-  color: #334155;
+  color: var(--color-text-strong);
+  background: var(--color-surface);
   box-sizing: border-box;
   transition: border-color 0.2s;
 }
 
 .projects-search-bar input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--color-primary);
 }
 
 /* ── 專案總金額（卡片右上角） ─────────────────────────────── */
@@ -301,20 +331,53 @@
 
 .project-total-label {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--color-text-faint);
 }
 
 .project-total-value {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 /* ── 單件家具價格（清單內） ───────────────────────────────── */
 .furniture-price {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #2563eb;
+  color: var(--color-primary);
   white-space: nowrap;
   margin-right: 4px;
+}
+
+/* ── 專案名稱:單擊可編輯 ─────────────────────────────────── */
+.project-name-editable {
+  cursor: pointer;
+  border-bottom: 1.5px dashed transparent;
+  transition: border-color 0.15s;
+}
+
+.project-name-editable:hover {
+  border-bottom-color: var(--color-primary);
+}
+
+.project-rename-input {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--color-text);
+  padding: 2px 8px;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 6px;
+  background: var(--color-surface);
+  max-width: 240px;
+}
+
+.project-rename-input:focus {
+  outline: none;
+}
+
+/* 複製按鈕跟展開鍵共用 .btn-secondary,補上圖示對齊 */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }

@@ -1,7 +1,7 @@
 /* 容器佈局 */
 .profile-container {
   padding: 60px 8%;
-  background-color: #f8fafc;
+  background-color: var(--color-bg-subtle);
   min-height: 90vh;
   display: flex;
   justify-content: center;
@@ -10,7 +10,7 @@
 /* 個人資料大卡片 */
 .profile-card {
   display: flex;
-  background: white;
+  background: var(--color-surface);
   width: 100%;
   max-width: 1000px;
   border-radius: 20px;
@@ -21,8 +21,8 @@
 /* 左側導覽列 */
 .profile-sidebar {
   width: 280px;
-  background-color: #ffffff;
-  border-right: 1px solid #f1f5f9;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-bg-muted);
   padding: 40px 20px;
   display: flex;
   flex-direction: column;
@@ -37,8 +37,8 @@
 .avatar-circle {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary));
+  color: var(--color-surface);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -50,12 +50,12 @@
 
 .avatar-section h3 {
   margin: 0;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 .avatar-section p {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin-top: 5px;
 }
 
@@ -74,7 +74,7 @@
   border: none;
   background: none;
   border-radius: 10px;
-  color: #64748b;
+  color: var(--color-text-muted);
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
@@ -82,19 +82,19 @@
 }
 
 .profile-nav button:hover {
-  background-color: #f1f5f9;
-  color: #2563eb;
+  background-color: var(--color-bg-muted);
+  color: var(--color-primary);
 }
 
 .profile-nav button.active {
-  background-color: #eff6ff;
-  color: #2563eb;
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .logout-text {
   margin-top: 20px;
-  color: #ef4444 !important;
+  color: var(--color-danger) !important;
 }
 
 /* 右側主內容區 */
@@ -105,7 +105,7 @@
 
 .profile-main h2 {
   margin-bottom: 30px;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 /* 資訊網格 */
@@ -121,13 +121,13 @@
   align-items: center;
   gap: 8px;
   font-size: 0.9rem;
-  color: #94a3b8;
+  color: var(--color-text-faint);
   margin-bottom: 8px;
 }
 
 .info-item p {
   font-size: 1.1rem;
-  color: #334155;
+  color: var(--color-text-strong);
   font-weight: 500;
   margin: 0;
 }
@@ -135,8 +135,8 @@
 /* 編輯按鈕 */
 .edit-profile-btn {
   padding: 12px 25px;
-  background-color: #2563eb;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-surface);
   border: none;
   border-radius: 8px;
   font-weight: 600;
@@ -145,7 +145,7 @@
 }
 
 .edit-profile-btn:hover {
-  background-color: #1d4ed8;
+  background-color: var(--color-primary-hover);
 }
 
 /* 手機版適應 */
@@ -156,7 +156,7 @@
   .profile-sidebar {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-bg-muted);
   }
 }
 /* ════════════════════════════════════════════
@@ -167,7 +167,7 @@
 .settings-section {
   margin-bottom: 32px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .settings-section:last-child {
@@ -180,7 +180,7 @@
   gap: 8px;
   font-size: 16px;
   margin-bottom: 16px;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 .password-form {
@@ -200,7 +200,7 @@
 
 .dark-mode-label {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--color-text);
   margin-bottom: 2px;
 }
 
@@ -209,7 +209,7 @@
   height: 26px;
   border-radius: 999px;
   border: none;
-  background: #cbd5e1;
+  background: var(--color-border-strong);
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
@@ -217,7 +217,7 @@
 }
 
 .toggle-switch.on {
-  background: #4f46e5;
+  background: var(--color-primary);
 }
 
 .toggle-knob {
@@ -227,7 +227,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-surface);
   transition: transform 0.2s ease;
 }
 
@@ -237,11 +237,11 @@
 
 /* ── 危險區：刪除帳號 ── */
 .danger-zone h3 {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .danger-input {
-  border-color: #fca5a5;
+  border-color: var(--color-danger-border);
 }
 
 .delete-account-btn {
@@ -249,76 +249,46 @@
   padding: 10px 20px;
   border-radius: 8px;
   border: none;
-  background: #dc2626;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-surface);
   font-weight: 700;
   cursor: pointer;
 }
 
 .delete-account-btn:hover:not(:disabled) {
-  background: #b91c1c;
+  background: var(--color-danger-hover);
 }
 
 .delete-account-btn:disabled {
-  background: #fca5a5;
+  background: var(--color-danger-border);
   cursor: not-allowed;
 }
 
-/* ════════════════════════════════════════════
-   深色模式：整站基礎配色（先從 body 開始套用）
-   👉 這段也請加到 Profile.css（或抽到一個全站共用的 css）
-   如果之後想讓其他頁面（型錄、購物車等）也一起變暗，
-   同樣的 .dark-mode 前綴規則可以依樣畫葫蘆加到那些頁面的 css
-   ════════════════════════════════════════════ */
 
-body.dark-mode {
-  background-color: #0f172a;
-  color: #e2e8f0;
-}
-
-body.dark-mode .profile-card,
-body.dark-mode .profile-sidebar,
-body.dark-mode .profile-main {
-  background-color: #1e293b;
-  color: #e2e8f0;
-}
-
-body.dark-mode .info-item p,
-body.dark-mode .profile-readonly-hint {
-  color: #94a3b8;
-}
-
-body.dark-mode .profile-edit-input {
-  background-color: #0f172a;
-  border-color: #334155;
-  color: #e2e8f0;
-}
-
-body.dark-mode .settings-section {
-  border-bottom-color: #334155;
-}
 /* ════════════════════════════════════════════
    會員中心：編輯資料的輸入框與按鈕樣式
    👉 請加到現有 Profile.css 裡
    ════════════════════════════════════════════ */
 
 .profile-edit-input {
+  background: var(--color-surface);
+  box-sizing: border-box;
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   font-size: 15px;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 .profile-edit-input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
 .profile-readonly-hint {
-  color: #94a3b8;
+  color: var(--color-text-faint);
   font-size: 14px;
 }
 
@@ -331,13 +301,39 @@ body.dark-mode .settings-section {
 .edit-profile-cancel-btn {
   padding: 10px 20px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
   font-weight: 600;
   cursor: pointer;
 }
 
 .edit-profile-cancel-btn:hover {
-  background: #f1f5f9;
+  background: var(--color-bg-muted);
+}
+/* ── 密碼欄位:顯示/隱藏切換 ──────────────────────────────── */
+.pw-input-wrap {
+  position: relative;
+}
+
+.pw-input-wrap .profile-edit-input {
+  padding-right: 42px; /* 留出眼睛按鈕的空間 */
+}
+
+.pw-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--color-text-faint);
+  display: flex;
+  align-items: center;
+}
+
+.pw-toggle-btn:hover {
+  color: var(--color-text-strong);
 }

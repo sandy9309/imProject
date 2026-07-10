@@ -1,6 +1,7 @@
 // src/pages/Profile/Profile.js
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Calendar, Settings, LogOut, Moon, Sun, KeyRound, AlertTriangle } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Settings, LogOut, Moon, Sun, KeyRound, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import PasswordStrength from '../../components/PasswordStrength/PasswordStrength';
 import { useNavigate } from 'react-router-dom';
 import './Profile.css';
 
@@ -30,6 +31,8 @@ const Profile = () => {
   // 🚀 修改密碼
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwSaving, setPwSaving] = useState(false);
+  // 🚀 顯示/隱藏密碼(三個欄位各自獨立控制)
+  const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
 
   // 🚀 深色模式（純前端功能，存在瀏覽器本機）
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
@@ -146,6 +149,8 @@ const Profile = () => {
         phone: editPhone.trim(),
       }));
       localStorage.setItem('username', trimmedName);
+      // 🚀 通知 Navbar 等其他元件:使用者資料更新了,立刻重新讀取顯示
+      window.dispatchEvent(new Event('user-updated'));
 
       setIsEditing(false);
       alert('✅ 資料已更新！');
@@ -355,34 +360,66 @@ const Profile = () => {
                 <form className="password-form" onSubmit={handleChangePassword}>
                   <div className="info-item">
                     <label>目前密碼</label>
-                    <input
-                      className="profile-edit-input"
-                      type="password"
-                      value={pwForm.current}
-                      onChange={e => setPwForm({ ...pwForm, current: e.target.value })}
-                      autoComplete="current-password"
-                    />
+                    <div className="pw-input-wrap">
+                      <input
+                        className="profile-edit-input"
+                        type={showPw.current ? 'text' : 'password'}
+                        value={pwForm.current}
+                        onChange={e => setPwForm({ ...pwForm, current: e.target.value })}
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        className="pw-toggle-btn"
+                        onClick={() => setShowPw({ ...showPw, current: !showPw.current })}
+                        aria-label={showPw.current ? '隱藏密碼' : '顯示密碼'}
+                      >
+                        {showPw.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                   <div className="info-item">
                     <label>新密碼</label>
-                    <input
-                      className="profile-edit-input"
-                      type="password"
-                      value={pwForm.next}
-                      onChange={e => setPwForm({ ...pwForm, next: e.target.value })}
-                      autoComplete="new-password"
-                      placeholder="至少 6 個字元"
-                    />
+                    <div className="pw-input-wrap">
+                      <input
+                        className="profile-edit-input"
+                        type={showPw.next ? 'text' : 'password'}
+                        value={pwForm.next}
+                        onChange={e => setPwForm({ ...pwForm, next: e.target.value })}
+                        autoComplete="new-password"
+                        placeholder="至少 6 個字元"
+                      />
+                      <button
+                        type="button"
+                        className="pw-toggle-btn"
+                        onClick={() => setShowPw({ ...showPw, next: !showPw.next })}
+                        aria-label={showPw.next ? '隱藏密碼' : '顯示密碼'}
+                      >
+                        {showPw.next ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {/* 🚀 密碼安全性即時檢測 */}
+                    <PasswordStrength password={pwForm.next} />
                   </div>
                   <div className="info-item">
                     <label>再輸入一次新密碼</label>
-                    <input
-                      className="profile-edit-input"
-                      type="password"
-                      value={pwForm.confirm}
-                      onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })}
-                      autoComplete="new-password"
-                    />
+                    <div className="pw-input-wrap">
+                      <input
+                        className="profile-edit-input"
+                        type={showPw.confirm ? 'text' : 'password'}
+                        value={pwForm.confirm}
+                        onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className="pw-toggle-btn"
+                        onClick={() => setShowPw({ ...showPw, confirm: !showPw.confirm })}
+                        aria-label={showPw.confirm ? '隱藏密碼' : '顯示密碼'}
+                      >
+                        {showPw.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                   <button className="edit-profile-btn" type="submit" disabled={pwSaving}>
                     {pwSaving ? '更新中...' : '更新密碼'}

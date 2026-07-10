@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom'; 
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import './Login.css';
 
 const Login = () => {
@@ -12,6 +12,8 @@ const Login = () => {
 
   // 載入中狀態，防止使用者重複點擊
   const [isLoading, setIsLoading] = useState(false);
+  // 🚀 顯示/隱藏密碼
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
@@ -116,14 +118,24 @@ const Login = () => {
 
           <div className="form-group">
             <label><Lock size={16} /> 密碼</label>
-            <input 
-              name="password" 
-              type="password" 
-              placeholder="請輸入密碼" 
-              value={loginData.password} 
-              onChange={handleChange} 
-              required 
-            />
+            <div className="pw-input-wrap">
+              <input 
+                name="password" 
+                type={showPassword ? 'text' : 'password'} 
+                placeholder="請輸入密碼" 
+                value={loginData.password} 
+                onChange={handleChange} 
+                required 
+              />
+              <button
+                type="button"
+                className="pw-toggle-btn"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? '隱藏密碼' : '顯示密碼'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div className="login-options">

@@ -3,20 +3,20 @@
 }
 
 .hero-section {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  background: linear-gradient(135deg, var(--color-primary-soft) 0%, var(--color-primary-soft) 100%);
   padding: 100px 20px;
   text-align: center;
 }
 
 .hero-section h1 {
   font-size: 3rem;
-  color: #1e40af;
+  color: var(--color-primary-hover);
   margin-bottom: 20px;
 }
 
 .hero-section p {
   font-size: 1.25rem;
-  color: #4b5563;
+  color: var(--color-text-strong);
   max-width: 700px;
   margin: 0 auto 40px;
 }
@@ -28,8 +28,8 @@
 }
 
 .primary-btn {
-  background-color: #2563eb;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-surface);
   border: none;
   padding: 12px 30px;
   border-radius: 8px;
@@ -38,12 +38,12 @@
   transition: 0.3s;
 }
 
-.primary-btn:hover { background-color: #1d4ed8; }
+.primary-btn:hover { background-color: var(--color-primary-hover); }
 
 .secondary-btn {
-  background-color: white;
-  color: #2563eb;
-  border: 2px solid #2563eb;
+  background-color: var(--color-surface);
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
   padding: 12px 30px;
   border-radius: 8px;
   font-size: 1.1rem;
@@ -55,14 +55,14 @@
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 30px;
   padding: 80px 10%;
-  background: white;
+  background: var(--color-surface);
 }
 
 .feature-card {
   text-align: center;
   padding: 30px;
   border-radius: 15px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle);
   transition: transform 0.3s;
 }
 
@@ -70,4 +70,4 @@
 
 .feature-card .icon { font-size: 3rem; margin-bottom: 15px; }
 
-.feature-card h3 { color: #1e293b; margin-bottom: 10px; }
+.feature-card h3 { color: var(--color-text); margin-bottom: 10px; }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Send, PackageOpen, PlusCircle, Search } from 'lucide-react';
+import { Trash2, Send, PackageOpen, PlusCircle, Search, Copy } from 'lucide-react';
 import './Projects.css';
 
 // 🌐 學校伺服器的正式內網 IP 網址
@@ -23,6 +23,8 @@ const Projects = () => {
   const [vrModalProject, setVrModalProject] = useState(null);
   // 🚀 專案搜尋關鍵字
   const [searchTerm, setSearchTerm] = useState('');
+  // 🚀 改名中的專案:{ id, value } 或 null
+  const [renaming, setRenaming] = useState(null);
 
   const currentUserId = localStorage.getItem('user_id');
 
@@ -69,6 +71,63 @@ const Projects = () => {
     fetchFurnitureMap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
+
+  // ── 修改專案名稱(單擊名稱進入編輯,Enter或失焦時儲存,Esc取消)──
+  const saveRename = async (project) => {
+    const newName = (renaming?.value || '').trim();
+    setRenaming(null);
+    // 空白或沒改就不送出
+    if (!newName || newName === project.name) return;
+
+    try {
+      const items = Array.isArray(project.items) ? project.items : [];
+      const res = await fetch(`${API_BASE}/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: mutateHeaders,
+        body: JSON.stringify({
+          name: newName,
+          itemsRaw: JSON.stringify(items),
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || '改名失敗');
+      }
+      setProjects(prev =>
+        prev.map(p => (p.id === project.id ? { ...p, name: newName } : p))
+      );
+    } catch (err) {
+      console.error('修改專案名稱失敗:', err);
+      alert(`改名失敗:${err.message}`);
+    }
+  };
+
+  // ── 複製專案(建立全新專案,編碼由資料庫給新的,名稱加上【複製】)──
+  const duplicateProject = async (project) => {
+    try {
+      const items = Array.isArray(project.items) ? project.items : [];
+      const res = await fetch(`${API_BASE}/api/projects`, {
+        method: 'POST',
+        headers: mutateHeaders,
+        body: JSON.stringify({
+          user_id: Number(currentUserId),
+          name: `${project.name}【複製】`,
+          l: project.l ?? null,
+          w: project.w ?? null,
+          itemsRaw: JSON.stringify(items),
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || '複製專案失敗');
+      }
+      // 重新載入列表,新專案(帶新編碼)就會出現
+      fetchProjects();
+    } catch (err) {
+      console.error('複製專案失敗:', err);
+      alert(`複製失敗:${err.message}`);
+    }
+  };
 
   // ── 展開 / 收合面板 ─────────────────────────────────────────
   const toggleExpand = (id) => {
@@ -231,7 +290,28 @@ const Projects = () => {
                     <span className="project-id">
                       #{String(project.id).padStart(5, '0')}
                     </span>
-                    <h2>{project.name}</h2>
+                    {renaming?.id === project.id ? (
+                      <input
+                        className="project-rename-input"
+                        autoFocus
+                        value={renaming.value}
+                        onChange={e => setRenaming({ id: project.id, value: e.target.value })}
+                        onBlur={() => saveRename(project)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') e.target.blur();
+                          if (e.key === 'Escape') setRenaming(null);
+                        }}
+                        maxLength={30}
+                      />
+                    ) : (
+                      <h2
+                        className="project-name-editable"
+                        title="點擊修改專案名稱"
+                        onClick={() => setRenaming({ id: project.id, value: project.name })}
+                      >
+                        {project.name}
+                      </h2>
+                    )}
                     {isConfirmed && (
                       <span className="badge-confirmed">已送到 VR</span>
                     )}
@@ -265,6 +345,15 @@ const Projects = () => {
                     onClick={() => confirmToVR(project)}
                   >
                     <Send size={16} /> 送到 VR
+                  </button>
+
+                  {/* 🚀 複製專案:建立一份全新專案(新編碼),名稱自動加上【複製】 */}
+                  <button
+                    className="btn-secondary"
+                    onClick={() => duplicateProject(project)}
+                    title="複製此專案"
+                  >
+                    <Copy size={16} /> 複製
                   </button>
 
                   <button

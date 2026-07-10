@@ -1,6 +1,7 @@
+/* Footer 是固定的深色區塊,不跟主題翻轉,亮暗模式都用同一套配色 */
 .footer {
-  background-color: #1e293b;
-  color: #f8fafc;
+  background-color: var(--color-dark);
+  color: #d6cbbd;
   padding: 40px 0 20px;
   margin-top: 50px;
 }
@@ -15,22 +16,22 @@
 }
 
 .footer-section h3, .footer-section h4 {
-  color: #3b82f6;
+  color: #f5efe7;
   margin-bottom: 15px;
 }
 
 .footer-section p, .footer-section li {
   font-size: 0.9rem;
-  color: #94a3b8;
+  color: #a89a88;
   list-style: none;
   line-height: 1.8;
 }
 
 .footer-bottom {
   text-align: center;
-  border-top: 1px solid #334155;
+  border-top: 1px solid #3d3227;
   margin-top: 30px;
   padding-top: 20px;
   font-size: 0.8rem;
-  color: #64748b;
+  color: #857767;
 }

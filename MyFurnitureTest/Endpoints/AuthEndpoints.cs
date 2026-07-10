@@ -41,14 +41,14 @@ public static class AuthEndpoints
         // 2. 登入邏輯
         group.MapPost("/login", async (LoginRequest data, DbService db) => {
             try {
-                // 判斷前端傳來的是 username 還是 email (相容你原本的邏輯)
+                // 判斷前端傳來的是 username 還是 email 
                 string identifier = data.username ?? data.email ?? "";
                 
                 using var conn = db.GetConnection();
                 conn.Open();
                 
                 // 只用帳號查使用者，密碼另外用 BCrypt 驗證
-                string sql = "SELECT user_id, username, email, phone, password FROM users WHERE email = @uname OR username = @uname";
+                string sql = "SELECT user_id, username, email, phone, password, created_at FROM users WHERE email = @uname OR username = @uname";
                 using (var cmd = new MySqlCommand(sql, conn)) {
                     cmd.Parameters.AddWithValue("@uname", identifier);
 
@@ -64,7 +64,10 @@ public static class AuthEndpoints
                                     user_id = readerDb["user_id"],
                                     username = readerDb["username"],
                                     email = readerDb["email"],
-                                    phone = readerDb["phone"]
+                                    phone = readerDb["phone"],
+                                    joinDate = readerDb["created_at"] == DBNull.Value
+                                        ? null
+                                        : Convert.ToDateTime(readerDb["created_at"]).ToString("yyyy-MM-dd")
                                 });
                             }
                         }

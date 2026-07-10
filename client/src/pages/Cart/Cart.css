@@ -172,3 +172,34 @@
   font-weight: 700;
   color: #1e293b;
 }
+/* ════════════════════════════════════════════
+   配置清單頁：空清單狀態美化
+   👉 請加到現有 Cart.css 裡
+   ════════════════════════════════════════════ */
+
+.empty-cart {
+  text-align: center;
+  padding: 80px 0;
+  color: #64748b;
+}
+
+.empty-cart p {
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.empty-cart-btn {
+  padding: 12px 28px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.95rem;
+  transition: background 0.2s;
+}
+
+.empty-cart-btn:hover {
+  background: #1d4ed8;
+}

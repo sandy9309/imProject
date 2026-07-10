@@ -445,3 +445,31 @@
 .catalog-edit-banner button:hover {
   background: #e0e7ff;
 }
+/* ════════════════════════════════════════════
+   型錄頁：尺寸區間 & 金額範圍 篩選輸入框
+   👉 請加到現有 Catalog.css 裡
+   ════════════════════════════════════════════ */
+
+.range-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.range-pair input {
+  width: 90px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.range-pair input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.range-sep {
+  color: #94a3b8;
+  font-weight: 600;
+}

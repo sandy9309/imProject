@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Send, PackageOpen, PlusCircle } from 'lucide-react';
+import { Trash2, Send, PackageOpen, PlusCircle, Search } from 'lucide-react';
 import './Projects.css';
 
 // 🌐 學校伺服器的正式內網 IP 網址
@@ -21,7 +21,8 @@ const Projects = () => {
   const [furnitureMap, setFurnitureMap] = useState({});
   // 🚀 VR 編碼彈窗：{ id, name } 或 null。有值時彈窗顯示，關閉時設回 null
   const [vrModalProject, setVrModalProject] = useState(null);
-  const [copySuccess, setCopySuccess] = useState(false);
+  // 🚀 專案搜尋關鍵字
+  const [searchTerm, setSearchTerm] = useState('');
 
   const currentUserId = localStorage.getItem('user_id');
 
@@ -124,23 +125,11 @@ const Projects = () => {
         headers: mutateHeaders,
       });
       if (res.ok) {
-        setCopySuccess(false);
         setVrModalProject(project);
         fetchProjects();
       }
     } catch (err) {
       console.error('送到 VR 失敗:', err);
-    }
-  };
-
-  // ── 複製編碼到剪貼簿 ─────────────────────────────────────────
-  const copyCode = async (code) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 1500);
-    } catch (err) {
-      console.error('複製失敗:', err);
     }
   };
 
@@ -158,6 +147,30 @@ const Projects = () => {
     return isNaN(d) ? raw : d.toLocaleString('zh-TW');
   };
 
+  // 🚀 搜尋過濾：專案名稱 或 編號（例如輸入 34 或 00034 都能找到 #00034）
+  const filteredProjects = projects.filter(project => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return true;
+    const name = (project.name || '').toLowerCase();
+    const idPadded = String(project.id).padStart(5, '0');
+    return (
+      name.includes(keyword) ||
+      String(project.id).includes(keyword) ||
+      idPadded.includes(keyword)
+    );
+  });
+
+  // 🚀 計算單件家具價格（透過對照表查詢，查不到回傳 0）
+  const getItemPrice = (item) => {
+    const furnitureId =
+      item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
+    return Number(furnitureMap[furnitureId]?.price || 0);
+  };
+
+  // 🚀 計算整個專案的總金額
+  const getProjectTotal = (items) =>
+    items.reduce((sum, item) => sum + getItemPrice(item), 0);
+
   if (!currentUserId) {
     return (
       <div className="projects-container">
@@ -170,9 +183,17 @@ const Projects = () => {
     <div className="projects-container">
       <div className="projects-header">
         <h1><PackageOpen /> 我的專案</h1>
-        <p style={{ color: '#16a34a', fontWeight: 'bold' }}>
-          👤 當前帳號 ID: {currentUserId}
-        </p>
+      </div>
+
+      {/* 🚀 專案搜尋框：可用專案名稱或編號快速搜尋 */}
+      <div className="projects-search-bar">
+        <Search size={18} className="projects-search-icon" />
+        <input
+          type="text"
+          placeholder="搜尋專案名稱或編號..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {loading && <p className="projects-loading">載入中...</p>}
@@ -186,8 +207,14 @@ const Projects = () => {
         </div>
       )}
 
+      {!loading && projects.length > 0 && filteredProjects.length === 0 && (
+        <div className="projects-empty">
+          <p>找不到符合「{searchTerm}」的專案</p>
+        </div>
+      )}
+
       <div className="projects-list">
-        {projects.map(project => {
+        {filteredProjects.map(project => {
           const isExpanded = expandedIds.includes(project.id);
           const items = Array.isArray(project.items) ? project.items : [];
           const isConfirmed = project.status === 'confirmed';
@@ -199,14 +226,24 @@ const Projects = () => {
             >
               {/* ── 專案標題列 ── */}
               <div className="project-card-header">
-                <div className="project-card-title">
-                  <span className="project-id">
-                    #{String(project.id).padStart(5, '0')}
-                  </span>
-                  <h2>{project.name}</h2>
-                  {isConfirmed && (
-                    <span className="badge-confirmed">已送到 VR</span>
-                  )}
+                <div className="project-card-header-row">
+                  <div className="project-card-title">
+                    <span className="project-id">
+                      #{String(project.id).padStart(5, '0')}
+                    </span>
+                    <h2>{project.name}</h2>
+                    {isConfirmed && (
+                      <span className="badge-confirmed">已送到 VR</span>
+                    )}
+                  </div>
+
+                  {/* 🚀 專案總金額（右上角） */}
+                  <div className="project-total-price">
+                    <span className="project-total-label">專案總金額</span>
+                    <span className="project-total-value">
+                      NT$ {getProjectTotal(items).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="project-card-meta">
@@ -219,7 +256,7 @@ const Projects = () => {
                     className="btn-secondary"
                     onClick={() => toggleExpand(project.id)}
                   >
-                    {isExpanded ? '⚙️ 關閉面板' : '⚙️ 開啟面板'}
+                    {isExpanded ? '⚙️ 關閉家具清單' : '⚙️ 展開家具清單'}
                   </button>
 
                   {/* 🚀 不管有無變動、不管是否已確認過，都能按，且每次都會彈出編碼視窗 */}
@@ -227,7 +264,7 @@ const Projects = () => {
                     className="btn-vr"
                     onClick={() => confirmToVR(project)}
                   >
-                    <Send size={16} /> {isConfirmed ? '重新送到 VR' : '送到 VR'}
+                    <Send size={16} /> 送到 VR
                   </button>
 
                   <button
@@ -249,12 +286,12 @@ const Projects = () => {
                       className="btn-add-furniture"
                       onClick={() => goAddFurniture(project)}
                     >
-                      <PlusCircle size={16} /> 從圖文型錄挑選新家具放入空間
+                      <PlusCircle size={16} /> 修改專案
                     </button>
                   </div>
 
                   <p className="panel-subtitle">
-                    當前配置家具清單（點擊刪除鍵可從房間內拆除）：
+                    當前配置家具清單（點擊刪除鍵可從專案內移除）：
                   </p>
 
                   {items.length === 0 ? (
@@ -286,6 +323,10 @@ const Projects = () => {
                             />
                             <span className="furniture-name">
                               {displayName}
+                            </span>
+                            {/* 🚀 單件家具價格 */}
+                            <span className="furniture-price">
+                              NT$ {getItemPrice(item).toLocaleString()}
                             </span>
                             {/* 🚀 拿掉 isConfirmed 限制；改用 idx（陣列位置）精準刪除單一項目 */}
                             <button
@@ -324,22 +365,12 @@ const Projects = () => {
 
             <div className="vr-modal-actions">
               <button
-                className={`vr-modal-btn-copy ${copySuccess ? 'copied' : ''}`}
-                onClick={() => copyCode(String(vrModalProject.id).padStart(5, '0'))}
-              >
-                {copySuccess ? '已複製 ✓' : '複製編碼'}
-              </button>
-              <button
                 className="vr-modal-btn-close"
                 onClick={() => setVrModalProject(null)}
               >
                 關閉
               </button>
             </div>
-
-            <p className="vr-modal-hint">
-              此編碼固定不變，改完配置隨時可以重新點「送到 VR」再看一次
-            </p>
           </div>
         </div>
       )}

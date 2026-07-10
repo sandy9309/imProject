@@ -342,11 +342,7 @@ const Cart = () => {
     <div className="cart-container">
       <div className="cart-header">
         <h1><ShoppingBag /> 我的配置清單</h1>
-        {currentUserId ? (
-          <p style={{ color: '#16a34a', fontWeight: 'bold' }}>
-            👤 當前帳號 ID: {currentUserId}
-          </p>
-        ) : (
+        {!currentUserId && (
           <p style={{ color: '#dc2626', fontWeight: 'bold' }}>
             ⚠️ 請先登入系統才能進行配置
           </p>
@@ -502,11 +498,11 @@ const Cart = () => {
         <div className="empty-cart">
           <p>
             {currentUserId
-              ? '這個帳號的清單目前是空的，快去型錄選購吧！'
+              ? '配置清單目前是空的，快去型錄挑選喜歡的家具吧！'
               : '請登入後查看配置清單'}
           </p>
-          <button onClick={() => window.location.href = '/catalog'}>
-            前往型錄
+          <button className="empty-cart-btn" onClick={() => window.location.href = '/catalog'}>
+            前往家具型錄
           </button>
         </div>
       )}

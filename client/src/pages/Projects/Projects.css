@@ -126,23 +126,27 @@
 .panel-subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 12px; }
 .panel-empty    { color: #94a3b8; font-size: 0.9rem; }
 
-/* ── 家具列表（面板內） ───────────────────────────────────── */
+/* ── 家具列表（面板內）：縮圖 + 名稱 排版 ─────────────────── */
 .panel-furniture-list {
   display: flex; flex-direction: column; gap: 8px;
 }
 
 .panel-furniture-item {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 12px;
   background: white;
   padding: 10px 14px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
 }
 
-.furniture-id-badge {
-  background: #f1f5f9; color: #475569;
-  font-size: 0.78rem; padding: 2px 8px;
-  border-radius: 6px; white-space: nowrap;
+.panel-furniture-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
 }
 
 .furniture-name { flex: 1; color: #334155; font-size: 0.9rem; }
@@ -172,11 +176,8 @@
 .project-name-input:focus {
   outline: none; border-color: #2563eb;
 }
-/* ════════════════════════════════════════════
-   VR 編碼彈窗樣式
-   👉 請把這整段複製貼到現有 Projects.css 的最下面
-   ════════════════════════════════════════════ */
 
+/* ── VR 編碼彈窗 ──────────────────────────────────────────── */
 .vr-modal-overlay {
   position: fixed;
   inset: 0;
@@ -234,29 +235,13 @@
   gap: 10px;
 }
 
-.vr-modal-btn-copy,
 .vr-modal-btn-close {
   flex: 1;
   padding: 10px;
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.vr-modal-btn-copy {
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #334155;
-}
-
-.vr-modal-btn-copy.copied {
-  background: #dcfce7;
-  color: #16a34a;
-  border-color: #bbf7d0;
-}
-
-.vr-modal-btn-close {
+  transition: background 0.15s ease;
   border: none;
   background: #4f46e5;
   color: #fff;
@@ -266,30 +251,70 @@
   background: #4338ca;
 }
 
-.vr-modal-hint {
-  color: #cbd5e1;
-  font-size: 12px;
-  margin-top: 16px;
+/* ── 專案搜尋框 ───────────────────────────────────────────── */
+.projects-search-bar {
+  position: relative;
+  max-width: 420px;
+  margin-bottom: 24px;
 }
-/* ════════════════════════════════════════════
-   家具清單項目：縮圖 + 名稱 排版
-   👉 請加到現有 Projects.css 裡
-   若你原本已經有 .panel-furniture-item 的樣式，
-   這段會覆蓋/補上 flex 對齊與縮圖尺寸，兩者合併即可
-   ════════════════════════════════════════════ */
 
-.panel-furniture-item {
+.projects-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.projects-search-bar input {
+  width: 100%;
+  padding: 11px 14px 11px 42px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: #334155;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.projects-search-bar input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* ── 專案總金額（卡片右上角） ─────────────────────────────── */
+.project-card-header-row {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
-.panel-furniture-thumb {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
+.project-total-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   flex-shrink: 0;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+}
+
+.project-total-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.project-total-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+/* ── 單件家具價格（清單內） ───────────────────────────────── */
+.furniture-price {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #2563eb;
+  white-space: nowrap;
+  margin-right: 4px;
 }

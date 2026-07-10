@@ -159,3 +159,185 @@
     border-bottom: 1px solid #f1f5f9;
   }
 }
+/* ════════════════════════════════════════════
+   會員中心：帳號設定分頁樣式
+   👉 請加到現有 Profile.css 裡
+   ════════════════════════════════════════════ */
+
+.settings-section {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: #1e293b;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 360px;
+}
+
+/* ── 深色模式開關 ── */
+.dark-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 420px;
+}
+
+.dark-mode-label {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.toggle-switch {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: #cbd5e1;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.toggle-switch.on {
+  background: #4f46e5;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.toggle-switch.on .toggle-knob {
+  transform: translateX(22px);
+}
+
+/* ── 危險區：刪除帳號 ── */
+.danger-zone h3 {
+  color: #dc2626;
+}
+
+.danger-input {
+  border-color: #fca5a5;
+}
+
+.delete-account-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delete-account-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.delete-account-btn:disabled {
+  background: #fca5a5;
+  cursor: not-allowed;
+}
+
+/* ════════════════════════════════════════════
+   深色模式：整站基礎配色（先從 body 開始套用）
+   👉 這段也請加到 Profile.css（或抽到一個全站共用的 css）
+   如果之後想讓其他頁面（型錄、購物車等）也一起變暗，
+   同樣的 .dark-mode 前綴規則可以依樣畫葫蘆加到那些頁面的 css
+   ════════════════════════════════════════════ */
+
+body.dark-mode {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+body.dark-mode .profile-card,
+body.dark-mode .profile-sidebar,
+body.dark-mode .profile-main {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+body.dark-mode .info-item p,
+body.dark-mode .profile-readonly-hint {
+  color: #94a3b8;
+}
+
+body.dark-mode .profile-edit-input {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+body.dark-mode .settings-section {
+  border-bottom-color: #334155;
+}
+/* ════════════════════════════════════════════
+   會員中心：編輯資料的輸入框與按鈕樣式
+   👉 請加到現有 Profile.css 裡
+   ════════════════════════════════════════════ */
+
+.profile-edit-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.profile-edit-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.profile-readonly-hint {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.profile-edit-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.edit-profile-cancel-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.edit-profile-cancel-btn:hover {
+  background: #f1f5f9;
+}

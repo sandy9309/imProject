@@ -11,9 +11,18 @@ const Catalog = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("全部");
-  const [dims, setDims] = useState({ length: '', width: '', height: '' });
+  // 🚀 尺寸區間：長/寬/高各有最小、最大，可擇一填寫、也可全填
+  const [dims, setDims] = useState({
+    minLength: '', maxLength: '',
+    minWidth: '', maxWidth: '',
+    minHeight: '', maxHeight: '',
+  });
+  // 🚀 金額範圍：可擇一填寫、也可全填
+  const [priceRange, setPriceRange] = useState({ minPrice: '', maxPrice: '' });
 
   const [items, setItems] = useState([]);
+  // 🚀 分類清單：從後端動態抓取，「全部」由前端固定保留在最前面
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // 🚀 每次加入購物車後 +1，用來強制卡片重新渲染，即時反映最新數量
@@ -50,8 +59,40 @@ const Catalog = () => {
       }
     };
 
+    // 🚀 動態抓取分類清單（床、椅子、書桌、沙發、收納、桌子...），前端不寫死
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/furnitures/categories`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`狀態碼：${response.status}`);
+        const data = await response.json();
+        // 容錯：後端可能回傳 ["床","椅子",...] 或 { data: [...] } 兩種包裝
+        const rawList = Array.isArray(data) ? data : (data.data || []);
+        // 🚀 正規化：每一項可能是純字串 "床"，也可能是物件 { name: "床" } 或 { category: "床" }
+        // 統一轉成純文字，避免 React 渲染物件時報錯
+        const list = rawList
+          .map(c => (typeof c === 'string' ? c : (c?.name ?? c?.category ?? '')))
+          .filter(Boolean);
+        setCategories(list);
+      } catch (err) {
+        console.error("分類清單 API 連線失敗:", err);
+        // 抓不到就先空著，畫面只顯示「全部」，不影響其他功能
+        setCategories([]);
+      }
+    };
+
     fetchFurnitures();
+    fetchCategories();
   }, []);
+
+  // 🚀 通用的區間比對小工具：沒填的欄位不列入條件
+  const inRange = (value, min, max) => {
+    if (min !== '' && value < Number(min)) return false;
+    if (max !== '' && value > Number(max)) return false;
+    return true;
+  };
 
   const filteredItems = items.filter(item => {
     const name = item.name || '';
@@ -61,6 +102,7 @@ const Catalog = () => {
     const itemL = Number(item.length_cm || 0);
     const itemW = Number(item.width || 0);
     const itemH = Number(item.height || 0);
+    const itemPrice = Number(item.price || 0);
 
     // 1. 名稱搜尋邏輯
     const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -68,16 +110,28 @@ const Catalog = () => {
     // 2. 分類篩選邏輯
     const matchesCategory = activeCategory === "全部" || category === activeCategory;
     
-    // 3. 空間尺寸限制邏輯
-    const matchesL = !dims.length || itemL <= Number(dims.length);
-    const matchesW = !dims.width || itemW <= Number(dims.width);
-    const matchesH = !dims.height || itemH <= Number(dims.height);
+    // 3. 尺寸區間邏輯（最小 / 最大都可擇一填寫）
+    const matchesL = inRange(itemL, dims.minLength, dims.maxLength);
+    const matchesW = inRange(itemW, dims.minWidth, dims.maxWidth);
+    const matchesH = inRange(itemH, dims.minHeight, dims.maxHeight);
 
-    return matchesSearch && matchesCategory && matchesL && matchesW && matchesH;
+    // 4. 金額範圍邏輯
+    const matchesPrice = inRange(itemPrice, priceRange.minPrice, priceRange.maxPrice);
+
+    return matchesSearch && matchesCategory && matchesL && matchesW && matchesH && matchesPrice;
   });
 
   const handleDimChange = (e) => {
     setDims({ ...dims, [e.target.name]: e.target.value });
+  };
+
+  const handlePriceChange = (e) => {
+    setPriceRange({ ...priceRange, [e.target.name]: e.target.value });
+  };
+
+  const resetFilters = () => {
+    setDims({ minLength: '', maxLength: '', minWidth: '', maxWidth: '', minHeight: '', maxHeight: '' });
+    setPriceRange({ minPrice: '', maxPrice: '' });
   };
 
   // 🛒 翻新後的 addToCart：支援同一家具重複加入(上限10個)，第二次以上會先跟使用者確認
@@ -173,29 +227,55 @@ const Catalog = () => {
       {showFilters && (
         <div className="dimension-filter-dropdown">
           <div className="filter-title">
-            <Maximize size={18} /> 空間尺寸限制 (cm)：
+            <Maximize size={18} /> 尺寸區間 (公分)：
           </div>
-          <div className="dim-inputs">
+          <div className="dim-inputs range-inputs">
             <div className="input-field">
-              <label>最大長度</label>
-              <input name="length" type="number" placeholder="cm" value={dims.length} onChange={handleDimChange} />
+              <label>長度</label>
+              <div className="range-pair">
+                <input name="minLength" type="number" placeholder="最小" value={dims.minLength} onChange={handleDimChange} />
+                <span className="range-sep">~</span>
+                <input name="maxLength" type="number" placeholder="最大" value={dims.maxLength} onChange={handleDimChange} />
+              </div>
             </div>
             <div className="input-field">
-              <label>最大寬度</label>
-              <input name="width" type="number" placeholder="cm" value={dims.width} onChange={handleDimChange} />
+              <label>寬度</label>
+              <div className="range-pair">
+                <input name="minWidth" type="number" placeholder="最小" value={dims.minWidth} onChange={handleDimChange} />
+                <span className="range-sep">~</span>
+                <input name="maxWidth" type="number" placeholder="最大" value={dims.maxWidth} onChange={handleDimChange} />
+              </div>
             </div>
             <div className="input-field">
-              <label>最大高度</label>
-              <input name="height" type="number" placeholder="cm" value={dims.height} onChange={handleDimChange} />
+              <label>高度</label>
+              <div className="range-pair">
+                <input name="minHeight" type="number" placeholder="最小" value={dims.minHeight} onChange={handleDimChange} />
+                <span className="range-sep">~</span>
+                <input name="maxHeight" type="number" placeholder="最大" value={dims.maxHeight} onChange={handleDimChange} />
+              </div>
             </div>
-            <button className="reset-btn" onClick={() => setDims({ length: '', width: '', height: '' })}>清除限制</button>
+          </div>
+
+          <div className="filter-title" style={{ marginTop: '16px' }}>
+            💰 金額範圍 (NT$)：
+          </div>
+          <div className="dim-inputs range-inputs">
+            <div className="input-field">
+              <label>價格</label>
+              <div className="range-pair">
+                <input name="minPrice" type="number" placeholder="最低" value={priceRange.minPrice} onChange={handlePriceChange} />
+                <span className="range-sep">~</span>
+                <input name="maxPrice" type="number" placeholder="最高" value={priceRange.maxPrice} onChange={handlePriceChange} />
+              </div>
+            </div>
+            <button className="reset-btn" onClick={resetFilters}>清除全部條件</button>
           </div>
         </div>
       )}
 
-      {/* 分類切換按鈕 */}
+      {/* 分類切換按鈕：「全部」固定在最前，其餘從後端動態抓取 */}
       <div className="category-filter">
-        {["全部", "客廳", "餐廳", "書房", "臥室"].map(cat => (
+        {["全部", ...categories].map(cat => (
           <button 
             key={cat}
             className={`filter-tag ${activeCategory === cat ? 'active' : ''}`}

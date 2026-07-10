@@ -58,11 +58,15 @@ const Login = () => {
         localStorage.setItem('username', String(realUserName)); // 方便 Navbar 認人
 
         // 5. 保留原本的打包儲存，維持其他頁面功能不損壞
+        // 🚀 新增 joinDate：把後端回傳的加入日期一併存起來，會員中心才有真實資料可顯示
+        // （容錯：後端欄位可能叫 joinDate / join_date / created_at，都試著接）
+        const realJoinDate = data.joinDate || data.join_date || data.created_at || '';
         localStorage.setItem('user', JSON.stringify({
           name: realUserName,
           email: data.email || '',       
           phone: data.phone || '',       
-          user_id: realUserId || ''    
+          user_id: realUserId || '',
+          joinDate: realJoinDate,
         }));
 
         // 關鍵修改點 2：安全防禦！在登入新帳號時，強制洗掉前一個人殘留的購物車本地快取，杜絕隱私大混亂

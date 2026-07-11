@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'; 
 import { Search, Filter, Box, X, Maximize, PackagePlus } from 'lucide-react';
 import './Catalog.css';
+import { showToast, showConfirm } from '../../components/Ui/ui';
 
 // 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
@@ -122,11 +123,16 @@ const Catalog = () => {
   });
 
   const handleDimChange = (e) => {
-    setDims({ ...dims, [e.target.name]: e.target.value });
+    const v = e.target.value;
+    // 🚀 禁止負數:清空可以,但只要有值就不能小於 0
+    if (v !== '' && Number(v) < 0) return;
+    setDims({ ...dims, [e.target.name]: v });
   };
 
   const handlePriceChange = (e) => {
-    setPriceRange({ ...priceRange, [e.target.name]: e.target.value });
+    const v = e.target.value;
+    if (v !== '' && Number(v) < 0) return;
+    setPriceRange({ ...priceRange, [e.target.name]: v });
   };
 
   const resetFilters = () => {
@@ -136,7 +142,7 @@ const Catalog = () => {
 
   // 🛒 翻新後的 addToCart：支援同一家具重複加入(上限10個)，第二次以上會先跟使用者確認
   const MAX_QTY = 10;
-  const addToCart = (product) => {
+  const addToCart = async (product) => {
     const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
 
     const existingIndex = currentCart.findIndex(item =>
@@ -148,13 +154,11 @@ const Catalog = () => {
       const currentQty = existingItem.quantity || 1;
 
       if (currentQty >= MAX_QTY) {
-        alert(`「${product.name}」已達單款上限（${MAX_QTY} 個），無法再加入囉！`);
+        showToast(`「${product.name}」已達單款上限（${MAX_QTY} 個），無法再加入囉！`, 'error');
         return;
       }
 
-      const confirmed = window.confirm(
-        `目前已加入 ${currentQty} 個「${product.name}」，是否要繼續增加？`
-      );
+      const confirmed = await showConfirm({ message: `目前已加入 ${currentQty} 個「${product.name}」，是否要繼續增加？` });
       if (!confirmed) return;
 
       const updatedCart = [...currentCart];
@@ -179,7 +183,7 @@ const Catalog = () => {
       const updatedCart = [...currentCart, formattedProduct];
       localStorage.setItem('cart', JSON.stringify(updatedCart));
       setCartVersion(v => v + 1);
-      alert(`🎉 ${product.name} 已成功加入配置清單！`);
+      showToast(`🎉 ${product.name} 已成功加入配置清單！`, 'success');
     }
   };
 
@@ -233,25 +237,25 @@ const Catalog = () => {
             <div className="input-field">
               <label>長度</label>
               <div className="range-pair">
-                <input name="minLength" type="number" placeholder="最小" value={dims.minLength} onChange={handleDimChange} />
+                <input name="minLength" type="number" min="0" placeholder="最小" value={dims.minLength} onChange={handleDimChange} />
                 <span className="range-sep">~</span>
-                <input name="maxLength" type="number" placeholder="最大" value={dims.maxLength} onChange={handleDimChange} />
+                <input name="maxLength" type="number" min="0" placeholder="最大" value={dims.maxLength} onChange={handleDimChange} />
               </div>
             </div>
             <div className="input-field">
               <label>寬度</label>
               <div className="range-pair">
-                <input name="minWidth" type="number" placeholder="最小" value={dims.minWidth} onChange={handleDimChange} />
+                <input name="minWidth" type="number" min="0" placeholder="最小" value={dims.minWidth} onChange={handleDimChange} />
                 <span className="range-sep">~</span>
-                <input name="maxWidth" type="number" placeholder="最大" value={dims.maxWidth} onChange={handleDimChange} />
+                <input name="maxWidth" type="number" min="0" placeholder="最大" value={dims.maxWidth} onChange={handleDimChange} />
               </div>
             </div>
             <div className="input-field">
               <label>高度</label>
               <div className="range-pair">
-                <input name="minHeight" type="number" placeholder="最小" value={dims.minHeight} onChange={handleDimChange} />
+                <input name="minHeight" type="number" min="0" placeholder="最小" value={dims.minHeight} onChange={handleDimChange} />
                 <span className="range-sep">~</span>
-                <input name="maxHeight" type="number" placeholder="最大" value={dims.maxHeight} onChange={handleDimChange} />
+                <input name="maxHeight" type="number" min="0" placeholder="最大" value={dims.maxHeight} onChange={handleDimChange} />
               </div>
             </div>
           </div>
@@ -263,9 +267,9 @@ const Catalog = () => {
             <div className="input-field">
               <label>價格</label>
               <div className="range-pair">
-                <input name="minPrice" type="number" placeholder="最低" value={priceRange.minPrice} onChange={handlePriceChange} />
+                <input name="minPrice" type="number" min="0" placeholder="最低" value={priceRange.minPrice} onChange={handlePriceChange} />
                 <span className="range-sep">~</span>
-                <input name="maxPrice" type="number" placeholder="最高" value={priceRange.maxPrice} onChange={handlePriceChange} />
+                <input name="maxPrice" type="number" min="0" placeholder="最高" value={priceRange.maxPrice} onChange={handlePriceChange} />
               </div>
             </div>
             <button className="reset-btn" onClick={resetFilters}>清除全部條件</button>
@@ -289,7 +293,7 @@ const Catalog = () => {
       {/* 狀態分流機制 */}
       {loading ? (
         <div className="no-results">
-          <p>⏳ 家具型錄載入中，請稍候...</p>
+          <div className="loading-wrap"><span className="loading-spinner" />家具型錄載入中...</div>
         </div>
       ) : error ? (
         <div className="no-results" style={{ color: '#ef4444' }}>

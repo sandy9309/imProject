@@ -381,3 +381,28 @@
   align-items: center;
   gap: 6px;
 }
+
+/* ── RWD:手機版排版 ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .projects-container {
+    padding: 24px 5%;
+  }
+  .project-card-header-row {
+    flex-direction: column; /* 總金額移到標題下方 */
+  }
+  .project-total-price {
+    align-items: flex-start;
+  }
+  .project-card-actions {
+    gap: 8px;
+  }
+  .project-card-actions button {
+    font-size: 0.82rem;
+    padding: 8px 12px;
+  }
+  .project-panel-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}

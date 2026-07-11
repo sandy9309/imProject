@@ -165,3 +165,22 @@
   transform: rotate(180deg);
   transition: transform 0.3s;
 }
+/* ── RWD:手機版排版 ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .navbar {
+    flex-wrap: wrap;
+    padding: 10px 4%;
+    gap: 8px;
+  }
+  .nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: space-around;
+    gap: 4px;
+    flex-wrap: wrap; /* 改用換行,不用 overflow,避免下拉選單被裁切 */
+  }
+  .nav-links a {
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+}

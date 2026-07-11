@@ -187,3 +187,21 @@
   background: var(--color-accent-soft);
   border: 1px solid var(--color-accent-border);
 }
+
+/* ── RWD:手機版排版 ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cart-content {
+    grid-template-columns: 1fr; /* 摘要區移到清單下方,單欄排列 */
+  }
+  .cart-item {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .cart-item img {
+    width: 72px;
+    height: 72px;
+  }
+  .qty-stepper {
+    margin-left: auto;
+  }
+}

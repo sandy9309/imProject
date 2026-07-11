@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import PasswordStrength from '../../components/PasswordStrength/PasswordStrength';
 import './Register.css';
+import { showToast } from '../../components/Ui/ui';
 
 const Register = () => {
   const navigate = useNavigate(); 
@@ -30,18 +31,18 @@ const Register = () => {
     
     // --- 前端欄位格式驗證（維持原樣） ---
     if (formData.password.length < 6) {
-      alert("為了安全，密碼請至少設定 6 位數喔！");
+      showToast("為了安全，密碼請至少設定 6 位數喔！", 'error');
       return;
     }
 
     const phoneRegex = /^09\d{8}$/;
     if (!phoneRegex.test(formData.phone)) {
-      alert("手機格式好像不太對，請輸入 09 開頭的 10 位數字。");
+      showToast("手機格式好像不太對，請輸入 09 開頭的 10 位數字。", 'error');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      alert("兩次密碼輸入不一致，再檢查一下吧！");
+      showToast("兩次密碼輸入不一致，再檢查一下吧！", 'error');
       return;
     }
 
@@ -71,16 +72,16 @@ const Register = () => {
 
       if (response.ok) {
         // 當後端回傳 status 200~299 (成功寫入 MySQL)
-        alert("註冊成功！準備前往登入頁面。");
+        showToast("註冊成功！準備前往登入頁面。", 'success');
         navigate('/login'); 
       } else {
         // 當後端回傳錯誤（例如：此 Email 已經被註冊過）
-        alert(`註冊失敗：${data.message || '請檢查輸入欄位'}`);
+        showToast(`註冊失敗：${data.message || '請檢查輸入欄位'}`, 'error');
       }
     } catch (error) {
       // 攔截連線失敗
       console.error("連線出錯：", error);
-      alert("無法連線到伺服器。請確認學校伺服器（163.13.202.116:5050）是否正常在線！");
+      showToast("無法連線到伺服器。請確認學校伺服器（163.13.202.116:5050）是否正常在線！", 'error');
     } finally {
       setIsLoading(false); // 不論連線成功或失敗，最後都要解除鎖定狀態
     }

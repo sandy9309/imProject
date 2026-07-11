@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Send, PackageOpen, PlusCircle, Search, Copy } from 'lucide-react';
 import './Projects.css';
+import { showToast, showConfirm } from '../../components/Ui/ui';
 
 // 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
@@ -98,7 +99,7 @@ const Projects = () => {
       );
     } catch (err) {
       console.error('修改專案名稱失敗:', err);
-      alert(`改名失敗:${err.message}`);
+      showToast(`改名失敗:${err.message}`, 'error');
     }
   };
 
@@ -125,7 +126,7 @@ const Projects = () => {
       fetchProjects();
     } catch (err) {
       console.error('複製專案失敗:', err);
-      alert(`複製失敗:${err.message}`);
+      showToast(`複製失敗:${err.message}`, 'error');
     }
   };
 
@@ -141,6 +142,13 @@ const Projects = () => {
   // 如果照 ID 比對來刪除，會把所有 ID 相同（都是 undefined）的項目一起誤刪。
   // 因此改用「陣列位置（第幾筆）」來精準指定要刪除哪一筆，跟後端資料是否修好無關。
   const removeFurnitureFromProject = async (project, targetIndex) => {
+    // 🚀 刪除前先跟使用者確認,避免手滑誤刪
+    const confirmed = await showConfirm({
+      message: '確定要從專案中移除這件家具嗎？',
+      danger: true,
+    });
+    if (!confirmed) return;
+
     const currentItems = Array.isArray(project.items) ? project.items : [];
     const newItems = currentItems.filter((_, idx) => idx !== targetIndex);
     try {
@@ -163,7 +171,7 @@ const Projects = () => {
 
   // ── 刪除整個專案 ─────────────────────────────────────────────
   const deleteProject = async (id) => {
-    if (!window.confirm('確定要刪除這個專案嗎？')) return;
+    if (!await showConfirm({ message: '確定要刪除這個專案嗎？', danger: true })) return;
     try {
       await fetch(`${API_BASE}/api/projects/${id}`, {
         method: 'DELETE',
@@ -255,7 +263,7 @@ const Projects = () => {
         />
       </div>
 
-      {loading && <p className="projects-loading">載入中...</p>}
+      {loading && (<div className="loading-wrap"><span className="loading-spinner" />載入專案中...</div>)}
 
       {!loading && projects.length === 0 && (
         <div className="projects-empty">

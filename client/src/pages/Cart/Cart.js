@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Save, Plus, Minus } from 'lucide-react';
 import './Cart.css';
+import { showToast, showConfirm } from '../../components/Ui/ui';
 
 // 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
@@ -118,19 +119,19 @@ const Cart = () => {
 
   // ── 調整既有家具數量（+1 / -1，減到 0 時先確認）───────────────
   // 🚀 這裡只改「畫面上暫存的資料」，不會立刻打後端，要等按下「儲存變更」才會真的送出
-  const changeExistingQty = (furnitureId, delta) => {
+  const changeExistingQty = async (furnitureId, delta) => {
     const currentCount = existingItems.filter(
       it => getExistingId(it) === furnitureId
     ).length;
     const newCount = currentCount + delta;
 
     if (delta > 0 && currentCount >= MAX_QTY) {
-      alert(`已達單款上限（${MAX_QTY} 個），無法再增加囉！`);
+      showToast(`已達單款上限（${MAX_QTY} 個），無法再增加囉！`, 'error');
       return;
     }
 
     if (newCount <= 0) {
-      const confirmed = window.confirm('確定要刪除嗎？');
+      const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
       if (!confirmed) return; // 取消：維持在 1，不做任何變動
     }
 
@@ -153,19 +154,19 @@ const Cart = () => {
   };
 
   // ── 調整購物車項目數量（+1 / -1，減到 0 時先確認再真的移除）──────
-  const changeQty = (cartItemId, delta) => {
+  const changeQty = async (cartItemId, delta) => {
     const target = cartItems.find(item => item.id === cartItemId);
     if (!target) return;
     const currentQty = target.quantity || 1;
     const newQty = currentQty + delta;
 
     if (newQty > MAX_QTY) {
-      alert(`「${target.name}」已達單款上限（${MAX_QTY} 個）！`);
+      showToast(`「${target.name}」已達單款上限（${MAX_QTY} 個）！`, 'error');
       return;
     }
 
     if (newQty <= 0) {
-      const confirmed = window.confirm('確定要刪除嗎？');
+      const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
       if (!confirmed) return; // 取消：維持在 1，不做任何變動
 
       const updatedCart = cartItems.filter(item => item.id !== cartItemId);
@@ -248,7 +249,7 @@ const Cart = () => {
       window.location.href = '/projects';
     } catch (err) {
       console.error('新增家具到專案失敗:', err);
-      alert(`新增失敗：${err.message}`);
+      showToast(`新增失敗：${err.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -265,7 +266,7 @@ const Cart = () => {
   const handleSaveAsProject = async () => {
     if (cartItems.length === 0 || !currentUserId) return;
     if (!projectName.trim()) {
-      alert('請先為這個配置空間命名！');
+      showToast('請先為這個配置空間命名！', 'error');
       return;
     }
 
@@ -324,7 +325,7 @@ const Cart = () => {
       window.location.href = '/projects';
     } catch (err) {
       console.error('儲存專案失敗:', err);
-      alert(`儲存失敗：${err.message}`);
+      showToast(`儲存失敗：${err.message}`, 'error');
     } finally {
       setLoading(false);
     }

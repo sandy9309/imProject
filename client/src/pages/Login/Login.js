@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom'; 
 import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import './Login.css';
+import { showToast, showConfirm } from '../../components/Ui/ui';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ const Login = () => {
 
       if (response.ok) {
         // 3. 登入成功！
-        alert("登入成功！歡迎回來");
+        showToast("登入成功！歡迎回來", 'success');
         
         // 除錯紀錄：在 Console 印出資料，方便隨時檢查後端欄位
         console.log("後端登入 API 真正回傳的原始資料：", data);
@@ -82,11 +83,11 @@ const Login = () => {
         window.location.reload();
       } else {
         // 4. 登入失敗處理
-        alert(`登入失敗：${data.message || '請檢查帳號密碼'}`);
+        showToast(`登入失敗：${data.message || '請檢查帳號密碼'}`, 'error');
       }
     } catch (error) {
       console.error("連線出錯：", error);
-      alert("無法連線到伺服器，請確認學校伺服器（163.13.202.116:5050）是否正常在線，或確認網路是否正常。");
+      showToast("無法連線到伺服器，請確認學校伺服器（163.13.202.116:5050）是否正常在線，或確認網路是否正常。", 'error');
     } finally {
       setIsLoading(false); // 不管成功還是失敗，最後都要結束連線狀態
     }

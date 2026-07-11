@@ -4,6 +4,7 @@ import { User, Mail, Phone, Calendar, Settings, LogOut, Moon, Sun, KeyRound, Ale
 import PasswordStrength from '../../components/PasswordStrength/PasswordStrength';
 import { useNavigate } from 'react-router-dom';
 import './Profile.css';
+import { showToast, showConfirm } from '../../components/Ui/ui';
 
 // 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
@@ -91,7 +92,7 @@ const Profile = () => {
   }, [darkMode]);
 
   const handleLogout = () => {
-    alert("已登出系統");
+    showToast("已登出系統", 'success');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/login');
@@ -113,13 +114,13 @@ const Profile = () => {
   const saveProfile = async () => {
     const trimmedName = editName.trim();
     if (!trimmedName) {
-      alert('姓名不能是空白喔！');
+      showToast('姓名不能是空白喔！', 'error');
       return;
     }
 
     const userId = localStorage.getItem('user_id');
     if (!userId) {
-      alert('找不到帳號 ID，請重新登入後再試一次');
+      showToast('找不到帳號 ID，請重新登入後再試一次', 'error');
       return;
     }
 
@@ -153,10 +154,10 @@ const Profile = () => {
       window.dispatchEvent(new Event('user-updated'));
 
       setIsEditing(false);
-      alert('✅ 資料已更新！');
+      showToast('✅ 資料已更新！', 'success');
     } catch (err) {
       console.error('更新會員資料失敗:', err);
-      alert(`更新失敗：${err.message}`);
+      showToast(`更新失敗：${err.message}`, 'error');
     } finally {
       setSaving(false);
     }
@@ -167,21 +168,21 @@ const Profile = () => {
     e.preventDefault();
 
     if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
-      alert('請把三個欄位都填寫完整');
+      showToast('請把三個欄位都填寫完整', 'error');
       return;
     }
     if (pwForm.next.length < 6) {
-      alert('新密碼至少需要 6 個字元');
+      showToast('新密碼至少需要 6 個字元', 'error');
       return;
     }
     if (pwForm.next !== pwForm.confirm) {
-      alert('兩次輸入的新密碼不一致，請再確認一次');
+      showToast('兩次輸入的新密碼不一致，請再確認一次', 'error');
       return;
     }
 
     const userId = localStorage.getItem('user_id');
     if (!userId) {
-      alert('找不到帳號 ID，請重新登入後再試一次');
+      showToast('找不到帳號 ID，請重新登入後再試一次', 'error');
       return;
     }
 
@@ -201,11 +202,11 @@ const Profile = () => {
         throw new Error(text || '修改密碼失敗，請確認目前密碼是否正確');
       }
 
-      alert('✅ 密碼已更新！下次登入請使用新密碼');
+      showToast('✅ 密碼已更新！下次登入請使用新密碼', 'success');
       setPwForm({ current: '', next: '', confirm: '' });
     } catch (err) {
       console.error('修改密碼失敗:', err);
-      alert(`修改失敗：${err.message}`);
+      showToast(`修改失敗：${err.message}`, 'error');
     } finally {
       setPwSaving(false);
     }
@@ -214,18 +215,16 @@ const Profile = () => {
   // ── 永久刪除帳號 ─────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== '刪除我的帳號') {
-      alert('請在輸入框裡準確輸入「刪除我的帳號」以進行最終確認');
+      showToast('請在輸入框裡準確輸入「刪除我的帳號」以進行最終確認', 'error');
       return;
     }
 
-    const finalConfirm = window.confirm(
-      '⚠️ 這是最後一次確認：帳號刪除後無法復原，所有專案與資料都會一併消失。真的要繼續嗎？'
-    );
+    const finalConfirm = await showConfirm({ message: '⚠️ 這是最後一次確認：帳號刪除後無法復原，所有專案與資料都會一併消失。真的要繼續嗎？', danger: true });
     if (!finalConfirm) return;
 
     const userId = localStorage.getItem('user_id');
     if (!userId) {
-      alert('找不到帳號 ID，請重新登入後再試一次');
+      showToast('找不到帳號 ID，請重新登入後再試一次', 'error');
       return;
     }
 
@@ -241,13 +240,13 @@ const Profile = () => {
         throw new Error(text || '刪除帳號失敗');
       }
 
-      alert('帳號已永久刪除，感謝您曾經使用本系統');
+      showToast('帳號已永久刪除，感謝您曾經使用本系統', 'info');
       localStorage.clear();
       navigate('/login');
       window.location.reload();
     } catch (err) {
       console.error('刪除帳號失敗:', err);
-      alert(`刪除失敗：${err.message}`);
+      showToast(`刪除失敗：${err.message}`, 'error');
     } finally {
       setDeleting(false);
     }

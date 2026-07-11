@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 // 🚀 這裡幫妳多引入了 Folder 圖示，用於「我的專案」
 import { Home, Layout, Folder, LogIn, UserPlus, ShoppingCart, User, LogOut, ChevronDown } from 'lucide-react'; 
 import './Navbar.css';
+import { showToast, showConfirm } from '../../components/Ui/ui';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -29,10 +30,15 @@ const Navbar = () => {
       }
     };
     // 選單開著的時候才需要監聽,關著就把監聽拆掉,避免浪費效能
+    // 🚀 同時監聽 mousedown 與 touchstart,手機觸控也能點外面關閉
     if (showUserMenu) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, [showUserMenu]);
 
   // 修正 4: 網頁載入時撈 localStorage 的 user 物件,
@@ -56,7 +62,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     // 備註：執行登出邏輯
-    alert("已登出系統");
+    showToast("已登出系統", 'success');
     
     // 修正 5: 登出時，要把瀏覽器的這兩項關鍵暫存全部清空，否則網頁會一直以為妳還在登入狀態
     localStorage.removeItem('token');

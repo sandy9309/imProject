@@ -10,11 +10,13 @@ import Footer from './components/Footer/Footer';
 import Cart from './pages/Cart/Cart';
 import Profile from './pages/Profile/Profile';
 import Projects from './pages/Projects/Projects'; // 🚀 1. 新增：引入妳的專案管理頁面
+import UiRoot from './components/Ui/UiRoot'; // 🚀 全站提示系統(Toast + 確認彈窗)
 
 function App() {
   return (
     <Router>
       <Navbar /> {/* 直接放進來就好 */}
+      <UiRoot /> {/* 🚀 全站唯一的提示渲染中心 */}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

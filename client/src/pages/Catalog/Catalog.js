@@ -143,6 +143,19 @@ const Catalog = () => {
   // 🛒 翻新後的 addToCart：支援同一家具重複加入(上限10個)，第二次以上會先跟使用者確認
   const MAX_QTY = 10;
   const addToCart = async (product) => {
+    // 🚀 未登入不能加入配置清單:提示後引導到登入頁
+    const isLoggedIn = !!localStorage.getItem('token') && !!localStorage.getItem('user_id');
+    if (!isLoggedIn) {
+      const goLogin = await showConfirm({
+        title: '需要先登入',
+        message: '登入後才能將家具加入配置清單，要前往登入嗎？',
+        confirmText: '前往登入',
+        cancelText: '再逛逛',
+      });
+      if (goLogin) window.location.href = '/login';
+      return;
+    }
+
     const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
 
     const existingIndex = currentCart.findIndex(item =>

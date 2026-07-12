@@ -1,9 +1,14 @@
 using System.Security.Cryptography;
+using System.Text;
 using MySql.Data.MySqlClient;
 using MyProject.Models;
+using Newtonsoft.Json;
 
 public static class PasswordResetEndpoints
 {
+    // 共用一個 HttpClient（官方建議不要每次 new）
+    private static readonly HttpClient _http = new HttpClient();
+
     // 前端重設密碼頁的網址（CRA dev server 是 3000 埠）
     // 部署到學校機器後改成 "http://163.13.202.116:3000"
     private const string FrontendBaseUrl = "http://localhost:3000";
@@ -16,7 +21,7 @@ public static class PasswordResetEndpoints
         var group = app.MapGroup("/api");
 
         // 1. 申請重設密碼：輸入 email，產生一次性 token
-        group.MapPost("/forgot-password", async (ForgotPasswordRequest data, DbService db) => {
+        group.MapPost("/forgot-password", async (ForgotPasswordRequest data, DbService db, IConfiguration config) => {
             try {
                 using var conn = db.GetConnection();
                 conn.Open();
@@ -50,13 +55,38 @@ public static class PasswordResetEndpoints
                         insertCmd.ExecuteNonQuery();
                     }
 
-                    // ===== 開發階段：直接印出重設連結，之後這段換成寄信 API（Resend）=====
                     string resetLink = $"{FrontendBaseUrl}/reset-password?token={token}";
+
+                    // 開發用：不論有沒有接寄信，都在 console 印一份方便測試
                     Console.WriteLine("==================================================");
                     Console.WriteLine($"[忘記密碼] {data.email} 的重設連結（{TokenExpiryMinutes} 分鐘內有效）：");
                     Console.WriteLine(resetLink);
                     Console.WriteLine("==================================================");
-                    // ====================================================================
+
+                    // 有設定 Brevo API key 才寄信；沒設定就只印 console（開發模式）
+                    string? apiKey = config["Brevo:ApiKey"];
+                    string? senderEmail = config["Brevo:SenderEmail"];
+                    if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(senderEmail)) {
+                        var mail = new {
+                            sender = new { name = "家具擺設系統", email = senderEmail },
+                            to = new[] { new { email = data.email } },
+                            subject = "重設密碼",
+                            htmlContent = $@"
+                                <p>你好，我們收到你重設密碼的申請。</p>
+                                <p><a href=""{resetLink}"">點此重設密碼</a>（{TokenExpiryMinutes} 分鐘內有效）</p>
+                                <p>如果這不是你本人的操作，請忽略這封信，你的密碼不會被更改。</p>"
+                        };
+
+                        using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
+                        req.Headers.Add("api-key", apiKey);
+                        req.Content = new StringContent(JsonConvert.SerializeObject(mail), Encoding.UTF8, "application/json");
+
+                        var resp = await _http.SendAsync(req);
+                        if (!resp.IsSuccessStatusCode) {
+                            // 寄信失敗不讓整個 API 掛掉，印錯誤方便除錯
+                            Console.WriteLine($"[Brevo 寄信失敗] {resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}");
+                        }
+                    }
                 }
 
                 // 不管 email 存不存在都回同一句話，避免被拿來猜哪些 email 有註冊

@@ -1,0 +1,14 @@
+# 機密設定（API key、DB 密碼）絕對不進 git
+appsettings.json
+appsettings.*.json
+
+# 編譯產物
+bin/
+obj/
+
+# 系統雜物
+.DS_Store
+.vscode/
+
+# 工具
+ngrok

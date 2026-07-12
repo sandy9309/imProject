@@ -9,9 +9,8 @@ public static class PasswordResetEndpoints
     // 共用一個 HttpClient（官方建議不要每次 new）
     private static readonly HttpClient _http = new HttpClient();
 
-    // 前端重設密碼頁的網址（CRA dev server 是 3000 埠）
-    // 部署到學校機器後改成 "http://163.13.202.116:3000"
-    private const string FrontendBaseUrl = "http://localhost:3000";
+    // 前端網址預設值，正式環境請在 appsettings.json 用 Frontend:BaseUrl 覆蓋
+    private const string DefaultFrontendBaseUrl = "http://localhost:3000";
 
     // token 有效時間（分鐘）
     private const int TokenExpiryMinutes = 30;
@@ -55,7 +54,8 @@ public static class PasswordResetEndpoints
                         insertCmd.ExecuteNonQuery();
                     }
 
-                    string resetLink = $"{FrontendBaseUrl}/reset-password?token={token}";
+                    string frontendBaseUrl = config["Frontend:BaseUrl"] ?? DefaultFrontendBaseUrl;
+                    string resetLink = $"{frontendBaseUrl}/reset-password?token={token}";
 
                     // 開發用：不論有沒有接寄信，都在 console 印一份方便測試
                     Console.WriteLine("==================================================");

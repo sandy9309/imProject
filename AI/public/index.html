@@ -152,6 +152,10 @@
             background: #395dc1;
             transform: translateY(-2px);
         }
+        
+        .chat-message-content {
+            white-space: pre-line; /* 讓 \n 換行符號能在 HTML 網頁上正常斷行顯示 */
+        }
     </style>
 </head>
 
@@ -218,7 +222,7 @@
                         spawnBtn.innerHTML = ` 在 MR 場景中生成家具 (ID: ${furnitureId})`;
 
                         spawnBtn.onclick = () => {
-                            alert(`🎯 成功觸發 MR 系統！即將載入資料庫中 ID 為 ${furnitureId} 的 3D 模型！`);
+                            alert(` 成功觸發 MR 系統！即將載入資料庫中 ID 為 ${furnitureId} 的 3D 模型！`);
                         };
                         msgDiv.appendChild(spawnBtn);
                     });

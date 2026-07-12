@@ -4,8 +4,9 @@ using MyProject.Models;
 
 public static class PasswordResetEndpoints
 {
-    // 前端重設密碼頁的網址，開發時是 React dev server，部署後改成正式網址
-    private const string FrontendBaseUrl = "http://localhost:5173";
+    // 前端重設密碼頁的網址（CRA dev server 是 3000 埠）
+    // 部署到學校機器後改成 "http://163.13.202.116:3000"
+    private const string FrontendBaseUrl = "http://localhost:3000";
 
     // token 有效時間（分鐘）
     private const int TokenExpiryMinutes = 30;

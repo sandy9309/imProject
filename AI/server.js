@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { GoogleGenAI } = require('@google/genai');
+const mysql = require('mysql2/promise'); // 引入資料庫套件
 
 dotenv.config();
 
@@ -16,35 +17,17 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // 🛒 根據你們的資料庫欄位，建立一組「模擬家具清單」
 // 包含 id, name, category, width, length_cm, height, description
-const mockFurnitures = [
-    {
-        id: 1,
-        name: "SKOGSBY 簡約木質三人沙發",
-        category: "Sofa",
-        width: 80,
-        length_cm: 200,
-        height: 75,
-        description: "採用淺色橡木雙人框架與淺灰色棉麻布料，呈現典型北歐清新簡約風格，舒適透氣。"
-    },
-    {
-        id: 2,
-        name: "MALM 工業風鐵製單人椅",
-        category: "Chair",
-        width: 50,
-        length_cm: 50,
-        height: 85,
-        description: "霧面黑鐵架搭配深色胡桃木座墊，帶有強烈的復古工業感與現代線條。"
-    },
-    {
-        id: 3,
-        name: "KULLEN 現代極簡大茶几",
-        category: "Table",
-        width: 60,
-        length_cm: 120,
-        height: 45,
-        description: "純白高光烤漆桌面搭配隱藏式抽屜，極簡幾何設計，適合現代輕奢或現代極簡客廳。"
-    }
-];
+// 🎯 建立學校伺服器資料庫的連線池（Connection Pool）
+const pool = mysql.createPool({
+    host: '163.13.202.116',      // 學校伺服器 IP
+    port: 3306,                  // 連線埠
+    user: 'root',                // 帳號
+    password: '06210621',        // 密碼
+    database: 'ar_furniture_db', // 資料庫名稱
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});;
 
 app.post('/api/chat', async (req, res) => {
     try {
@@ -54,8 +37,10 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: '請輸入訊息' });
         }
 
-        // 🧠 將模擬家具資料轉成文字，直接餵給 AI 當作它的「知識庫」
-        const furnitureContext = JSON.stringify(mockFurnitures, null, 2);
+        const [rows] = await pool.query('SELECT * FROM furnitures');
+
+        // 將學校伺服器撈出來的真實家具轉成文字，餵給 AI 當作它的「知識庫」
+        const furnitureContext = JSON.stringify(rows, null, 2);
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -78,7 +63,7 @@ app.post('/api/chat', async (req, res) => {
         res.json({ reply: response.text });
 
     } catch (error) {
-        console.error('AI 處理出錯:', error);
+        console.error('AI 或資料庫處理出錯:', error);
         res.status(500).json({ error: 'AI 伺服器發生錯誤。' });
     }
 });

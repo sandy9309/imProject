@@ -21,6 +21,7 @@ app.UseStaticFiles(new StaticFileOptions {
 });
 
 app.MapAuthEndpoints();
+app.MapPasswordResetEndpoints();
 app.MapFurnitureEndpoints();
 app.MapProjectEndpoints();
 app.MapCartEndpoints();

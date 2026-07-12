@@ -11,12 +11,14 @@ import Cart from './pages/Cart/Cart';
 import Profile from './pages/Profile/Profile';
 import Projects from './pages/Projects/Projects'; // 🚀 1. 新增：引入妳的專案管理頁面
 import UiRoot from './components/Ui/UiRoot'; // 🚀 全站提示系統(Toast + 確認彈窗)
+import AiAssistant from './components/AiAssistant/AiAssistant'; // 🤖 AI 空間設計小幫手(右下角懸浮)
 
 function App() {
   return (
     <Router>
       <Navbar /> {/* 直接放進來就好 */}
       <UiRoot /> {/* 🚀 全站唯一的提示渲染中心 */}
+      <AiAssistant /> {/* 🤖 右下角 AI 小幫手,全站可用 */}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

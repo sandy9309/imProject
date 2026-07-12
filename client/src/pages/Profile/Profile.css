@@ -150,13 +150,22 @@
 
 /* 手機版適應 */
 @media (max-width: 768px) {
+  .profile-container {
+    padding: 24px 12px; /* 手機縮小外距,卡片有更多空間 */
+  }
   .profile-card {
     flex-direction: column;
   }
   .profile-sidebar {
     width: 100%;
+    box-sizing: border-box; /* 🚀 修正:讓 padding 算進寬度,不再凸出卡片 */
+    padding: 24px 16px;
     border-right: none;
     border-bottom: 1px solid var(--color-bg-muted);
+  }
+  .profile-main {
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 /* ════════════════════════════════════════════
@@ -263,6 +272,16 @@
   background: var(--color-danger-border);
   cursor: not-allowed;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 /* ════════════════════════════════════════════

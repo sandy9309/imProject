@@ -86,7 +86,7 @@ app.post('/api/chat', async (req, res) => {
         res.json({ reply: response.text });
 
     } catch (error) {
-        console.error('AI或資料庫處理出錯:', error);
+        console.error('AI 或資料庫處理出錯:', error);
         res.status(500).json({ error: 'AI 伺服器發生錯誤。' });
     }
 });

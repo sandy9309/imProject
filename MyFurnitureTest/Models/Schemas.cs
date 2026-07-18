@@ -8,3 +8,13 @@ public record RegisterRequest(string username, string email, string phone, strin
 public record FurnitureItemRequest(int furniture_id, float x, float y, float z);
 public record ForgotPasswordRequest(string email);
 public record ResetPasswordRequest(string token, string password);
+
+public class PositionUpdateData { public List<PositionItem> positions { get; set; } = new(); }
+public class PositionItem
+{
+    public int index { get; set; }
+    public double x { get; set; }
+    public double y { get; set; }
+    public double z { get; set; }
+    public double ry { get; set; }
+}

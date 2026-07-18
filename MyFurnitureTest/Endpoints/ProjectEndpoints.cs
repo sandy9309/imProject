@@ -133,7 +133,7 @@ public static class ProjectEndpoints
             {
                 using var conn = db.GetConnection();
                 conn.Open();
-                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;
+                string itemsJson = NormalizeItems(data.itemsRaw).ToString(Newtonsoft.Json.Formatting.None);
                 string sql = @"INSERT INTO projects (user_id, name, l, w, items, status)
                                VALUES (@user_id, @name, @l, @w, @items, 'draft')";
 
@@ -176,7 +176,10 @@ public static class ProjectEndpoints
                 if (currentStatus == null)
                     return Results.NotFound(new { error = "找不到該專案空間" });
 
-                string itemsJson = string.IsNullOrEmpty(data.itemsRaw) ? "[]" : data.itemsRaw;
+                var oldCmd = new MySqlCommand("SELECT items FROM projects WHERE id = @id", conn);
+                oldCmd.Parameters.AddWithValue("@id", id);
+                var oldItems = JArray.Parse(oldCmd.ExecuteScalar()?.ToString() ?? "[]");
+                string itemsJson = NormalizeItems(data.itemsRaw, oldItems).ToString(Newtonsoft.Json.Formatting.None);
                 string sql = "UPDATE projects SET name = @name, items = @items WHERE id = @id";
 
                 using var cmd = new MySqlCommand(sql, conn);
@@ -297,11 +300,20 @@ public static class ProjectEndpoints
                         urlMap[fid] = url;
                 }
 
-                // 4. 依 items 順序組回傳陣列
-                var result = furnitureIds
-                    .Where(fid => urlMap.ContainsKey(fid))
-                    .Select(fid => (object)new { url = urlMap[fid], x = 0, y = 0, z = 0 })
-                    .ToList();
+                // 4. 讀取 items 裡已儲存的座標（缺欄位當 0），並回傳 index
+                var result = new List<object>();
+                for (int i = 0; i < items.Count; i++)
+                {
+                    var it = items[i];
+                    int fid = it.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0;
+                    if (fid <= 0 || !urlMap.ContainsKey(fid)) continue;
+                    double GetNum(string key) =>
+                        it.TryGetValue(key, out var val) && val != null ? Convert.ToDouble(val.ToString()) : 0;
+                    result.Add(new {
+                        index = i, url = urlMap[fid],
+                        x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry")
+                    });
+                }
 
                 return Results.Ok(new { furnitures = result });
             }
@@ -310,5 +322,80 @@ public static class ProjectEndpoints
                 return Results.Problem(ex.Message);
             }
         });
+
+        // ── 7. 給 VR 眼鏡用：擺放完回傳家具座標 ──────────────────────
+        // PUT /api/projects/{id}/positions
+        // Body: { "positions": [ { "index": 0, "x": 1.5, "y": 0, "z": 2.3, "ry": 90 } ] }
+        group.MapPut("/{id}/positions", (int id, PositionUpdateData data, DbService db) =>
+        {
+            try
+            {
+                using var conn = db.GetConnection();
+                conn.Open();
+
+                var projCmd = new MySqlCommand("SELECT items FROM projects WHERE id = @id", conn);
+                projCmd.Parameters.AddWithValue("@id", id);
+                var rawItems = projCmd.ExecuteScalar()?.ToString();
+                if (rawItems == null)
+                    return Results.NotFound(new { message = "找不到此專案" });
+
+                var items = JArray.Parse(rawItems);
+                foreach (var pos in data.positions)
+                {
+                    if (pos.index < 0 || pos.index >= items.Count) continue;
+                    if (items[pos.index] is not JObject item) continue;
+                    item["x"] = pos.x;
+                    item["y"] = pos.y;
+                    item["z"] = pos.z;
+                    item["ry"] = pos.ry;
+                }
+
+                var updateCmd = new MySqlCommand("UPDATE projects SET items = @items WHERE id = @id", conn);
+                updateCmd.Parameters.AddWithValue("@id", id);
+                updateCmd.Parameters.AddWithValue("@items", items.ToString(Newtonsoft.Json.Formatting.None));
+                updateCmd.ExecuteNonQuery();
+
+                return Results.Ok(new { success = true, message = "座標已儲存" });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        });
+    }
+
+    // 統一 items 格式：只留 furniture_id + 座標；新資料沒帶座標時從舊資料接回
+    private static JArray NormalizeItems(string? raw, JArray? oldItems = null)
+    {
+        var items = JArray.Parse(string.IsNullOrEmpty(raw) ? "[]" : raw);
+
+        var oldByFid = new Dictionary<int, Queue<JObject>>();
+        if (oldItems != null)
+            foreach (var t in oldItems.OfType<JObject>())
+            {
+                int fid = t.Value<int?>("furniture_id") ?? 0;
+                if (!oldByFid.ContainsKey(fid)) oldByFid[fid] = new Queue<JObject>();
+                oldByFid[fid].Enqueue(t);
+            }
+
+        var result = new JArray();
+        foreach (var t in items.OfType<JObject>())
+        {
+            int fid = t.Value<int?>("furniture_id") ?? 0;
+            if (fid <= 0) continue;
+
+            var src = t;
+            if (t["x"] == null && oldByFid.TryGetValue(fid, out var q) && q.Count > 0)
+                src = q.Dequeue();
+
+            result.Add(new JObject {
+                ["furniture_id"] = fid,
+                ["x"]  = src.Value<double?>("x")  ?? 0,
+                ["y"]  = src.Value<double?>("y")  ?? 0,
+                ["z"]  = src.Value<double?>("z")  ?? 0,
+                ["ry"] = src.Value<double?>("ry") ?? 0
+            });
+        }
+        return result;
     }
 }

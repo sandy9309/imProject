@@ -1,33 +1,21 @@
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
+const dotenv = require('dotenv');//讀取.env敏感金鑰
 const { GoogleGenAI } = require('@google/genai');
-const mysql = require('mysql2/promise'); // 引入資料庫套件
 
-dotenv.config();
-
+dotenv.config();//環境變數初始化
 const app = express();
 const port = process.env.PORT || 5051;
 
-app.use(cors());
+app.use(cors());//允許其他埠號請求，跨網域存取
 app.use(express.json());
 app.use(express.static('public'));// 提供 public 資料夾靜態檔案服務，讓前端可以直接載入這裡的資源
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// 根據資料庫欄位，建立一組「模擬家具清單」
-// 包含 id, name, category, width, length_cm, height, description
-//  建立學校伺服器資料庫的連線池（Connection Pool）
-const pool = mysql.createPool({
-    host: '163.13.202.116',      // 學校伺服器 IP
-    port: 3306,                  // 連線埠
-    user: 'root',                // 帳號
-    password: '06210621',        // 密碼
-    database: 'ar_furniture_db', // 資料庫名稱
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+const axios=require('axios');
+
 
 app.post('/api/chat', async (req, res) => {
     try {
@@ -37,59 +25,68 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: '請輸入訊息' });
         }
 
-        // 1. 從資料庫撈取所有家具資料
-        const [rows] = await pool.query('SELECT * FROM furnitures');
-        
-        // 2. 整理餵給 AI 的資料（加入價格 price，讓 AI 也可以根據預算推薦！）
-        const furnitureSummary = rows.map(f => {
-            const img = f.thumb_path || f.image_url || '';
-            return `名稱: ${f.name} | 類別: ${f.category} | 價格: $${f.price}元 | 尺寸: ${f.width}x${f.length_cm}x${f.height}cm | 圖片: ${img} | 描述: ${f.description}`;
+        //  API 撈取所有真實家具資料(axios:發送請求/await:執行完才能繼續下一行)
+        const catalogResponse = await axios.get('http://163.13.202.116:5050/api/furnitures');
+        const dbfurnitureList = catalogResponse.data; // 家具陣列
+
+        // 餵給 AI 的資料(map:把陣列每一筆資料拿來改成新的陣列)
+        const aiKnowledgeBase = dbfurnitureList.map(f => {
+            return `ID: ${f.id} | 名稱: ${f.name} | 類別: ${f.category} | 價格: $${f.price}元  | 尺寸: ${f.width}x${f.length_cm}x${f.height}cm | 描述: ${f.description || ''}`;
         }).join('\n');
 
-        const response = await ai.models.generateContent({
+        //設定系統提示詞
+        const systemInstruction = `
+                你是一個專業的室內設計助理。以下是目前資料庫擁有的真實家具清單：
+                ${aiKnowledgeBase}
+
+                請根據使用者的空間與風格需求，從上方清單中選擇適合的家具推薦給他。
+                【嚴格回應規則】：
+                1. 你「必須」且「只能」使用 JSON 格式回應，不要包含任何 markdown 標籤（如 \`\`\`json）。
+                2. JSON 結構必須包含：
+                - "reply": 純文字的推薦理由（文字裡不要提到任何家具名稱與價格，只要講推薦理由與搭配建議就好）。
+                - "recommendations": 一個數字陣列，裡面只放你推薦的家具的真實 "ID"。如果沒有合適的，請給空陣列 []。
+
+                範例回應格式：
+                {
+                "reply": "根據你的北歐風需求，我推薦了幾款簡約舒適的椅子，它們的尺寸非常適合 4 坪的空間。",
+                "recommendations": [5, 12]
+                }`;
+
+        // 呼叫 Gemini AI
+        const aiResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: message,
             config: {
-                //  更新系統指令：強制 AI 只能從這份清單中做推薦，並要求它回傳家具 ID
-                systemInstruction: `你是一位專門輔助 MR 家具擺設的室內設計 AI 小幫手。
-                這裡有我們目前系統支援的 3D 家具清單資料（包含尺寸與描述）：
-                ${furnitureSummary}
-
-                任務指南：
-                1. 請根據使用者的風格喜好、空間大小，從上述清單中挑選「最適合」的家具推薦給他。
-                2. 回答請親切、專業、條列式。
-                3.項目之間請務必以「換行（Enter）」分隔，保持版面乾淨易讀，絕對不可以把多個家具寫在同一行。
-                4.使用「•」作為標題！
-                
-                【回答格式範例】：
-                您好！很高興為您推薦適合的家具。根據您的需求，我推薦以下款式：
-
-                您好！根據您的需求與預算，為您推薦以下款式：<br><br>
-
-                • <b>GLOSTAD 雙人沙發</b>（NT$ 5,420）<br>
-                尺寸：124x79x77cm｜特色：現代簡約設計，適合小坪數。<br>
-                <img src="https://example.com/glostad.jpg" style="max-width: 180px; border-radius: 8px; margin: 8px 0;" /><br><br>
-
-                • <b>MICKE 書桌</b>（NT$ 2,250）<br>
-                尺寸：73x50x75cm｜特色：簡潔附收納。<br>
-                <img src="https://example.com/micke.jpg" style="max-width: 180px; border-radius: 8px; margin: 8px 0;" /><br><br>
-
-                請問您有預算上的限制或偏好的顏色嗎？`,
-
-                temperature: 0.3, // 降低創意度，讓 AI 更嚴謹地根據資料回答
+                systemInstruction: systemInstruction,
+                temperature: 0.3, // 降低創意度，讓 AI 緊扣資料庫內容
             }
         });
 
-        const aiReply = response.text;
+        //解析 Gemini 回傳文字 再轉 JSON 字串
+        let aiResult;
+        try {
+            aiResult = JSON.parse(aiResponse.text.trim());
+        } catch (e) {
+            console.error("AI 回傳的不是合法 JSON:", aiResponse.text.trim());
+            // 防呆機制：如果 AI 沒給 JSON，做一個預設結構
+            aiResult = {
+                reply: aiResponse.text.trim(),
+                recommendations: []
+            };
+        }
 
-        // 4. 直接把含有 HTML 圖片與換行的文字回傳給前端即可！
-        res.json({ reply: response.text });
+        //  回傳前端
+        res.json({
+            reply: aiResult.reply,
+            recommendations: aiResult.recommendations
+        });
 
     } catch (error) {
-        console.error('AI 或資料庫處理出錯:', error);
+        console.error('AI 或網路處理出錯:', error);
         res.status(500).json({ error: 'AI 伺服器發生錯誤。' });
     }
 });
+
 
 app.listen(port, () => {
     console.log(` AI 模擬伺服器已啟動：http://localhost:${port}`);

@@ -198,3 +198,217 @@
     bottom: 16px;
   }
 }
+/* ════════════════════════════════════════════
+   AI 小幫手:推薦卡片 + 3D 預覽彈窗 樣式
+   👉 請把這整段複製貼到現有 AiAssistant.css 的最下面
+   (若之前已貼過 ai-rec 開頭那段,請整段換成這份最新的)
+   ════════════════════════════════════════════ */
+
+.ai-rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: flex-start;
+  width: 92%;
+}
+
+.ai-rec-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  animation: ai-window-in 0.2s ease-out;
+}
+
+/* 縮圖改成可點按鈕,右下角帶 3D 小徽章 */
+.ai-rec-thumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ai-rec-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: var(--color-bg-muted);
+  transition: transform 0.15s;
+}
+
+.ai-rec-thumb:hover img { transform: scale(1.08); }
+
+.ai-rec-3d-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(20, 14, 8, 0.7);
+  padding: 1px 4px;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.ai-rec-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ai-rec-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-rec-price {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.ai-rec-add {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.ai-rec-add:hover { background: var(--color-primary-hover); }
+
+.ai-rec-more {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  padding: 4px 2px;
+}
+
+.ai-rec-more:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* ── 3D 預覽彈窗 ─────────────────────────────────────────── */
+.ai-3d-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 14, 8, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8500; /* 高於聊天視窗(8000),低於確認彈窗(9000) */
+  padding: 16px;
+}
+
+.ai-3d-box {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  width: 100%;
+  max-width: 460px;
+  padding: 24px;
+  box-sizing: border-box;
+  animation: ai-window-in 0.2s ease-out;
+}
+
+.ai-3d-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: none;
+  background: var(--color-bg-muted);
+  color: var(--color-text-strong);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-3d-close:hover { background: var(--color-border-strong); }
+
+.ai-3d-title {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  color: var(--color-text);
+  padding-right: 40px;
+}
+
+.ai-3d-model {
+  width: 100%;
+  height: 300px;
+  background: var(--color-bg-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ai-3d-poster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  background: var(--color-bg-subtle);
+}
+
+.ai-3d-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.ai-3d-price {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.ai-3d-add {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ai-3d-add:hover { background: var(--color-primary-hover); }
+
+/* 手機:3D 彈窗縮小高度 */
+@media (max-width: 480px) {
+  .ai-3d-model { height: 240px; }
+}

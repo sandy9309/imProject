@@ -465,6 +465,40 @@ public static class ProjectEndpoints
                 return Results.Problem(ex.Message);
             }
         });
+
+        // ── 10. 刪除截圖 ───────────────────────────────────────────
+        // DELETE /api/projects/{id}/media/{mediaId}
+        group.MapDelete("/{id}/media/{mediaId}", (int id, int mediaId, DbService db) =>
+        {
+            try
+            {
+                using var conn = db.GetConnection();
+                conn.Open();
+
+                var checkCmd = new MySqlCommand(
+                    "SELECT file_path FROM project_media WHERE id = @mediaId AND project_id = @project_id", conn);
+                checkCmd.Parameters.AddWithValue("@mediaId", mediaId);
+                checkCmd.Parameters.AddWithValue("@project_id", id);
+                var filePathObj = checkCmd.ExecuteScalar();
+                if (filePathObj == null)
+                    return Results.NotFound(new { success = false, message = "找不到此截圖" });
+
+                string filePath = filePathObj.ToString() ?? "";
+                string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", filePath.TrimStart('/'));
+                if (File.Exists(fullPath))
+                    File.Delete(fullPath);
+
+                var deleteCmd = new MySqlCommand("DELETE FROM project_media WHERE id = @mediaId", conn);
+                deleteCmd.Parameters.AddWithValue("@mediaId", mediaId);
+                deleteCmd.ExecuteNonQuery();
+
+                return Results.Ok(new { success = true, message = "截圖已刪除" });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        });
     }
 
     // 統一 items 格式：只留 furniture_id + 座標；新資料沒帶座標時從舊資料接回

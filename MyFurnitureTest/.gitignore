@@ -12,3 +12,6 @@ obj/
 
 # 工具
 ngrok
+
+# 使用者上傳的截圖檔案
+wwwroot/uploads/

@@ -362,6 +362,109 @@ public static class ProjectEndpoints
                 return Results.Problem(ex.Message);
             }
         });
+
+        // ── 8. 眼鏡端上傳截圖 ──────────────────────────────────────
+        // POST /api/projects/{id}/media  (multipart/form-data: file, type?)
+        group.MapPost("/{id}/media", async (int id, HttpRequest request, DbService db) =>
+        {
+            try
+            {
+                if (!request.HasFormContentType)
+                    return Results.BadRequest(new { success = false, message = "請使用 multipart/form-data 格式上傳" });
+
+                var form = await request.ReadFormAsync();
+                var file = form.Files["file"];
+                if (file == null || file.Length == 0)
+                    return Results.BadRequest(new { success = false, message = "缺少上傳檔案 file" });
+
+                string type = form["type"].ToString();
+                if (string.IsNullOrWhiteSpace(type))
+                    type = "screenshot";
+
+                string ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                var allowedExts = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+                if (!allowedExts.Contains(ext))
+                    return Results.BadRequest(new { success = false, message = "檔案格式不支援，僅允許 jpg、jpeg、png、webp" });
+
+                using var conn = db.GetConnection();
+                conn.Open();
+
+                var checkCmd = new MySqlCommand("SELECT id FROM projects WHERE id = @id", conn);
+                checkCmd.Parameters.AddWithValue("@id", id);
+                if (checkCmd.ExecuteScalar() == null)
+                    return Results.NotFound(new { success = false, message = "找不到此專案" });
+
+                string folderPath = Path.Combine("wwwroot", "uploads", "projects", id.ToString());
+                Directory.CreateDirectory(folderPath);
+
+                string fileName = $"{Guid.NewGuid()}{ext}";
+                string fullPath = Path.Combine(folderPath, fileName);
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                string relativePath = $"/uploads/projects/{id}/{fileName}";
+
+                var insertCmd = new MySqlCommand(
+                    "INSERT INTO project_media (project_id, type, file_path) VALUES (@project_id, @type, @file_path)", conn);
+                insertCmd.Parameters.AddWithValue("@project_id", id);
+                insertCmd.Parameters.AddWithValue("@type", type);
+                insertCmd.Parameters.AddWithValue("@file_path", relativePath);
+                insertCmd.ExecuteNonQuery();
+
+                string url = $"{request.Scheme}://{request.Host}{relativePath}";
+
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = "上傳成功",
+                    id = insertCmd.LastInsertedId,
+                    url
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        });
+
+        // ── 9. 取得專案的所有截圖 ──────────────────────────────────
+        // GET /api/projects/{id}/media
+        group.MapGet("/{id}/media", (int id, HttpRequest request, DbService db) =>
+        {
+            try
+            {
+                using var conn = db.GetConnection();
+                conn.Open();
+
+                var cmd = new MySqlCommand(
+                    "SELECT id, type, file_path, created_at FROM project_media WHERE project_id = @project_id ORDER BY created_at DESC", conn);
+                cmd.Parameters.AddWithValue("@project_id", id);
+
+                var data = new List<object>();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string filePath = reader["file_path"]?.ToString() ?? "";
+                        data.Add(new
+                        {
+                            id = Convert.ToInt32(reader["id"]),
+                            type = reader["type"]?.ToString() ?? "",
+                            url = $"{request.Scheme}://{request.Host}{filePath}",
+                            created_at = reader["created_at"]?.ToString() ?? ""
+                        });
+                    }
+                }
+
+                return Results.Ok(new { success = true, data });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        });
     }
 
     // 統一 items 格式：只留 furniture_id + 座標；新資料沒帶座標時從舊資料接回

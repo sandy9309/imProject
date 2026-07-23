@@ -24,7 +24,6 @@ app.MapAuthEndpoints();
 app.MapPasswordResetEndpoints();
 app.MapFurnitureEndpoints();
 app.MapProjectEndpoints();
-app.MapCartEndpoints();
 app.MapUserEndpoints();
 
 app.Run();

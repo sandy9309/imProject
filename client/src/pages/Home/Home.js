@@ -29,11 +29,11 @@ const Home = () => {
           <h3>多樣化型錄</h3>
           <p>數百款精選家具模型，支援即時材質與色彩更換。</p>
         </div>
-        <div className="feature-card">
+        {/* <div className="feature-card">
           <div className="icon">📊</div>
           <h3>精準測量</h3>
           <p>內置空間測量工具，確保家具完美契合您的房間。</p>
-        </div>
+        </div> */}
       </section>
     </div>
   );

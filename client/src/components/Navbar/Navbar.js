@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'; // 修正 1: 引入 useEffect 用於監聽瀏覽器暫存
 import { Link, useNavigate } from 'react-router-dom'; 
 // 🚀 這裡幫妳多引入了 Folder 圖示，用於「我的專案」
-import { Home, Layout, Folder, LogIn, UserPlus, ShoppingCart, User, LogOut, ChevronDown } from 'lucide-react'; 
+import { Home, Layout, Folder, LogIn, UserPlus, ShoppingCart, User, LogOut, ChevronDown, BookOpen } from 'lucide-react'; 
 import './Navbar.css';
 import { showToast, showConfirm } from '../../components/Ui/ui';
 
@@ -75,7 +75,7 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
-      <Link to="/" className="nav-logo">TKUIM VR Home</Link>
+      <Link to="/" className="nav-logo">FitRoom</Link>
       
       <div className="nav-links">
         <Link to="/" className="nav-item"><Home size={18} /> 首頁簡介</Link>
@@ -118,6 +118,10 @@ const Navbar = () => {
                   <Link to="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>
                     <User size={16} /> 會員中心
                   </Link>
+                  {/* 📖 使用說明入口 */}
+                  <Link to="/guide" className="dropdown-item" onClick={() => setShowUserMenu(false)}>
+                    <BookOpen size={16} /> 使用說明
+                  </Link>
                   <button className="dropdown-logout" onClick={handleLogout}>
                     <LogOut size={16} /> 登出系統
                   </button>
@@ -128,6 +132,8 @@ const Navbar = () => {
         ) : (
           // --- 未登入狀態 ---
           <>
+            {/* 📖 未登入的訪客也能看使用說明 */}
+            <Link to="/guide" className="nav-item"><BookOpen size={18} /> 使用說明</Link>
             <Link to="/login" className="nav-item"><LogIn size={18} /> 登入</Link>
             <Link to="/register" className="nav-item register-btn">
               <UserPlus size={18} /> 註冊

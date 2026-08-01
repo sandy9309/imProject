@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Send, PackageOpen, PlusCircle, Search, Copy } from 'lucide-react';
+import { Trash2, Send, PackageOpen, PlusCircle, Search, Copy, Image } from 'lucide-react';
 import './Projects.css';
 import { showToast, showConfirm } from '../../components/Ui/ui';
+import ProjectMedia from '../../components/ProjectMedia/ProjectMedia';
 
 // 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
@@ -18,6 +19,8 @@ const Projects = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState([]);
+  // 🖼 記錄哪些專案「展開了截圖區」
+  const [mediaOpenIds, setMediaOpenIds] = useState([]);
   // 🚀 家具對照表：{ [家具ID]: { name, price, ... } }，用來把 furniture_id 轉換成真實名稱
   const [furnitureMap, setFurnitureMap] = useState({});
   // 🚀 VR 編碼彈窗：{ id, name } 或 null。有值時彈窗顯示，關閉時設回 null
@@ -133,6 +136,13 @@ const Projects = () => {
   // ── 展開 / 收合面板 ─────────────────────────────────────────
   const toggleExpand = (id) => {
     setExpandedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // 🖼 展開 / 收合截圖區(展開時 ProjectMedia 才會掛載並去抓 API)
+  const toggleMedia = (id) => {
+    setMediaOpenIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
@@ -283,6 +293,7 @@ const Projects = () => {
       <div className="projects-list">
         {filteredProjects.map(project => {
           const isExpanded = expandedIds.includes(project.id);
+          const isMediaOpen = mediaOpenIds.includes(project.id);
           const items = Array.isArray(project.items) ? project.items : [];
           const isConfirmed = project.status === 'confirmed';
 
@@ -345,6 +356,15 @@ const Projects = () => {
                     onClick={() => toggleExpand(project.id)}
                   >
                     {isExpanded ? '⚙️ 關閉家具清單' : '⚙️ 展開家具清單'}
+                  </button>
+
+                  {/* 🖼 查看 VR 實景截圖(展開時才會去抓 API) */}
+                  <button
+                    className="btn-secondary"
+                    onClick={() => toggleMedia(project.id)}
+                    title="查看 VR 實景截圖"
+                  >
+                    <Image size={16} /> {isMediaOpen ? '關閉截圖' : '查看截圖'}
                   </button>
 
                   {/* 🚀 不管有無變動、不管是否已確認過，都能按，且每次都會彈出編碼視窗 */}
@@ -441,6 +461,9 @@ const Projects = () => {
                   )}
                 </div>
               )}
+
+              {/* ── 🖼 VR 實景截圖(展開時才載入) ── */}
+              {isMediaOpen && <ProjectMedia projectId={project.id} />}
             </div>
           );
         })}

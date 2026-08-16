@@ -1,0 +1,445 @@
+/* src/components/AiAssistant/AiAssistant.css */
+
+/* ── 右下角圓形懸浮按鈕 ─────────────────────────────────── */
+.ai-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-hover);
+  z-index: 8000; /* 低於確認彈窗(9000)與 toast(9100),高於一般視窗 */
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.ai-fab:hover {
+  transform: scale(1.08);
+  background: var(--color-primary-hover);
+}
+
+/* ── 聊天視窗 ───────────────────────────────────────────── */
+.ai-chat-window {
+  position: fixed;
+  right: 22px;
+  bottom: 90px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  height: 460px;
+  max-height: calc(100vh - 130px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 8000;
+  animation: ai-window-in 0.2s ease-out;
+}
+
+@keyframes ai-window-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ai-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.ai-chat-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.ai-chat-close {
+  background: none;
+  border: none;
+  color: var(--color-surface);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: 6px;
+}
+
+.ai-chat-close:hover { background: rgba(255, 255, 255, 0.15); }
+
+/* ── 訊息區 ─────────────────────────────────────────────── */
+.ai-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--color-bg-subtle);
+}
+
+.ai-msg {
+  max-width: 82%;
+  padding: 10px 13px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-msg-bot {
+  align-self: flex-start;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: 4px;
+}
+
+.ai-msg-user {
+  align-self: flex-end;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border-bottom-right-radius: 4px;
+}
+
+/* AI 打字中的三顆跳動小點 */
+.ai-msg-typing {
+  display: flex;
+  gap: 5px;
+  padding: 14px 16px;
+}
+
+.ai-msg-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-faint);
+  animation: ai-bounce 1.2s infinite;
+}
+
+.ai-msg-typing span:nth-child(2) { animation-delay: 0.15s; }
+.ai-msg-typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes ai-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ── 輸入列 ─────────────────────────────────────────────── */
+.ai-chat-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.ai-chat-input {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  max-height: 90px;
+}
+
+.ai-chat-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.ai-chat-send {
+  width: 40px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-chat-send:hover:not(:disabled) { background: var(--color-primary-hover); }
+
+.ai-chat-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── RWD:手機版聊天視窗貼齊螢幕 ────────────────────────── */
+@media (max-width: 480px) {
+  .ai-chat-window {
+    right: 16px;
+    left: 16px;
+    width: auto;
+    bottom: 86px;
+  }
+  .ai-fab {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+/* ════════════════════════════════════════════
+   AI 小幫手:推薦卡片 + 3D 預覽彈窗 樣式
+   👉 請把這整段複製貼到現有 AiAssistant.css 的最下面
+   (若之前已貼過 ai-rec 開頭那段,請整段換成這份最新的)
+   ════════════════════════════════════════════ */
+
+.ai-rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: flex-start;
+  width: 92%;
+}
+
+.ai-rec-sort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.ai-rec-sort-row label {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.ai-rec-sort {
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ai-rec-sort:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: var(--color-primary);
+}
+
+.ai-rec-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  animation: ai-window-in 0.2s ease-out;
+}
+
+/* 縮圖改成可點按鈕,右下角帶 3D 小徽章 */
+.ai-rec-thumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ai-rec-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: var(--color-bg-muted);
+  transition: transform 0.15s;
+}
+
+.ai-rec-thumb:hover img { transform: scale(1.08); }
+
+.ai-rec-3d-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(20, 14, 8, 0.7);
+  padding: 1px 4px;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.ai-rec-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ai-rec-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-rec-price {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.ai-rec-add {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.ai-rec-add:hover { background: var(--color-primary-hover); }
+
+.ai-rec-more {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  padding: 4px 2px;
+}
+
+.ai-rec-more:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* ── 3D 預覽彈窗 ─────────────────────────────────────────── */
+.ai-3d-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 14, 8, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8500; /* 高於聊天視窗(8000),低於確認彈窗(9000) */
+  padding: 16px;
+}
+
+.ai-3d-box {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  width: 100%;
+  max-width: 460px;
+  padding: 24px;
+  box-sizing: border-box;
+  animation: ai-window-in 0.2s ease-out;
+}
+
+.ai-3d-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: none;
+  background: var(--color-bg-muted);
+  color: var(--color-text-strong);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-3d-close:hover { background: var(--color-border-strong); }
+
+.ai-3d-title {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  color: var(--color-text);
+  padding-right: 40px;
+}
+
+.ai-3d-model {
+  width: 100%;
+  height: 300px;
+  background: var(--color-bg-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ai-3d-poster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  background: var(--color-bg-subtle);
+}
+
+.ai-3d-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.ai-3d-price {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.ai-3d-add {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ai-3d-add:hover { background: var(--color-primary-hover); }
+
+/* 手機:3D 彈窗縮小高度 */
+@media (max-width: 480px) {
+  .ai-3d-model { height: 240px; }
+}

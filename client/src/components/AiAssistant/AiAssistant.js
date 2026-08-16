@@ -28,6 +28,7 @@ const AiAssistant = () => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [furnitureMap, setFurnitureMap] = useState({});
+  const [recommendationSort, setRecommendationSort] = useState('recommended');
   // 🚀 3D 預覽中的家具(null = 沒開)
   const [preview, setPreview] = useState(null);
   const [messages, setMessages] = useState([
@@ -158,6 +159,19 @@ const AiAssistant = () => {
     }
   };
 
+  const sortRecommendations = (recommendations) => {
+    if (recommendationSort === 'recommended') return recommendations;
+
+    return [...recommendations].sort((aId, bId) => {
+      const aPrice = Number(furnitureMap[aId]?.price) || 0;
+      const bPrice = Number(furnitureMap[bId]?.price) || 0;
+
+      return recommendationSort === 'price-asc'
+        ? aPrice - bPrice
+        : bPrice - aPrice;
+    });
+  };
+
   return (
     <>
       {/* ── 聊天視窗 ── */}
@@ -182,7 +196,21 @@ const AiAssistant = () => {
                 {/* 🚀 推薦家具卡片:點縮圖可開 3D 預覽 */}
                 {m.recs && m.recs.length > 0 && (
                   <div className="ai-rec-list">
-                    {m.recs.map(id => {
+                    <div className="ai-rec-sort-row">
+                      <label htmlFor={`ai-rec-sort-${i}`}>推薦排序</label>
+                      <select
+                        id={`ai-rec-sort-${i}`}
+                        className="ai-rec-sort"
+                        value={recommendationSort}
+                        onChange={e => setRecommendationSort(e.target.value)}
+                        aria-label="推薦家具排序方式"
+                      >
+                        <option value="recommended">AI 推薦順序</option>
+                        <option value="price-asc">價格：低到高</option>
+                        <option value="price-desc">價格：高到低</option>
+                      </select>
+                    </div>
+                    {sortRecommendations(m.recs).map(id => {
                       const f = furnitureMap[id];
                       return (
                         <div key={id} className="ai-rec-card">

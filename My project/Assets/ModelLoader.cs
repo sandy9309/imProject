@@ -152,13 +152,10 @@ public class ModelLoader : MonoBehaviour
         if (_fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
         {
             var data = _fetchedFurnitures[_currentFurnitureIndex];
-            string suffix = string.IsNullOrEmpty(data.name) ? System.IO.Path.GetFileNameWithoutExtension(data.url) : data.name;
-            string objName = "Furniture_" + suffix;
-            
-            Transform target = this.transform.Find(objName);
+            Transform target = ReadFurnitureByIndex(data.index);
             if (target != null) 
             {
-                Log($"🗑️ 已從場景中遠端刪除: {objName}");
+                Log($"🗑️ 已從場景中刪除家具 index={data.index}: {target.name}");
                 // 刪除前強制寫入快取
                 UpdateCacheBeforeDestroy(target);
                 Destroy(target.gameObject);
@@ -166,9 +163,29 @@ public class ModelLoader : MonoBehaviour
             }
             else
             {
-                Log($"場景中沒有找到可以刪除的 {objName}");
+                Log($"場景中沒有找到 index={data.index} 的家具");
             }
         }
+    }
+
+    private Transform ReadFurnitureByIndex(int furnitureIndex)
+    {
+        foreach (Transform child in transform)
+        {
+            FurnitureTag tag = child.GetComponent<FurnitureTag>();
+            if (tag != null && tag.index == furnitureIndex) return child;
+        }
+        return null;
+    }
+
+    private string BuildFurnitureObjectName(FurnitureData data)
+    {
+        string suffix = string.IsNullOrEmpty(data.name)
+            ? System.IO.Path.GetFileNameWithoutExtension(data.url)
+            : data.name;
+        if (string.IsNullOrWhiteSpace(suffix)) suffix = "Model";
+        suffix = suffix.Replace('/', '_').Replace('\\', '_');
+        return $"Furniture_{data.index}_{suffix}";
     }
 
     // 更新畫面上的數字顯示
@@ -317,12 +334,10 @@ public class ModelLoader : MonoBehaviour
     // ==========================================
     async Task LoadModelFromNetwork(FurnitureData data)
     {
-        string objectName = "Furniture";
-        string suffix = string.IsNullOrEmpty(data.name) ? System.IO.Path.GetFileNameWithoutExtension(data.url) : data.name;
-        try { objectName += "_" + suffix; } catch { }
+        string objectName = BuildFurnitureObjectName(data);
         
         // 🌟 檢查場景中是否已經有同名的傢俱，如果有，就把它刪除，實現「取代」的效果！
-        Transform oldTransform = this.transform.Find(objectName);
+        Transform oldTransform = ReadFurnitureByIndex(data.index);
         if (oldTransform != null)
         {
             Destroy(oldTransform.gameObject);
@@ -363,7 +378,8 @@ public class ModelLoader : MonoBehaviour
         }
 
         // 🌟 掛上標籤，記錄這件傢俱在資料庫裡的流水號 (index)
-        FurnitureTag tag = rootObject.AddComponent<FurnitureTag>();
+        FurnitureTag tag = rootObject.GetComponent<FurnitureTag>();
+        if (tag == null) tag = rootObject.AddComponent<FurnitureTag>();
         tag.index = data.index;
         tag.url = data.url;
         
@@ -491,7 +507,7 @@ public class ModelLoader : MonoBehaviour
             for (int i = 0; i < _fetchedFurnitures.Length; i++)
             {
                 // 嚴謹雙重比對：確保即時快取正確更新
-                if (_fetchedFurnitures[i].index == tag.index && _fetchedFurnitures[i].url == tag.url)
+                if (_fetchedFurnitures[i].index == tag.index)
                 {
                     _fetchedFurnitures[i].x = target.position.x;
                     _fetchedFurnitures[i].y = target.position.y;
@@ -722,7 +738,7 @@ public class ModelLoader : MonoBehaviour
                 // 這裡改用 index + url 雙重嚴謹比對，絕對不會把 A 桌子的座標存到 B 椅子身上！
                 for (int i = 0; i < _fetchedFurnitures.Length; i++)
                 {
-                    if (_fetchedFurnitures[i].index == tag.index && _fetchedFurnitures[i].url == tag.url)
+                    if (_fetchedFurnitures[i].index == tag.index)
                     {
                         _fetchedFurnitures[i].x = newX;
                         _fetchedFurnitures[i].y = newY;

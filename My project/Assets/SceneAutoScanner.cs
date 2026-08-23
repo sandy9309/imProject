@@ -5,15 +5,30 @@ using System.Threading.Tasks;
 
 public class SceneAutoScanner : MonoBehaviour
 {
+    public bool autoScanWhenNoSavedScene = true;
+    public float initialLoadWaitSeconds = 2f;
+
     private bool _isScanning = false;
 
     IEnumerator Start()
     {
         // 使用 Unity 原生的等待機制，比 Task.Delay 更安全，不會導致執行緒迷失
-        Debug.Log("[Scanner] 遊戲啟動，等待 2 秒...");
-        yield return new WaitForSeconds(2.0f);
-        
-        TriggerNewScan();
+        Debug.Log("[Scanner] 遊戲啟動，嘗試載入既有房間資料...");
+        yield return new WaitForSeconds(initialLoadWaitSeconds);
+
+        if (MRUK.Instance != null)
+        {
+            MRUK.Instance.LoadSceneFromDevice();
+            yield return new WaitForSeconds(1f);
+
+            if (MRUK.Instance.GetCurrentRoom() != null)
+            {
+                Debug.Log("[Scanner] 已載入既有房間，不需要重新掃描。");
+                yield break;
+            }
+        }
+
+        if (autoScanWhenNoSavedScene) TriggerNewScan();
     }
 
     void Update()
@@ -75,7 +90,12 @@ public class SceneAutoScanner : MonoBehaviour
                 Debug.Log("[Scanner] 正在強制刷新 MRUK 場景...");
                 MRUK.Instance.ClearScene();
                 MRUK.Instance.LoadSceneFromDevice();
-                Debug.Log("[Scanner] 刷新完成！");
+                await Task.Delay(500);
+
+                if (MRUK.Instance.GetCurrentRoom() != null)
+                    Debug.Log("[Scanner] 刷新完成！");
+                else
+                    Debug.LogWarning("[Scanner] 掃描結束，但尚未取得可用房間資料。");
             }
             else
             {

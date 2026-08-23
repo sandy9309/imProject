@@ -14,6 +14,7 @@ public class VRFurnitureGrab : MonoBehaviour
 
     private Rigidbody rb;
     private Collider col;
+    private FurnitureInteractionStateController stateController;
 
     // 抓取期間持續記錄最後一個沒有和其他家具重疊的位置。
     private Vector3 lastValidPosition;
@@ -23,6 +24,7 @@ public class VRFurnitureGrab : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponent<Collider>();
+        stateController = GetComponent<FurnitureInteractionStateController>();
         lastValidPosition = transform.position;
         lastValidRotation = transform.rotation;
     }
@@ -40,12 +42,20 @@ public class VRFurnitureGrab : MonoBehaviour
     // 抓取開始
     public void OnGrab()
     {
+        if (stateController == null)
+            stateController = GetComponent<FurnitureInteractionStateController>();
+
         isGrabbed = true;
         lastValidPosition = transform.position;
         lastValidRotation = transform.rotation;
 
-        rb.isKinematic = true;
-        rb.useGravity = false;
+        if (stateController != null)
+            stateController.SetState(FurnitureInteractionState.Grabbed);
+        else
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
 
         col.isTrigger = true; // 可以穿牆穿家具
     }
@@ -54,7 +64,13 @@ public class VRFurnitureGrab : MonoBehaviour
     // 抓取結束 / 放下
     public void OnRelease()
     {
+        if (stateController == null)
+            stateController = GetComponent<FurnitureInteractionStateController>();
+
         isGrabbed = false;
+
+        if (stateController != null)
+            stateController.SetState(FurnitureInteractionState.Validating);
 
         // 先檢查是否重疊其他家具
         if (IsOverlappingFurniture())
@@ -73,8 +89,13 @@ public class VRFurnitureGrab : MonoBehaviour
         }
 
         // 正常放置與回彈後都回到一致的物理狀態，避免家具永久成為 Trigger。
-        rb.isKinematic = false;
-        rb.useGravity = true;
+        if (stateController != null)
+            stateController.SetState(FurnitureInteractionState.Placed);
+        else
+        {
+            rb.isKinematic = false;
+            rb.useGravity = true;
+        }
         col.isTrigger = false;
     }
 

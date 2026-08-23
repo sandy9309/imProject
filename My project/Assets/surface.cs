@@ -8,10 +8,12 @@ public class SurfaceSnapper : MonoBehaviour
     public bool snapEnabled = true;
 
     private Rigidbody rb;
+    private FurnitureInteractionStateController stateController;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        stateController = GetComponent<FurnitureInteractionStateController>();
     }
 
     void LateUpdate()
@@ -21,6 +23,16 @@ public class SurfaceSnapper : MonoBehaviour
 
     private void SnapLogic()
     {
+        if (stateController == null)
+            stateController = GetComponent<FurnitureInteractionStateController>();
+
+        if (stateController != null &&
+            stateController.CurrentState != FurnitureInteractionState.Grabbed &&
+            stateController.CurrentState != FurnitureInteractionState.Validating)
+        {
+            return;
+        }
+
         if (Physics.Raycast(
             transform.position,
             -transform.forward,

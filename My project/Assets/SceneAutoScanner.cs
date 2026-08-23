@@ -89,7 +89,7 @@ public class SceneAutoScanner : MonoBehaviour
             {
                 Debug.Log("[Scanner] 正在強制刷新 MRUK 場景...");
                 MRUK.Instance.ClearScene();
-                MRUK.Instance.LoadSceneFromDevice();
+                await MRUK.Instance.LoadSceneFromDevice();
                 await Task.Delay(500);
 
                 if (MRUK.Instance.GetCurrentRoom() != null)

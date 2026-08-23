@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using TMPro; // 🌟 引入 TextMeshPro 函式庫
 using GLTFast; 
+using System.Collections;
 using System.Threading.Tasks;
 
 public class ModelLoader : MonoBehaviour
@@ -18,6 +19,16 @@ public class ModelLoader : MonoBehaviour
     public string apiBaseUrl = "http://163.13.202.116:5050/api/projects/"; 
 
     [Min(1)] public int requestTimeoutSeconds = 10;
+
+    [Header("Project synchronization")]
+    [Tooltip("Seconds between lightweight project revision checks.")]
+    [Min(2f)] public float projectSyncIntervalSeconds = 5f;
+
+    private string _activeProjectId = "";
+    private string _lastProjectRevision = "";
+    private Coroutine _projectSyncCoroutine;
+    private bool _revisionCheckInFlight;
+    private bool _lastRefreshSucceeded;
 
     private string BuildProjectApiUrl(string projectId, string resource)
     {
@@ -60,6 +71,9 @@ public class ModelLoader : MonoBehaviour
     
     [System.Serializable]
     public class ServerResponseB { public FurnitureData[] models; }
+
+    [System.Serializable]
+    private class RevisionResponse { public string revision = ""; }
 
     // --- UI 專案輸入變數 ---
     private string _uiInputProjectID = "";
@@ -104,6 +118,17 @@ public class ModelLoader : MonoBehaviour
         }
     }
 
+    void OnDisable()
+    {
+        StopProjectSync();
+        _projectRequestVersion++;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     // ==========================================
     // 給 UI 按鈕呼叫的公開函數 (Public Methods)
     // ==========================================
@@ -134,6 +159,12 @@ public class ModelLoader : MonoBehaviour
             return;
         }
         ConfirmAndFetchAPI();
+    }
+
+    public void UI_RefreshProject()
+    {
+        if (!string.IsNullOrWhiteSpace(_activeProjectId))
+            _ = RefreshFurnitureList(false);
     }
 
     public void UI_NextFurniture()
@@ -206,7 +237,7 @@ public class ModelLoader : MonoBehaviour
         if (idDisplay == null) return;
         idDisplay.gameObject.SetActive(true);
 
-        if (_fetchedFurnitures == null || _fetchedFurnitures.Length == 0)
+        if (_fetchedFurnitures == null)
         {
             // 尚未讀取成功，顯示輸入 ID 介面
             string displayId = string.IsNullOrEmpty(_uiInputProjectID) ? "_" : _uiInputProjectID;
@@ -214,6 +245,10 @@ public class ModelLoader : MonoBehaviour
             text += $"<size=150%><color=#00FF00>{displayId}</color></size>\n\n";
             text += "<size=50%>Use the UI buttons to enter ID and confirm.</size>";
             idDisplay.text = text;
+        }
+        else if (_fetchedFurnitures.Length == 0)
+        {
+            idDisplay.text = $"<b>Project {_activeProjectId}</b>\n\n<size=70%>No furniture in this project. Waiting for updates...</size>";
         }
         else
         {
@@ -237,6 +272,7 @@ public class ModelLoader : MonoBehaviour
     // 確認送出並開始請求 API
     async void ConfirmAndFetchAPI()
     {
+        StopProjectSync();
         int requestVersion = ++_projectRequestVersion;
 
         // 🌟 切換專案時，自動清空場景中所有的傢俱！
@@ -254,11 +290,90 @@ public class ModelLoader : MonoBehaviour
         _currentFurnitureIndex = 0;
 
         string userId = _uiInputProjectID;
+        _activeProjectId = userId;
+        _lastProjectRevision = "";
 
         string finalApiUrl = BuildProjectApiUrl(userId, "models");
         Log($"🌐 Fetching API for ID {userId}: {finalApiUrl}");
         
         await FetchApiAndLoadModels(finalApiUrl, requestVersion);
+        await CheckProjectRevision(true);
+        if (isActiveAndEnabled)
+            _projectSyncCoroutine = StartCoroutine(ProjectSyncLoop());
+    }
+
+    private IEnumerator ProjectSyncLoop()
+    {
+        var wait = new WaitForSecondsRealtime(Mathf.Max(2f, projectSyncIntervalSeconds));
+        while (!string.IsNullOrWhiteSpace(_activeProjectId))
+        {
+            yield return wait;
+            if (!_revisionCheckInFlight && !isTakingScreenshot)
+                _ = CheckProjectRevision(false);
+        }
+    }
+
+    private void StopProjectSync()
+    {
+        if (_projectSyncCoroutine != null)
+        {
+            StopCoroutine(_projectSyncCoroutine);
+            _projectSyncCoroutine = null;
+        }
+        _revisionCheckInFlight = false;
+    }
+
+    private async Task CheckProjectRevision(bool establishBaseline)
+    {
+        if (_revisionCheckInFlight || string.IsNullOrWhiteSpace(_activeProjectId)) return;
+        _revisionCheckInFlight = true;
+        try
+        {
+            string requestProjectId = _activeProjectId;
+            using (UnityWebRequest request = UnityWebRequest.Get(
+                BuildProjectApiUrl(requestProjectId, "revision")))
+            {
+                request.timeout = requestTimeoutSeconds;
+                var operation = request.SendWebRequest();
+                while (!operation.isDone) await Task.Yield();
+
+                if (request.result != UnityWebRequest.Result.Success || requestProjectId != _activeProjectId)
+                    return;
+
+                RevisionResponse payload = JsonUtility.FromJson<RevisionResponse>(request.downloadHandler.text);
+                if (payload == null || string.IsNullOrWhiteSpace(payload.revision)) return;
+
+                if (establishBaseline || string.IsNullOrEmpty(_lastProjectRevision))
+                {
+                    _lastProjectRevision = payload.revision;
+                    return;
+                }
+
+                if (payload.revision != _lastProjectRevision)
+                {
+                    Log("Project changed. Refreshing furniture list...");
+                    await RefreshFurnitureList(true);
+                    if (_lastRefreshSucceeded) _lastProjectRevision = payload.revision;
+                }
+            }
+        }
+        finally
+        {
+            _revisionCheckInFlight = false;
+        }
+    }
+
+    private async Task RefreshFurnitureList(bool preserveSelection)
+    {
+        if (string.IsNullOrWhiteSpace(_activeProjectId)) return;
+        int previousIndex = _currentFurnitureIndex;
+        await FetchApiAndLoadModels(
+            BuildProjectApiUrl(_activeProjectId, "models"), _projectRequestVersion);
+        if (_lastRefreshSucceeded && preserveSelection && _fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
+        {
+            _currentFurnitureIndex = Mathf.Clamp(previousIndex, 0, _fetchedFurnitures.Length - 1);
+            UpdateDisplay();
+        }
     }
 
     // ==========================================
@@ -266,6 +381,7 @@ public class ModelLoader : MonoBehaviour
     // ==========================================
     async Task FetchApiAndLoadModels(string requestUrl, int requestVersion)
     {
+        _lastRefreshSucceeded = false;
         // 因為不再一次全生成，我們只抓資料，不需要清除畫面上的東西！
         Log("⏳ 正在讀取傢俱清單...");
 
@@ -302,7 +418,7 @@ public class ModelLoader : MonoBehaviour
                     FurnitureData[] targetArray = null;
                     
                     ServerResponseA dataA = JsonUtility.FromJson<ServerResponseA>(jsonString);
-                    if (dataA != null && dataA.furnitures != null && dataA.furnitures.Length > 0) targetArray = dataA.furnitures;
+                    if (dataA != null && dataA.furnitures != null) targetArray = dataA.furnitures;
                     
                     if (targetArray == null)
                     {
@@ -312,11 +428,18 @@ public class ModelLoader : MonoBehaviour
 
                     if (targetArray != null)
                     {
+                        if (!ValidateFurnitureIndices(targetArray, out string indexError))
+                        {
+                            Log("❌ 家具資料拒絕載入：" + indexError);
+                            return;
+                        }
+
                         Log($"🌐 Success! Found {targetArray.Length} models.");
                         
                         // 儲存資料，並更新選單
                         _fetchedFurnitures = targetArray;
                         _currentFurnitureIndex = 0;
+                        _lastRefreshSucceeded = true;
                         UpdateDisplay();
                     } 
                     else 
@@ -334,6 +457,28 @@ public class ModelLoader : MonoBehaviour
         {
             Log("❌ Crash error: " + ex.Message);
         }
+    }
+
+    private bool ValidateFurnitureIndices(FurnitureData[] furnitures, out string error)
+    {
+        var seenIndices = new System.Collections.Generic.HashSet<int>();
+        foreach (FurnitureData furniture in furnitures)
+        {
+            if (furniture.index < 0)
+            {
+                error = $"index 不可小於 0，目前收到 {furniture.index}";
+                return false;
+            }
+
+            if (!seenIndices.Add(furniture.index))
+            {
+                error = $"同一專案收到重複 index={furniture.index}";
+                return false;
+            }
+        }
+
+        error = string.Empty;
+        return true;
     }
 
     // 當玩家在選單中按下 B 鍵，就生成目前選中的這個傢俱

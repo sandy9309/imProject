@@ -1,0 +1,29 @@
+# Unity generated files
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+.vs/
+.vscode/
+My project/*.csproj
+My project/*.sln
+
+# Node
+node_modules/
+client/build/
+
+# ASP.NET
+bin/
+obj/
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+
+# Runtime uploads and local secrets
+wwwroot/uploads/
+.env
+.env.*
+!.env.example

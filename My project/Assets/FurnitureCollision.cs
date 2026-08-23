@@ -15,14 +15,25 @@ public class VRFurnitureGrab : MonoBehaviour
     private Rigidbody rb;
     private Collider col;
 
-    // 記錄放下前位置（放不下時回彈）
-    private Vector3 originalPosition;
-    private Quaternion originalRotation;
+    // 抓取期間持續記錄最後一個沒有和其他家具重疊的位置。
+    private Vector3 lastValidPosition;
+    private Quaternion lastValidRotation;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponent<Collider>();
+        lastValidPosition = transform.position;
+        lastValidRotation = transform.rotation;
+    }
+
+    void FixedUpdate()
+    {
+        if (isGrabbed && !IsOverlappingFurniture())
+        {
+            lastValidPosition = transform.position;
+            lastValidRotation = transform.rotation;
+        }
     }
 
     // -------------------
@@ -30,8 +41,8 @@ public class VRFurnitureGrab : MonoBehaviour
     public void OnGrab()
     {
         isGrabbed = true;
-        originalPosition = transform.position;
-        originalRotation = transform.rotation;
+        lastValidPosition = transform.position;
+        lastValidRotation = transform.rotation;
 
         rb.isKinematic = true;
         rb.useGravity = false;
@@ -52,22 +63,19 @@ public class VRFurnitureGrab : MonoBehaviour
             if (collisionAudio != null)
                 collisionAudio.Play();
 
-            // 回彈到原本位置
-            transform.position = originalPosition;
-            transform.rotation = originalRotation;
-
-            // 保持抓取狀態（避免穿透後立即物理落下）
-            rb.isKinematic = true;
-            col.isTrigger = true;
+            // 回到抓取過程中的最後合法位置，而不是整段操作的起點。
+            rb.position = lastValidPosition;
+            rb.rotation = lastValidRotation;
+            transform.position = lastValidPosition;
+            transform.rotation = lastValidRotation;
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
-        else
-        {
-            // 可以放下 → 開啟物理
-            rb.isKinematic = false;
-            rb.useGravity = true;
 
-            col.isTrigger = false; // 物理阻擋生效
-        }
+        // 正常放置與回彈後都回到一致的物理狀態，避免家具永久成為 Trigger。
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        col.isTrigger = false;
     }
 
     // -------------------
@@ -85,8 +93,9 @@ public class VRFurnitureGrab : MonoBehaviour
             if (hit.gameObject == gameObject) continue; // 忽略自己
             if (hit.transform.IsChildOf(transform)) continue; // 忽略子物件
 
-            // 判斷是否是其他家具（這裡用有 Rigidbody 判斷）
-            if (hit.attachedRigidbody != null)
+            // 只把有 FurnitureTag 的物件視為家具，避免玩家或其他 Rigidbody 被誤判。
+            FurnitureTag otherFurniture = hit.GetComponentInParent<FurnitureTag>();
+            if (otherFurniture != null)
                 return true;
         }
 

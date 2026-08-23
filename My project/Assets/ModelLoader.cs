@@ -17,6 +17,16 @@ public class ModelLoader : MonoBehaviour
     [Tooltip("基礎 API 網址 (請包含 /furnitures/，但不要包含後面的數字)")]
     public string apiBaseUrl = "http://163.13.202.116:5050/api/projects/"; 
 
+    [Min(1)] public int requestTimeoutSeconds = 10;
+
+    private string BuildProjectApiUrl(string projectId, string resource)
+    {
+        string baseUrl = string.IsNullOrWhiteSpace(apiBaseUrl) ? string.Empty : apiBaseUrl.TrimEnd('/');
+        string cleanProjectId = string.IsNullOrWhiteSpace(projectId) ? string.Empty : projectId.Trim().Trim('/');
+        string cleanResource = string.IsNullOrWhiteSpace(resource) ? string.Empty : resource.Trim().Trim('/');
+        return $"{baseUrl}/{cleanProjectId}/{cleanResource}";
+    }
+
     [Header("VR 搖桿輸入設定")]
     [Tooltip("請把 Unity 裡的 CenterEyeAnchor (頭部攝影機) 拖曳到這裡")]
     public Transform headCamera;
@@ -238,7 +248,7 @@ public class ModelLoader : MonoBehaviour
 
         string userId = _uiInputProjectID;
 
-        string finalApiUrl = apiBaseUrl + userId + "/models";
+        string finalApiUrl = BuildProjectApiUrl(userId, "models");
         Log($"🌐 Fetching API for ID {userId}: {finalApiUrl}");
         
         await FetchApiAndLoadModels(finalApiUrl);
@@ -256,7 +266,7 @@ public class ModelLoader : MonoBehaviour
         {
             using (UnityWebRequest webRequest = UnityWebRequest.Get(requestUrl))
             {
-                webRequest.timeout = 10;
+                webRequest.timeout = requestTimeoutSeconds;
                 var operation = webRequest.SendWebRequest();
                 
                 var tcs = new TaskCompletionSource<bool>();
@@ -677,7 +687,7 @@ public class ModelLoader : MonoBehaviour
     {
         // 取得當前輸入的專案 ID
         string userId = _uiInputProjectID;
-        string uploadUrl = $"http://163.13.202.116:5050/api/projects/{userId}/media";
+        string uploadUrl = BuildProjectApiUrl(userId, "media");
 
         // 準備 MultipartFormData
         var formData = new System.Collections.Generic.List<IMultipartFormSection>();
@@ -691,6 +701,7 @@ public class ModelLoader : MonoBehaviour
         {
             using (UnityWebRequest req = UnityWebRequest.Post(uploadUrl, formData))
             {
+                req.timeout = requestTimeoutSeconds;
                 var operation = req.SendWebRequest();
                 while (!operation.isDone) await Task.Yield();
 
@@ -772,7 +783,7 @@ public class ModelLoader : MonoBehaviour
 
         // 使用目前的專案 ID
         string userId = _uiInputProjectID;
-        string putUrl = apiBaseUrl + userId + "/positions";
+        string putUrl = BuildProjectApiUrl(userId, "positions");
         
         var list = new System.Collections.Generic.List<PosItem>();
         
@@ -820,6 +831,7 @@ public class ModelLoader : MonoBehaviour
         {
             using (var req = new UnityWebRequest(putUrl, "PUT"))
             {
+                req.timeout = requestTimeoutSeconds;
                 req.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
                 req.downloadHandler = new DownloadHandlerBuffer();
                 req.SetRequestHeader("Content-Type", "application/json");

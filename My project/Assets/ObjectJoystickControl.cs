@@ -15,6 +15,9 @@ public class ObjectJoystickControl : MonoBehaviour
     [Tooltip("防穿牆緩衝距離(公尺)，建議設定為 0.1 (10公分)")]
     public float wallBuffer = 0.1f;
 
+    [Tooltip("只有這些 Layer 會阻擋家具移動，請設定為 MR 牆面與固定障礙物")]
+    public LayerMask obstacleLayers = ~0;
+
     private IInteractableView _interactableView;
     private InteractableState _lastState;
     private Rigidbody _rb;
@@ -141,6 +144,7 @@ public class ObjectJoystickControl : MonoBehaviour
                 {
                     // 過濾無效碰撞
                     if (hit.collider.transform.root == transform.root) continue;
+                    if ((obstacleLayers.value & (1 << hit.collider.gameObject.layer)) == 0) continue;
                     if (Mathf.Abs(hit.normal.y) >= 0.85f) continue; // 忽略地板、天花板
                     if (IsPlayerOrHand(hit.collider)) continue; // 忽略玩家的手把和身體
 

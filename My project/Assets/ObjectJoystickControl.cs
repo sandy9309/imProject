@@ -18,6 +18,7 @@ public class ObjectJoystickControl : MonoBehaviour
     private IInteractableView _interactableView;
     private InteractableState _lastState;
     private Rigidbody _rb;
+    private FurnitureInteractionStateController _stateController;
 
     // 儲存原始偏移量與計算完美對齊的錨點
     private Vector3 _initialLocalPos;
@@ -28,6 +29,12 @@ public class ObjectJoystickControl : MonoBehaviour
     {
         _interactableView = GetComponentInChildren<IInteractableView>();
         _rb = GetComponent<Rigidbody>(); 
+        _stateController = GetComponent<FurnitureInteractionStateController>();
+        if (_stateController == null && _rb != null)
+        {
+            _stateController = gameObject.AddComponent<FurnitureInteractionStateController>();
+            _stateController.SetState(FurnitureInteractionState.Placed);
+        }
 
         if (_rb != null)
         {
@@ -77,6 +84,9 @@ public class ObjectJoystickControl : MonoBehaviour
             // 如果是剛抓起的瞬間，初始化合法位置，並「解除物理鎖定」
             if (!_wasGrabbed) 
             {
+                if (_stateController != null)
+                    _stateController.SetState(FurnitureInteractionState.Grabbed);
+
                 _lastLegalPos = visualModel.position;
                 _wasGrabbed = true;
                 
@@ -198,6 +208,9 @@ public class ObjectJoystickControl : MonoBehaviour
         }
         else if (_lastState == InteractableState.Select && !isGrabbed)
         {
+            if (_stateController != null)
+                _stateController.SetState(FurnitureInteractionState.Validating);
+
             _wasGrabbed = false; // 重設抓取狀態，下一次抓取才會重新抓取初始位置
 
             // 5. 【修復瞬移 Bug】：放開瞬間，精準對齊物理本體
@@ -298,7 +311,10 @@ public class ObjectJoystickControl : MonoBehaviour
         if (_rb == null) yield break;
 
         // 1. 先徹底解除物理限制，讓 Unity 的物理引擎有能力把「稍微卡在牆壁裡的傢俱」給彈出來
-        _rb.constraints = RigidbodyConstraints.None;
+        if (_stateController != null)
+            _stateController.SetState(FurnitureInteractionState.Placed);
+        else
+            _rb.constraints = RigidbodyConstraints.None;
 
         // 2. 如果目前模型還在下載中 (被 ModelLoader 強制設為 isKinematic)，就一直等
         while (_rb.isKinematic)
@@ -314,6 +330,9 @@ public class ObjectJoystickControl : MonoBehaviour
 
         // 5. 經過 1 秒的沉澱，傢俱已經穩穩待在地上且沒有穿牆了，這時再把它死死鎖住！
         // 鎖死所有位移 (X/Y/Z) 與所有旋轉，達成完美「防推擠、防上飄」效果。
-        _rb.constraints = RigidbodyConstraints.FreezeAll;
+        if (_stateController != null)
+            _stateController.SetState(FurnitureInteractionState.Frozen);
+        else
+            _rb.constraints = RigidbodyConstraints.FreezeAll;
     }
 }

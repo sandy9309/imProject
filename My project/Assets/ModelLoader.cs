@@ -388,6 +388,12 @@ public class ModelLoader : MonoBehaviour
         // 為什麼要這樣做？因為預設的方塊碰撞體 (BoxCollider) 可能會跟地板或牆壁重疊。
         // 如果在下載這幾秒內沒關物理，Unity 會以為傢俱卡在牆裡，把它猛力「彈飛」！這就是桌子隨機出現的元凶！
         Rigidbody rb = rootObject.GetComponent<Rigidbody>();
+        FurnitureInteractionStateController stateController = rootObject.GetComponent<FurnitureInteractionStateController>();
+        if (stateController == null && rb != null)
+            stateController = rootObject.AddComponent<FurnitureInteractionStateController>();
+        if (stateController != null)
+            stateController.SetState(FurnitureInteractionState.Loading);
+
         bool wasKinematic = false;
         if (rb != null)
         {
@@ -469,6 +475,8 @@ public class ModelLoader : MonoBehaviour
                 {
                     rb.isKinematic = wasKinematic;
                 }
+                if (stateController != null)
+                    stateController.SetState(FurnitureInteractionState.Placed);
 
                 Log($"✅ Model loaded! Position: ({data.x}, {data.y}, {data.z})");
             }

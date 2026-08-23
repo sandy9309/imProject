@@ -411,16 +411,27 @@ public class ModelLoader : MonoBehaviour
             rb.isKinematic = true; 
         }
         
-        var gltf = new GltfImport();
-        bool success = await gltf.Load(data.url);
+        bool modelReady = false;
 
-        if (success)
+        try
         {
+            var gltf = new GltfImport();
+            bool success = await gltf.Load(data.url);
+
+            if (!success)
+            {
+                Log($"❌ Model download failed! URL: {data.url}");
+                return;
+            }
+
             // 將模型的外觀塞進 Visuals 子物件裡
             success = await gltf.InstantiateMainSceneAsync(modelVisuals.transform);
-            
-            if (success)
+            if (!success)
             {
+                Log($"❌ Model instantiate failed! URL: {data.url}");
+                return;
+            }
+
                 // 🌟 【單一完美網格合併系統】(CombineMeshes)
                 // 把所有散落的小零件熔合在一起，生成一個完美的單一網格碰撞體
                 MeshFilter[] meshFilters = modelVisuals.GetComponentsInChildren<MeshFilter>();
@@ -486,13 +497,27 @@ public class ModelLoader : MonoBehaviour
                     rb.isKinematic = wasKinematic;
                 }
 
+                modelReady = true;
                 Log($"✅ Model loaded! Position: ({data.x}, {data.y}, {data.z})");
-            }
         }
-        else
+        catch (System.Exception ex)
         {
-            Log($"❌ Model download failed! URL: {data.url}");
-            Destroy(rootObject); 
+            Log($"❌ Model load exception: {ex.Message}\nURL: {data.url}");
+        }
+        finally
+        {
+            if (!modelReady && rootObject != null)
+            {
+                // 先恢復原始物理狀態，再清除失敗的外殼，避免等待 isKinematic 的協程卡住。
+                if (rb != null)
+                {
+                    rb.isKinematic = wasKinematic;
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+
+                Destroy(rootObject);
+            }
         }
     }
 

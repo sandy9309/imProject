@@ -432,40 +432,21 @@ public class ModelLoader : MonoBehaviour
                 return;
             }
 
-                // 🌟 【單一完美網格合併系統】(CombineMeshes)
-                // 把所有散落的小零件熔合在一起，生成一個完美的單一網格碰撞體
-                MeshFilter[] meshFilters = modelVisuals.GetComponentsInChildren<MeshFilter>();
-                CombineInstance[] combine = new CombineInstance[meshFilters.Length];
-
-                int i = 0;
-                while (i < meshFilters.Length)
+            // 使用模型外框建立穩定的 BoxCollider，避免高面數 Convex MeshCollider 烘焙失敗。
+            BoxCollider rootCollider = ConfigureFurnitureCollider(rootObject, modelVisuals);
+            if (rootCollider == null)
                 {
-                    if (meshFilters[i].sharedMesh != null)
-                    {
-                        combine[i].mesh = meshFilters[i].sharedMesh;
-                        // 轉換矩陣，確保合併後的小零件都在正確的相對位置上
-                        combine[i].transform = rootObject.transform.worldToLocalMatrix * meshFilters[i].transform.localToWorldMatrix;
-                    }
-                    i++;
+                    Log($"❌ Model has no usable Renderer bounds: {data.url}");
+                    Destroy(rootObject);
+                    return;
                 }
-
-                // 建立一個全新的、合併後的數學網格
-                Mesh combinedMesh = new Mesh();
-                // 開啟 32-bit index 支援，避免高精度模型頂點數超過 65535 時報錯
-                combinedMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; 
-                combinedMesh.CombineMeshes(combine, true, true);
-
-                // 在根目錄加上單一的 MeshCollider
-                MeshCollider rootMeshCol = rootObject.AddComponent<MeshCollider>();
-                rootMeshCol.sharedMesh = combinedMesh;
-                rootMeshCol.convex = true; // 必須開啟 convex 才能與其他剛體碰撞、被物理系統支援
 
                 // 1. 重新綁定 Unity XR Interaction Toolkit
                 var xriGrab = rootObject.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
                 if (xriGrab != null)
                 {
                     xriGrab.colliders.Clear();
-                    xriGrab.colliders.Add(rootMeshCol);
+                    xriGrab.colliders.Add(rootCollider);
                 }
 
                 // 2. 黑客級修復：用 Reflection 強制綁定 Meta XR ISDK
@@ -482,14 +463,10 @@ public class ModelLoader : MonoBehaviour
                         if (method != null) 
                         {
                             // 強行把我們剛生成的網格碰撞體塞給它！
-                            method.Invoke(comp, new object[] { rootMeshCol });
+                            method.Invoke(comp, new object[] { rootCollider });
                         }
                     }
                 }
-
-                // 3. 安全大掃除：移除舊有大方形 BoxCollider，避免它擋住我們精細的網格
-                BoxCollider boxCol = rootObject.GetComponent<BoxCollider>();
-                if (boxCol != null) Destroy(boxCol);
 
                 // 🌟 模型完全就位，網格也完美貼合了，現在可以把物理引擎的鎖解開了！
                 if (rb != null)
@@ -519,6 +496,57 @@ public class ModelLoader : MonoBehaviour
                 Destroy(rootObject);
             }
         }
+    }
+
+    private BoxCollider ConfigureFurnitureCollider(GameObject rootObject, GameObject modelVisuals)
+    {
+        Renderer[] renderers = modelVisuals.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length == 0) return null;
+
+        bool hasBounds = false;
+        Bounds localBounds = new Bounds();
+
+        foreach (Renderer renderer in renderers)
+        {
+            Bounds worldBounds = renderer.bounds;
+            Vector3 min = worldBounds.min;
+            Vector3 max = worldBounds.max;
+
+            for (int x = 0; x <= 1; x++)
+            {
+                for (int y = 0; y <= 1; y++)
+                {
+                    for (int z = 0; z <= 1; z++)
+                    {
+                        Vector3 worldCorner = new Vector3(
+                            x == 0 ? min.x : max.x,
+                            y == 0 ? min.y : max.y,
+                            z == 0 ? min.z : max.z
+                        );
+                        Vector3 localCorner = rootObject.transform.InverseTransformPoint(worldCorner);
+
+                        if (!hasBounds)
+                        {
+                            localBounds = new Bounds(localCorner, Vector3.zero);
+                            hasBounds = true;
+                        }
+                        else
+                        {
+                            localBounds.Encapsulate(localCorner);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!hasBounds || localBounds.size == Vector3.zero) return null;
+
+        BoxCollider collider = rootObject.GetComponent<BoxCollider>();
+        if (collider == null) collider = rootObject.AddComponent<BoxCollider>();
+        collider.center = localBounds.center;
+        collider.size = localBounds.size;
+        collider.isTrigger = false;
+        return collider;
     }
 
     // 🌟 在物件被刪除 (Destroy) 之前，強制把它的最後位置寫入記憶體快取

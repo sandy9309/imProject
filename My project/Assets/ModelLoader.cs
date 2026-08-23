@@ -642,6 +642,13 @@ public class ModelLoader : MonoBehaviour
     private System.Collections.IEnumerator TakeScreenshotAndUploadRoutine()
     {
         if (isTakingScreenshot) yield break;
+
+        if (string.IsNullOrWhiteSpace(_uiInputProjectID))
+        {
+            Log("❌ 請先輸入並確認專案 ID，再上傳截圖。");
+            yield break;
+        }
+
         isTakingScreenshot = true;
 
         Log("📸 正在擷取畫面，請保持頭部穩定...");
@@ -698,9 +705,19 @@ public class ModelLoader : MonoBehaviour
         Log("🚀 畫面擷取完成，準備上傳至伺服器...");
 
         // 呼叫非同步上傳 API
-        _ = UploadScreenshotToDB(imageBytes);
-        
-        isTakingScreenshot = false;
+        UploadScreenshotAndReset(imageBytes);
+    }
+
+    private async void UploadScreenshotAndReset(byte[] imageBytes)
+    {
+        try
+        {
+            await UploadScreenshotToDB(imageBytes);
+        }
+        finally
+        {
+            isTakingScreenshot = false;
+        }
     }
 
     private async Task UploadScreenshotToDB(byte[] imageBytes)
@@ -747,6 +764,7 @@ public class ModelLoader : MonoBehaviour
     // 藍圖模式 (Blueprint Mode) 工具
     // ==========================================
     private System.Collections.Generic.List<GameObject> blueprintBoxes = new System.Collections.Generic.List<GameObject>();
+    private Material blueprintMaterial;
 
     private void EnableBlueprintMode()
     {
@@ -758,16 +776,16 @@ public class ModelLoader : MonoBehaviour
         // 建立半透明科技藍色材質
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null) shader = Shader.Find("Unlit/Color");
-        Material bpMat = new Material(shader);
-        if (bpMat.HasProperty("_BaseColor")) bpMat.SetColor("_BaseColor", new Color(0.2f, 0.6f, 1f, 0.4f));
-        if (bpMat.HasProperty("_Color")) bpMat.SetColor("_Color", new Color(0.2f, 0.6f, 1f, 0.4f));
+        blueprintMaterial = new Material(shader);
+        if (blueprintMaterial.HasProperty("_BaseColor")) blueprintMaterial.SetColor("_BaseColor", new Color(0.2f, 0.6f, 1f, 0.4f));
+        if (blueprintMaterial.HasProperty("_Color")) blueprintMaterial.SetColor("_Color", new Color(0.2f, 0.6f, 1f, 0.4f));
 
         foreach (var anchor in room.Anchors)
         {
             // 根據 MRUK 錨點的大小，建立一個方塊來代表現實世界的牆壁與傢俱
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
             Destroy(box.GetComponent<Collider>()); // 藍圖僅供拍照，不需要碰撞
-            box.GetComponent<MeshRenderer>().material = bpMat;
+            box.GetComponent<MeshRenderer>().sharedMaterial = blueprintMaterial;
             
             box.transform.SetParent(anchor.transform, false);
             
@@ -795,6 +813,12 @@ public class ModelLoader : MonoBehaviour
             if (box != null) Destroy(box);
         }
         blueprintBoxes.Clear();
+
+        if (blueprintMaterial != null)
+        {
+            Destroy(blueprintMaterial);
+            blueprintMaterial = null;
+        }
     }
 
     private async Task SavePositionsToDB()

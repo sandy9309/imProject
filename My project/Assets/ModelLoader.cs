@@ -42,6 +42,7 @@ public class ModelLoader : MonoBehaviour
         public float y;
         public float z;
         public float ry; // 新增：Y 軸旋轉
+        public bool isPlaced; // 是否已由使用者儲存過位置；不再用 (0,0,0) 猜測
     }
 
     [System.Serializable]
@@ -359,9 +360,8 @@ public class ModelLoader : MonoBehaviour
         // 將外殼設定為 NetworkModelManager 的子物件
         rootObject.transform.SetParent(this.transform); 
         
-        // 🌟 智慧座標判斷：如果資料庫傳來的是 (0,0,0)，代表這是全新沒擺過的傢俱，我們把它生在玩家面前！
-        // 如果不是 (0,0,0)，代表有存過位置，就乖乖待在存過的世界座標上。
-        if (data.x == 0f && data.y == 0f && data.z == 0f && headCamera != null)
+        // 未擺放的家具生在玩家面前；已擺放家具永遠採用後端座標，包括合法的世界原點。
+        if (!data.isPlaced && headCamera != null)
         {
             Vector3 spawnPos = headCamera.position + headCamera.forward * 1.0f;
             rootObject.transform.position = spawnPos;
@@ -513,6 +513,7 @@ public class ModelLoader : MonoBehaviour
                     _fetchedFurnitures[i].y = target.position.y;
                     _fetchedFurnitures[i].z = target.position.z;
                     _fetchedFurnitures[i].ry = target.eulerAngles.y;
+                    _fetchedFurnitures[i].isPlaced = true;
                     break;
                 }
             }
@@ -744,6 +745,7 @@ public class ModelLoader : MonoBehaviour
                         _fetchedFurnitures[i].y = newY;
                         _fetchedFurnitures[i].z = newZ;
                         _fetchedFurnitures[i].ry = newRy;
+                        _fetchedFurnitures[i].isPlaced = true;
                         break;
                     }
                 }

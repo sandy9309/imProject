@@ -63,6 +63,7 @@ public class ModelLoader : MonoBehaviour
 
     // --- UI 專案輸入變數 ---
     private string _uiInputProjectID = "";
+    private int _projectRequestVersion = 0;
 
     // --- 傢俱挑選變數 ---
     private FurnitureData[] _fetchedFurnitures = null;
@@ -236,28 +237,34 @@ public class ModelLoader : MonoBehaviour
     // 確認送出並開始請求 API
     async void ConfirmAndFetchAPI()
     {
+        int requestVersion = ++_projectRequestVersion;
+
         // 🌟 切換專案時，自動清空場景中所有的傢俱！
         Log("🧹 清空舊專案的所有傢俱...");
-        foreach (Transform child in this.transform)
+        for (int i = transform.childCount - 1; i >= 0; i--)
         {
-            if (child != idDisplay.transform) // 避免不小心把看板自己刪除 (防呆)
+            Transform child = transform.GetChild(i);
+            if (child.GetComponent<FurnitureTag>() != null)
             {
                 Destroy(child.gameObject);
             }
         }
+
+        _fetchedFurnitures = null;
+        _currentFurnitureIndex = 0;
 
         string userId = _uiInputProjectID;
 
         string finalApiUrl = BuildProjectApiUrl(userId, "models");
         Log($"🌐 Fetching API for ID {userId}: {finalApiUrl}");
         
-        await FetchApiAndLoadModels(finalApiUrl);
+        await FetchApiAndLoadModels(finalApiUrl, requestVersion);
     }
 
     // ==========================================
     // 步驟一：向伺服器要資料 (API 請求)
     // ==========================================
-    async Task FetchApiAndLoadModels(string requestUrl)
+    async Task FetchApiAndLoadModels(string requestUrl, int requestVersion)
     {
         // 因為不再一次全生成，我們只抓資料，不需要清除畫面上的東西！
         Log("⏳ 正在讀取傢俱清單...");
@@ -283,6 +290,12 @@ public class ModelLoader : MonoBehaviour
 
                 if (webRequest.result == UnityWebRequest.Result.Success)
                 {
+                    if (requestVersion != _projectRequestVersion)
+                    {
+                        Log("ℹ️ 已忽略舊專案的逾期回應。");
+                        return;
+                    }
+
                     string jsonString = webRequest.downloadHandler.text;
                     Log("✅ API responded! Parsing...");
                     

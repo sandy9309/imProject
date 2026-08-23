@@ -617,15 +617,22 @@ public class ModelLoader : MonoBehaviour
 
     public void TriggerAutoSave()
     {
+        _autoSaveVersion++;
         _ = SavePositionsToDB();
     }
 
     public async void TriggerAutoSaveDelay(int delayMs = 1000)
     {
+        int scheduledVersion = ++_autoSaveVersion;
         // 延遲指定時間 (預設 1 秒) 後自動存檔，確保物理慣性已經停下
         await Task.Delay(delayMs); 
+        if (scheduledVersion != _autoSaveVersion) return;
         _ = SavePositionsToDB();
     }
+
+    private int _autoSaveVersion = 0;
+    private bool _isSavingPositions = false;
+    private bool _savePositionsQueued = false;
 
     // ==========================================
     // 截圖與上傳功能
@@ -791,6 +798,30 @@ public class ModelLoader : MonoBehaviour
     }
 
     private async Task SavePositionsToDB()
+    {
+        if (_isSavingPositions)
+        {
+            _savePositionsQueued = true;
+            return;
+        }
+
+        _isSavingPositions = true;
+        try
+        {
+            do
+            {
+                _savePositionsQueued = false;
+                await SavePositionsOnceToDB();
+            }
+            while (_savePositionsQueued);
+        }
+        finally
+        {
+            _isSavingPositions = false;
+        }
+    }
+
+    private async Task SavePositionsOnceToDB()
     {
         if (_fetchedFurnitures == null) return;
 

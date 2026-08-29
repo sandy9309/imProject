@@ -2,7 +2,6 @@ using MySql.Data.MySqlClient;
 
 public class DbService
 {
-    // 將連線字串存在這裡，未來要改密碼只要改這裡
     private readonly string _connString = "server=163.13.202.116;user=root;database=ar_furniture_db;port=3306;password=06210621";
     public MySqlConnection GetConnection()
     {

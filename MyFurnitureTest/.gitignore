@@ -15,3 +15,18 @@ ngrok
 
 # 使用者上傳的截圖檔案
 wwwroot/uploads/
+wwwroot/models/
+
+# ── 機密設定 ────────────────────────────
+appsettings.json
+appsettings.Development.json
+
+# ── 資料庫備份（含使用者資料）──────────────
+backup_*.sql
+*dump*.sql
+
+# ── 手動備份的程式碼 ──────────────────────
+*.bak
+*_old.cs
+
+

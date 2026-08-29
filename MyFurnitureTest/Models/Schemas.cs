@@ -12,6 +12,8 @@ public record ResetPasswordRequest(string token, string password);
 public class PositionUpdateData { public List<PositionItem> positions { get; set; } = new(); }
 public class PositionItem
 {
+    public int? item_id {get; set;}
+
     public int index { get; set; }
     public double x { get; set; }
     public double y { get; set; }

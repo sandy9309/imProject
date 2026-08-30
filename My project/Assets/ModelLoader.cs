@@ -50,9 +50,15 @@ public class ModelLoader : MonoBehaviour
     [System.Serializable]
     public class ServerResponseB { public FurnitureData[] models; }
 
-    // --- UI 專案輸入變數 ---
-    private string _uiInputProjectID = "";
+    // --- 搖桿選號器變數 ---
+    private enum MenuState { Closed, SelectProjectID, SelectFurniture }
+    private MenuState _menuState = MenuState.Closed;
 
+    private int[] idDigits = new int[4] { 0, 0, 0, 0 };
+    private int currentDigitIndex = 3; // 預設停在個位數 (0=千, 1=百, 2=十, 3=個)
+    private float joystickCooldown = 0.2f; // 防止搖桿推太快
+    private float lastInputTime = 0f;
+    
     // --- 傢俱挑選變數 ---
     private FurnitureData[] _fetchedFurnitures = null;
     private int _currentFurnitureIndex = 0;
@@ -79,94 +85,145 @@ public class ModelLoader : MonoBehaviour
             idDisplay.alignment = TextAlignmentOptions.Center;
         }
 
-        Log("等待玩家透過 UI 輸入專案 ID...");
+        Log("⏳ Auto-summoning ID selector in 4 seconds...");
+        await Task.Delay(4000); 
+        SummonUI();
+    }
+
+    void SummonUI()
+    {
+        if (idDisplay == null || headCamera == null)
+        {
+            Log("❌ Summon failed: TextMeshPro or CenterEyeAnchor not assigned!");
+            return;
+        }
+
+        _menuState = MenuState.SelectProjectID;
+        idDisplay.gameObject.SetActive(true);
+        
+        // 放在攝影機前方 0.8 公尺
+        idDisplay.transform.position = headCamera.position + headCamera.forward * 0.8f;
+        idDisplay.transform.rotation = Quaternion.LookRotation(idDisplay.transform.position - headCamera.position);
+        
         UpdateDisplay();
+        Log("🎯 Joystick selector summoned! Select ID and press B to confirm.");
     }
 
     void Update()
     {
+        if (OVRInput.GetDown(OVRInput.RawButton.B, OVRInput.Controller.RTouch) || OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.RTouch))
+        {
+            if (_menuState == MenuState.Closed)
+            {
+                // 如果已經有抓過傢俱資料，B 鍵直接叫出傢俱選單；如果沒有，就叫出 ID 選單
+                if (_fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
+                {
+                    _menuState = MenuState.SelectFurniture;
+                    if (idDisplay != null) 
+                    {
+                        idDisplay.gameObject.SetActive(true);
+                        // 更新位置到玩家面前
+                        if (headCamera != null)
+                        {
+                            idDisplay.transform.position = headCamera.position + headCamera.forward * 0.8f;
+                            idDisplay.transform.rotation = Quaternion.LookRotation(idDisplay.transform.position - headCamera.position);
+                        }
+                    }
+                    UpdateDisplay();
+                }
+                else
+                {
+                    SummonUI();
+                }
+            }
+            else if (_menuState == MenuState.SelectProjectID)
+            {
+                ConfirmAndFetchAPI();
+            }
+            else if (_menuState == MenuState.SelectFurniture)
+            {
+                SpawnSelectedFurniture();
+            }
+        }
+
         // 🌟 截圖上傳功能：當玩家按下左手 X 鍵時觸發
         if (OVRInput.GetDown(OVRInput.RawButton.X))
         {
             StartCoroutine(TakeScreenshotAndUploadRoutine());
         }
-    }
 
-    // ==========================================
-    // 給 UI 按鈕呼叫的公開函數 (Public Methods)
-    // ==========================================
-
-    public void UI_TypeDigit(int digit)
-    {
-        if (_uiInputProjectID.Length < 6) // 限制長度避免太長
+        // 處理搖桿邏輯
+        if (_menuState != MenuState.Closed && Time.time - lastInputTime > joystickCooldown)
         {
-            _uiInputProjectID += digit.ToString();
-            UpdateDisplay();
-        }
-    }
+            Vector2 joystick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.RTouch);
 
-    public void UI_Backspace()
-    {
-        if (_uiInputProjectID.Length > 0)
-        {
-            _uiInputProjectID = _uiInputProjectID.Substring(0, _uiInputProjectID.Length - 1);
-            UpdateDisplay();
-        }
-    }
-
-    public void UI_ConfirmProjectID()
-    {
-        if (string.IsNullOrEmpty(_uiInputProjectID))
-        {
-            Log("請先輸入專案 ID！");
-            return;
-        }
-        ConfirmAndFetchAPI();
-    }
-
-    public void UI_NextFurniture()
-    {
-        if (_fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
-        {
-            _currentFurnitureIndex = (_currentFurnitureIndex + 1) % _fetchedFurnitures.Length;
-            UpdateDisplay();
-        }
-    }
-
-    public void UI_PrevFurniture()
-    {
-        if (_fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
-        {
-            _currentFurnitureIndex = (_currentFurnitureIndex - 1 + _fetchedFurnitures.Length) % _fetchedFurnitures.Length;
-            UpdateDisplay();
-        }
-    }
-
-    public void UI_SpawnFurniture()
-    {
-        SpawnSelectedFurniture();
-    }
-
-    public void UI_DeleteFurniture()
-    {
-        if (_fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
-        {
-            var data = _fetchedFurnitures[_currentFurnitureIndex];
-            string suffix = string.IsNullOrEmpty(data.name) ? System.IO.Path.GetFileNameWithoutExtension(data.url) : data.name;
-            string objName = "Furniture_" + suffix;
-            
-            Transform target = this.transform.Find(objName);
-            if (target != null) 
+            if (_menuState == MenuState.SelectProjectID)
             {
-                Log($"🗑️ 已從場景中遠端刪除: {objName}");
-                // 刪除前強制寫入快取
-                UpdateCacheBeforeDestroy(target);
-                Destroy(target.gameObject);
-                TriggerAutoSaveDelay(); // 延遲存檔
+                if (Mathf.Abs(joystick.x) > 0.5f)
+                {
+                    // 左右推動：切換要調整的位數
+                    if (joystick.x > 0) currentDigitIndex = Mathf.Min(3, currentDigitIndex + 1);
+                    if (joystick.x < 0) currentDigitIndex = Mathf.Max(0, currentDigitIndex - 1);
+                    
+                    lastInputTime = Time.time;
+                    UpdateDisplay();
+                }
+                else if (Mathf.Abs(joystick.y) > 0.5f)
+                {
+                    // 上下推動：調整數字 (0~9 循環)
+                    if (joystick.y > 0) 
+                    {
+                        idDigits[currentDigitIndex] = (idDigits[currentDigitIndex] + 1) % 10;
+                    }
+                    if (joystick.y < 0) 
+                    {
+                        idDigits[currentDigitIndex] = (idDigits[currentDigitIndex] - 1 + 10) % 10;
+                    }
+
+                    lastInputTime = Time.time;
+                    UpdateDisplay();
+                }
             }
-            else
+            else if (_menuState == MenuState.SelectFurniture)
             {
-                Log($"場景中沒有找到可以刪除的 {objName}");
+                if (joystick.y < -0.5f) // 往下推：返回上一頁 (專案 ID 選擇)
+                {
+                    _menuState = MenuState.SelectProjectID;
+                    lastInputTime = Time.time;
+                    UpdateDisplay();
+                }
+                else if (joystick.y > 0.5f) // 往上推：刪除場景中的這個傢俱
+                {
+                    if (_fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
+                    {
+                        var data = _fetchedFurnitures[_currentFurnitureIndex];
+                        string suffix = string.IsNullOrEmpty(data.name) ? System.IO.Path.GetFileNameWithoutExtension(data.url) : data.name;
+                        string objName = "Furniture_" + suffix;
+                        
+                        Transform target = this.transform.Find(objName);
+                        if (target != null) 
+                        {
+                            Log($"🗑️ 已從場景中遠端刪除: {objName}");
+                            // 🌟 刪除前強制寫入快取，否則它被銷毀後 SavePositionsToDB 會找不到它，導致它下次重生在舊位置！
+                            UpdateCacheBeforeDestroy(target);
+                            Destroy(target.gameObject);
+                            TriggerAutoSaveDelay(); // 延遲存檔
+                        }
+                        
+                        lastInputTime = Time.time;
+                    }
+                }
+                else if (Mathf.Abs(joystick.x) > 0.5f) // 左右推：切換傢俱
+                {
+                    if (_fetchedFurnitures != null && _fetchedFurnitures.Length > 0)
+                    {
+                        if (joystick.x > 0) _currentFurnitureIndex = (_currentFurnitureIndex + 1) % _fetchedFurnitures.Length;
+                        if (joystick.x < 0) _currentFurnitureIndex = (_currentFurnitureIndex - 1 + _fetchedFurnitures.Length) % _fetchedFurnitures.Length;
+                        
+                        lastInputTime = Time.time;
+                        UpdateDisplay();
+                    }
+                }
             }
         }
     }
@@ -175,20 +232,29 @@ public class ModelLoader : MonoBehaviour
     void UpdateDisplay()
     {
         if (idDisplay == null) return;
-        idDisplay.gameObject.SetActive(true);
 
-        if (_fetchedFurnitures == null || _fetchedFurnitures.Length == 0)
+        if (_menuState == MenuState.SelectProjectID)
         {
-            // 尚未讀取成功，顯示輸入 ID 介面
-            string displayId = string.IsNullOrEmpty(_uiInputProjectID) ? "_" : _uiInputProjectID;
-            string text = "<b>Enter Project ID</b>\n";
-            text += $"<size=150%><color=#00FF00>{displayId}</color></size>\n\n";
-            text += "<size=50%>Use the UI buttons to enter ID and confirm.</size>";
+            string text = "Select Project ID\n<size=50%>(Joystick:↑↓ Adjust ID, ← → Switch, B Confirm)</size>\n\n";
+            
+            for (int i = 0; i < 4; i++)
+            {
+                if (i == currentDigitIndex)
+                {
+                    // 被選中的位數變成綠色，並加上括號標示
+                    text += $"<color=#00FF00>[{idDigits[i]}]</color> ";
+                }
+                else
+                {
+                    text += $" {idDigits[i]}  ";
+                }
+            }
             idDisplay.text = text;
         }
-        else
+        else if (_menuState == MenuState.SelectFurniture)
         {
-            // 已經有傢俱資料了，顯示傢俱選單
+            if (_fetchedFurnitures == null || _fetchedFurnitures.Length == 0) return;
+            
             var data = _fetchedFurnitures[_currentFurnitureIndex];
             string displayName = data.name;
             if (string.IsNullOrEmpty(displayName))
@@ -197,9 +263,9 @@ public class ModelLoader : MonoBehaviour
                 if (string.IsNullOrEmpty(displayName)) displayName = "Model " + (_currentFurnitureIndex + 1);
             }
             
-            string text = $"<b>Select Furniture</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n";
-            text += $"<size=150%><color=#00FF00>{displayName}</color></size>\n\n";
-            text += $"<size=50%>Use UI buttons to Next/Prev/Spawn/Delete.</size>";
+            string text = $"Select Furniture ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n";
+            text += $"<size=50%>(Joystick: ← → Switch, ↑ Delete, ↓ Back, B Spawn)</size>\n\n";
+            text += $"<color=#00FF00>{displayName}</color>";
             
             idDisplay.text = text;
         }
@@ -218,7 +284,9 @@ public class ModelLoader : MonoBehaviour
             }
         }
 
-        string userId = _uiInputProjectID;
+        // 將 4 個數字組合成真實的 ID (例如 0, 1, 2, 3 -> 123)
+        int finalId = idDigits[0] * 1000 + idDigits[1] * 100 + idDigits[2] * 10 + idDigits[3];
+        string userId = finalId.ToString();
 
         string finalApiUrl = apiBaseUrl + userId + "/models";
         Log($"🌐 Fetching API for ID {userId}: {finalApiUrl}");
@@ -273,9 +341,10 @@ public class ModelLoader : MonoBehaviour
                     {
                         Log($"🌐 Success! Found {targetArray.Length} models.");
                         
-                        // 儲存資料，並更新選單
+                        // 儲存資料，並切換到傢俱挑選模式
                         _fetchedFurnitures = targetArray;
                         _currentFurnitureIndex = 0;
+                        _menuState = MenuState.SelectFurniture;
                         UpdateDisplay();
                     } 
                     else 
@@ -309,6 +378,7 @@ public class ModelLoader : MonoBehaviour
         _ = LoadModelFromNetwork(data);
         
         // 🌟 關閉選單
+        _menuState = MenuState.Closed;
         if (idDisplay != null) idDisplay.gameObject.SetActive(false);
     }
 
@@ -606,7 +676,8 @@ public class ModelLoader : MonoBehaviour
     private async Task UploadScreenshotToDB(byte[] imageBytes)
     {
         // 取得當前輸入的專案 ID
-        string userId = _uiInputProjectID;
+        int finalId = idDigits[0] * 1000 + idDigits[1] * 100 + idDigits[2] * 10 + idDigits[3];
+        string userId = finalId.ToString();
         string uploadUrl = $"http://163.13.202.116:5050/api/projects/{userId}/media";
 
         // 準備 MultipartFormData
@@ -700,8 +771,9 @@ public class ModelLoader : MonoBehaviour
     {
         if (_fetchedFurnitures == null) return;
 
-        // 使用目前的專案 ID
-        string userId = _uiInputProjectID;
+        // 將 4 個數字組合成真實的 ID
+        int finalId = idDigits[0] * 1000 + idDigits[1] * 100 + idDigits[2] * 10 + idDigits[3];
+        string userId = finalId.ToString();
         string putUrl = apiBaseUrl + userId + "/positions";
         
         var list = new System.Collections.Generic.List<PosItem>();

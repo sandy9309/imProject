@@ -9,6 +9,28 @@ public static class ProjectEndpoints
     {
         var group = app.MapGroup("/api/projects");
 
+        // Unity polls this small payload and reloads the model list only when
+        // the furniture JSON actually changes.
+        group.MapGet("/{id:int}/revision", (int id, DbService db) =>
+        {
+            try
+            {
+                using var conn = db.GetConnection();
+                conn.Open();
+                using var cmd = new MySqlCommand(
+                    "SELECT SHA2(COALESCE(items, ''), 256) FROM projects WHERE id = @id", conn);
+                cmd.Parameters.AddWithValue("@id", id);
+                var revision = cmd.ExecuteScalar()?.ToString();
+                return revision == null
+                    ? Results.NotFound(new { message = "Project not found" })
+                    : Results.Ok(new { revision });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        });
+
         // ── 1. 取得專案列表（可依 status 篩選）──────────────────────
         // GET /api/projects?userId=5              → 全部
         // GET /api/projects?userId=5&status=draft → 只看待定中
@@ -104,11 +126,15 @@ public static class ProjectEndpoints
             w          = r.w,
             status     = r.status,
             created_at = r.createdAt,
-            items      = r.items.Select(it =>
+            items      = r.items.Select((it, itemPosition) =>
             {
                 int fid = it.TryGetProperty("furniture_id", out var fidEl) ? fidEl.GetInt32() : 0;
+                int stableIndex = it.TryGetProperty("index", out var indexEl)
+                    ? indexEl.GetInt32()
+                    : itemPosition;
                 var (fname, imageUrl) = furnitureMap.TryGetValue(fid, out var info) ? info : ("", "");
                 return (object)new {
+                    index = stableIndex,
                     furniture_id = fid,
                     name = fname,
                     image_url = imageUrl
@@ -302,6 +328,7 @@ public static class ProjectEndpoints
 
                 // 4. 讀取 items 裡已儲存的座標（缺欄位當 0），並回傳 index
                 var result = new List<object>();
+                var returnedIndices = new HashSet<int>();
                 for (int i = 0; i < items.Count; i++)
                 {
                     var it = items[i];
@@ -312,8 +339,16 @@ public static class ProjectEndpoints
                     bool isPlaced = it.TryGetValue("isPlaced", out var placedValue)
                         && placedValue != null
                         && Convert.ToBoolean(placedValue.ToString());
+                    int stableIndex = it.TryGetValue("index", out var indexValue) && indexValue != null
+                        ? Convert.ToInt32(indexValue)
+                        : i;
+                    if (stableIndex < 0 || !returnedIndices.Add(stableIndex))
+                        return Results.Conflict(new {
+                            message = "專案家具 index 缺失或重複，請先更新專案清單",
+                            index = stableIndex
+                        });
                     result.Add(new {
-                        index = i, url = urlMap[fid],
+                        index = stableIndex, url = urlMap[fid],
                         x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry"),
                         isPlaced
                     });
@@ -346,8 +381,18 @@ public static class ProjectEndpoints
                 var items = JArray.Parse(rawItems);
                 foreach (var pos in data.positions)
                 {
-                    if (pos.index < 0 || pos.index >= items.Count) continue;
-                    if (items[pos.index] is not JObject item) continue;
+                    if (pos.index < 0) continue;
+
+                    JObject? item = items
+                        .OfType<JObject>()
+                        .FirstOrDefault(candidate => candidate.Value<int?>("index") == pos.index);
+
+                    // 舊專案尚未保存 index 時，僅做一次位置式相容並立即補上穩定 index。
+                    if (item == null && pos.index < items.Count)
+                        item = items[pos.index] as JObject;
+                    if (item == null) continue;
+
+                    item["index"] = pos.index;
                     item["x"] = pos.x;
                     item["y"] = pos.y;
                     item["z"] = pos.z;
@@ -506,29 +551,61 @@ public static class ProjectEndpoints
         });
     }
 
-    // 統一 items 格式：只留 furniture_id + 座標；新資料沒帶座標時從舊資料接回
+    // 統一 items 格式：保存永久 index；新資料沒帶狀態時從舊資料接回。
     private static JArray NormalizeItems(string? raw, JArray? oldItems = null)
     {
         var items = JArray.Parse(string.IsNullOrEmpty(raw) ? "[]" : raw);
 
         var oldByFid = new Dictionary<int, Queue<JObject>>();
+        var oldByIndex = new Dictionary<int, JObject>();
+        int nextIndex = 0;
         if (oldItems != null)
-            foreach (var t in oldItems.OfType<JObject>())
+            for (int oldPosition = 0; oldPosition < oldItems.Count; oldPosition++)
             {
+                if (oldItems[oldPosition] is not JObject t) continue;
                 int fid = t.Value<int?>("furniture_id") ?? 0;
+                int stableIndex = t.Value<int?>("index") ?? oldPosition;
+                t["index"] = stableIndex;
                 if (!oldByFid.ContainsKey(fid)) oldByFid[fid] = new Queue<JObject>();
                 oldByFid[fid].Enqueue(t);
+                if (!oldByIndex.ContainsKey(stableIndex)) oldByIndex[stableIndex] = t;
+                nextIndex = Math.Max(nextIndex, stableIndex + 1);
             }
 
         var result = new JArray();
+        var assignedIndices = new HashSet<int>();
         foreach (var t in items.OfType<JObject>())
         {
             int fid = t.Value<int?>("furniture_id") ?? 0;
             if (fid <= 0) continue;
 
             var src = t;
-            if (t["x"] == null && oldByFid.TryGetValue(fid, out var q) && q.Count > 0)
-                src = q.Dequeue();
+            int? requestedIndex = t.Value<int?>("index");
+            if (requestedIndex.HasValue &&
+                oldByIndex.TryGetValue(requestedIndex.Value, out var indexedOld) &&
+                indexedOld.Value<int?>("furniture_id") == fid)
+                src = indexedOld;
+            else if (oldByFid.TryGetValue(fid, out var q) && q.Count > 0)
+            {
+                while (q.Count > 0)
+                {
+                    JObject candidate = q.Dequeue();
+                    int candidateIndex = candidate.Value<int?>("index") ?? -1;
+                    if (!assignedIndices.Contains(candidateIndex))
+                    {
+                        src = candidate;
+                        break;
+                    }
+                }
+            }
+
+            int stableIndex = src.Value<int?>("index") ?? requestedIndex ?? -1;
+            if (stableIndex < 0 || !assignedIndices.Add(stableIndex))
+            {
+                while (assignedIndices.Contains(nextIndex)) nextIndex++;
+                stableIndex = nextIndex++;
+                assignedIndices.Add(stableIndex);
+            }
 
             bool isPlaced = src.Value<bool?>("isPlaced") ??
                 (Math.Abs(src.Value<double?>("x") ?? 0) > double.Epsilon ||
@@ -537,6 +614,7 @@ public static class ProjectEndpoints
                  Math.Abs(src.Value<double?>("ry") ?? 0) > double.Epsilon);
 
             result.Add(new JObject {
+                ["index"] = stableIndex,
                 ["furniture_id"] = fid,
                 ["x"]  = src.Value<double?>("x")  ?? 0,
                 ["y"]  = src.Value<double?>("y")  ?? 0,

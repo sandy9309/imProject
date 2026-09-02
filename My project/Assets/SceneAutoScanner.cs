@@ -1,43 +1,130 @@
-using UnityEngine;
 using System.Collections;
-using Meta.XR.MRUtilityKit;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Meta.XR.MRUtilityKit;
+using TMPro;
+using UnityEngine;
 
 public class SceneAutoScanner : MonoBehaviour
 {
+    public static bool IsWaitingForChoice { get; private set; }
+    public static bool StartupFlowComplete { get; private set; }
+    public static event System.Action StartupFlowCompleted;
+    [Header("Startup scene choice")]
+    [Min(0f)] public float initialLoadWaitSeconds = 2f;
     public bool autoScanWhenNoSavedScene = true;
-    public float initialLoadWaitSeconds = 2f;
 
-    private bool _isScanning = false;
+    [Header("Wall collision")]
+    [Tooltip("Thickness of the invisible wall colliders, in metres.")]
+    [Min(0.01f)] public float wallColliderThickness = 0.08f;
+    [Tooltip("Layer used by generated MRUK wall colliders.")]
+    [Range(0, 31)] public int wallColliderLayer = 8;
 
-    IEnumerator Start()
+    private bool _isScanning;
+    private bool _isWaitingForChoice;
+    private TextMeshPro _choiceText;
+    private readonly List<GameObject> _wallColliderObjects = new List<GameObject>();
+
+    private void Awake()
     {
-        // 使用 Unity 原生的等待機制，比 Task.Delay 更安全，不會導致執行緒迷失
-        Debug.Log("[Scanner] 遊戲啟動，嘗試載入既有房間資料...");
+        IsWaitingForChoice = false;
+        StartupFlowComplete = false;
+    }
+
+    private IEnumerator Start()
+    {
+        Debug.Log("[Scanner] Loading the saved room from this headset...");
         yield return new WaitForSeconds(initialLoadWaitSeconds);
 
         if (MRUK.Instance != null)
         {
             MRUK.Instance.LoadSceneFromDevice();
             yield return new WaitForSeconds(1f);
-
-            if (MRUK.Instance.GetCurrentRoom() != null)
-            {
-                Debug.Log("[Scanner] 已載入既有房間，不需要重新掃描。");
-                yield break;
-            }
         }
 
-        if (autoScanWhenNoSavedScene) TriggerNewScan();
+        if (MRUK.Instance != null && MRUK.Instance.GetCurrentRoom() != null)
+        {
+            RebuildWallColliders();
+            yield return AskWhetherToRescan();
+            yield break;
+        }
+
+        Debug.Log("[Scanner] No saved room was found.");
+        if (autoScanWhenNoSavedScene)
+            TriggerNewScan();
     }
 
-    void Update()
+    private IEnumerator AskWhetherToRescan()
     {
-        // 【無敵備用方案】隨時按下左手把的 Y 鍵，強制開啟空間掃描！
+        _isWaitingForChoice = true;
+        IsWaitingForChoice = true;
+        ShowChoiceText();
+        Debug.Log("[Scanner] Saved room found. Press A to use it, or B to scan again.");
+
+        while (_isWaitingForChoice)
+        {
+            if (OVRInput.GetDown(OVRInput.RawButton.A))
+            {
+                Debug.Log("[Scanner] Using the saved room.");
+                FinishChoice();
+                SignalStartupFlowComplete();
+            }
+            else if (OVRInput.GetDown(OVRInput.RawButton.B))
+            {
+                Debug.Log("[Scanner] User requested a new room scan.");
+                FinishChoice();
+                TriggerNewScan();
+            }
+
+            yield return null;
+        }
+    }
+
+    private void SignalStartupFlowComplete()
+    {
+        if (StartupFlowComplete) return;
+        StartupFlowComplete = true;
+        StartupFlowCompleted?.Invoke();
+    }
+
+    private void Update()
+    {
+        // Y remains an emergency shortcut for starting a new scan at any time.
         if (OVRInput.GetDown(OVRInput.RawButton.Y))
         {
-            Debug.Log("[Scanner] 玩家按下 Y 鍵，手動觸發掃描！");
+            FinishChoice();
             TriggerNewScan();
+        }
+    }
+
+    private void ShowChoiceText()
+    {
+        if (Camera.main == null) return;
+
+        var prompt = new GameObject("SceneScanChoice");
+        prompt.transform.SetParent(Camera.main.transform, false);
+        prompt.transform.localPosition = new Vector3(0f, 0f, 1.2f);
+        prompt.transform.localRotation = Quaternion.identity;
+        prompt.transform.localScale = Vector3.one * 0.0025f;
+
+        _choiceText = prompt.AddComponent<TextMeshPro>();
+        _choiceText.alignment = TextAlignmentOptions.Center;
+        _choiceText.fontSize = 44f;
+        _choiceText.rectTransform.sizeDelta = new Vector2(600f, 240f);
+        _choiceText.text =
+            "<b>Room setup found</b>\n\n" +
+            "<color=#62E6A5>Press A</color>  Use saved room\n" +
+            "<color=#FFB45E>Press B</color>  Scan again";
+    }
+
+    private void FinishChoice()
+    {
+        _isWaitingForChoice = false;
+        IsWaitingForChoice = false;
+        if (_choiceText != null)
+        {
+            Destroy(_choiceText.gameObject);
+            _choiceText = null;
         }
     }
 
@@ -50,65 +137,113 @@ public class SceneAutoScanner : MonoBehaviour
     private async Task StartFullScanProcess()
     {
         _isScanning = true;
-        Debug.Log("[Scanner] 啟動空間掃描介面...");
+        Debug.Log("[Scanner] Opening the room setup interface...");
 
-        // --- 強制開啟透視 (Passthrough) 與關閉背景遮擋 ---
         if (OVRManager.instance != null)
-        {
             OVRManager.instance.isInsightPassthroughEnabled = true;
-        }
 
-        var ptLayer = FindObjectOfType<OVRPassthroughLayer>();
-        if (ptLayer != null)
-        {
-            ptLayer.hidden = false;
-        }
+        var passthroughLayer = FindObjectOfType<OVRPassthroughLayer>();
+        if (passthroughLayer != null)
+            passthroughLayer.hidden = false;
 
         if (Camera.main != null)
         {
             Camera.main.clearFlags = CameraClearFlags.SolidColor;
-            Camera.main.backgroundColor = new Color(0, 0, 0, 0);
+            Camera.main.backgroundColor = new Color(0f, 0f, 0f, 0f);
         }
 
-        GameObject env = GameObject.Find("Environment");
-        if (env != null)
+        GameObject environment = GameObject.Find("Environment");
+        if (environment != null)
+            environment.SetActive(false);
+
+        try
         {
-            env.SetActive(false);
-        }
-        // ----------------------------------------------
+            var setupTask = OVRScene.RequestSpaceSetup();
+            await setupTask;
+            await Task.Delay(1000);
 
-        try 
-        {
-            var task = OVRScene.RequestSpaceSetup();
-            await task;
-
-            Debug.Log("[Scanner] 掃描完成，等待 1 秒讓系統同步資料庫...");
-            await Task.Delay(1000); 
-
-            if (MRUK.Instance != null)
+            if (MRUK.Instance == null)
             {
-                Debug.Log("[Scanner] 正在強制刷新 MRUK 場景...");
-                MRUK.Instance.ClearScene();
-                await MRUK.Instance.LoadSceneFromDevice();
-                await Task.Delay(500);
+                Debug.LogError("[Scanner] MRUK.Instance was not found.");
+                return;
+            }
 
-                if (MRUK.Instance.GetCurrentRoom() != null)
-                    Debug.Log("[Scanner] 刷新完成！");
-                else
-                    Debug.LogWarning("[Scanner] 掃描結束，但尚未取得可用房間資料。");
+            MRUK.Instance.ClearScene();
+            await MRUK.Instance.LoadSceneFromDevice();
+            await Task.Delay(500);
+
+            if (MRUK.Instance.GetCurrentRoom() != null)
+            {
+                RebuildWallColliders();
+                Debug.Log("[Scanner] The new room was loaded successfully.");
             }
             else
-            {
-                Debug.LogError("[Scanner] 找不到 MRUK.Instance！");
-            }
+                Debug.LogWarning("[Scanner] Room setup closed, but no usable room was loaded.");
         }
-        catch (System.Exception e)
+        catch (System.Exception exception)
         {
-            Debug.LogError("[Scanner] 掃描過程發生錯誤：" + e.Message);
+            Debug.LogError("[Scanner] Room scanning failed: " + exception.Message);
         }
         finally
         {
             _isScanning = false;
+            SignalStartupFlowComplete();
         }
+    }
+
+    private void RebuildWallColliders()
+    {
+        ClearWallColliders();
+
+        if (MRUK.Instance == null) return;
+        var room = MRUK.Instance.GetCurrentRoom();
+        if (room == null) return;
+
+        MRUKAnchor.SceneLabels wallLabels =
+            MRUKAnchor.SceneLabels.WALL_FACE |
+            MRUKAnchor.SceneLabels.INVISIBLE_WALL_FACE |
+            MRUKAnchor.SceneLabels.INNER_WALL_FACE;
+
+        int createdCount = 0;
+        foreach (var anchor in room.Anchors)
+        {
+            if ((anchor.Label & wallLabels) == 0 || !anchor.PlaneRect.HasValue)
+                continue;
+
+            Rect plane = anchor.PlaneRect.Value;
+            var wallObject = new GameObject($"MRWallCollider_{createdCount}");
+            wallObject.layer = wallColliderLayer;
+            wallObject.transform.SetPositionAndRotation(anchor.transform.position, anchor.transform.rotation);
+
+            var wallCollider = wallObject.AddComponent<BoxCollider>();
+            wallCollider.center = new Vector3(plane.center.x, plane.center.y, 0f);
+            wallCollider.size = new Vector3(
+                Mathf.Max(0.01f, plane.width),
+                Mathf.Max(0.01f, plane.height),
+                Mathf.Max(0.01f, wallColliderThickness));
+            wallCollider.isTrigger = false;
+
+            _wallColliderObjects.Add(wallObject);
+            createdCount++;
+        }
+
+        Physics.SyncTransforms();
+        Debug.Log($"[Scanner] Built {createdCount} invisible MRUK wall colliders.");
+    }
+
+    private void ClearWallColliders()
+    {
+        foreach (GameObject wallObject in _wallColliderObjects)
+        {
+            if (wallObject != null)
+                Destroy(wallObject);
+        }
+        _wallColliderObjects.Clear();
+    }
+
+    private void OnDisable()
+    {
+        FinishChoice();
+        ClearWallColliders();
     }
 }

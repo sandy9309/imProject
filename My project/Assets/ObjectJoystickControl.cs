@@ -73,17 +73,6 @@ public class ObjectJoystickControl : MonoBehaviour
         if (isGrabbed)
         {
             // 🌟 抓取時銷毀功能：如果玩家按下搖桿 (Thumbstick Click)，就直接把這整個傢俱刪除！
-            if (OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick, OVRInput.Controller.RTouch) || 
-                OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick, OVRInput.Controller.LTouch))
-            {
-                // 🌟 刪除前手動更新快取
-                if (ModelLoader.Instance != null) ModelLoader.Instance.UpdateCacheBeforeDestroy(transform.root);
-
-                Destroy(transform.root.gameObject);
-                if (ModelLoader.Instance != null) ModelLoader.Instance.TriggerAutoSaveDelay(); // 延遲一幀自動存檔
-                return; // 終止後續的移動運算
-            }
-
             // 如果是剛抓起的瞬間，初始化合法位置，並「解除物理鎖定」
             if (!_wasGrabbed) 
             {

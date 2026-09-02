@@ -29,6 +29,15 @@ public class ModelLoader : MonoBehaviour
     private Coroutine _projectSyncCoroutine;
     private bool _revisionCheckInFlight;
     private bool _lastRefreshSucceeded;
+    private bool _offlineTestMode;
+    private const string OfflineProjectId = "00000";
+    private Canvas _projectCanvas;
+    private UnityEngine.UI.Button[] _projectButtons;
+    private int _joystickDigitIndex = 3;
+    private float _lastJoystickInputTime;
+    private const float JoystickInputCooldown = 0.2f;
+    private bool _joystickEditingProjectId = true;
+    private bool _projectLoadInProgress;
 
     private string BuildProjectApiUrl(string projectId, string resource)
     {
@@ -76,12 +85,14 @@ public class ModelLoader : MonoBehaviour
     private class RevisionResponse { public string revision = ""; }
 
     // --- UI 專案輸入變數 ---
-    private string _uiInputProjectID = "";
+    private string _uiInputProjectID = "0000";
     private int _projectRequestVersion = 0;
 
     // --- 傢俱挑選變數 ---
     private FurnitureData[] _fetchedFurnitures = null;
     private int _currentFurnitureIndex = 0;
+    private enum ProjectMenuState { ProjectId, Furniture, Hidden }
+    private ProjectMenuState _projectMenuState = ProjectMenuState.ProjectId;
 
     // 方便把訊息同時印在 Console 和眼鏡裡的 3D 文字上
     void Log(string msg)
@@ -94,9 +105,11 @@ public class ModelLoader : MonoBehaviour
         }
     }
 
-    async void Start()
+    void Start()
     {
         if (debugText != null) debugText.text = "";
+
+        ConfigureProjectCanvasForXR();
 
         if (idDisplay != null) 
         {
@@ -105,12 +118,105 @@ public class ModelLoader : MonoBehaviour
             idDisplay.alignment = TextAlignmentOptions.Center;
         }
 
-        Log("等待玩家透過 UI 輸入專案 ID...");
+        Log("Waiting for a project ID...");
         UpdateDisplay();
+        if (_projectCanvas != null)
+            _projectCanvas.gameObject.SetActive(SceneAutoScanner.StartupFlowComplete);
+    }
+
+    private void OnEnable()
+    {
+        SceneAutoScanner.StartupFlowCompleted += ShowProjectCanvas;
+    }
+
+    private void ShowProjectCanvas()
+    {
+        if (_projectCanvas == null) return;
+        _projectCanvas.gameObject.SetActive(true);
+        UpdateDisplay();
+    }
+
+    private void ConfigureProjectCanvasForXR()
+    {
+        if (idDisplay == null || headCamera == null) return;
+
+        _projectCanvas = idDisplay.GetComponentInParent<Canvas>();
+        if (_projectCanvas == null) return;
+
+        // Keep the project ID display in front of the headset.
+        Transform canvasTransform = _projectCanvas.transform;
+        canvasTransform.SetParent(headCamera, false);
+        canvasTransform.localPosition = new Vector3(0f, -0.08f, 1.2f);
+        canvasTransform.localRotation = Quaternion.identity;
+
+        StyleAndArrangeProjectCanvas();
+    }
+
+    private void StyleAndArrangeProjectCanvas()
+    {
+        RectTransform canvasRect = _projectCanvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(760f, 420f);
+
+        UnityEngine.UI.Image background = _projectCanvas.GetComponent<UnityEngine.UI.Image>();
+        if (background != null)
+        {
+            background.raycastTarget = false;
+            background.enabled = false;
+        }
+
+        RectTransform displayRect = idDisplay.rectTransform;
+        displayRect.anchorMin = displayRect.anchorMax = new Vector2(0.5f, 0.5f);
+        displayRect.pivot = new Vector2(0.5f, 0.5f);
+        displayRect.anchoredPosition = Vector2.zero;
+        displayRect.sizeDelta = new Vector2(680f, 360f);
+        idDisplay.enableAutoSizing = true;
+        idDisplay.fontSizeMin = 20f;
+        idDisplay.fontSizeMax = 44f;
+        idDisplay.raycastTarget = false;
+
+        _projectButtons = _projectCanvas.GetComponentsInChildren<UnityEngine.UI.Button>(true);
+        foreach (UnityEngine.UI.Button button in _projectButtons)
+            button.gameObject.SetActive(false);
+    }
+
+    private void UpdateProjectButtonVisibility()
+    {
+        if (_projectButtons == null) return;
+        foreach (UnityEngine.UI.Button button in _projectButtons)
+            button.gameObject.SetActive(false);
     }
 
     void Update()
     {
+        // SceneAutoScanner owns A/B only while its startup choice is visible.
+        if (!SceneAutoScanner.IsWaitingForChoice)
+        {
+            bool confirmPressed =
+                OVRInput.GetDown(OVRInput.RawButton.A, OVRInput.Controller.RTouch) ||
+                OVRInput.GetDown(OVRInput.Button.One, OVRInput.Controller.RTouch);
+            bool resetPressed =
+                OVRInput.GetDown(OVRInput.RawButton.B, OVRInput.Controller.RTouch) ||
+                OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.RTouch);
+
+            if (_projectMenuState == ProjectMenuState.ProjectId)
+            {
+                UpdateProjectIdFromJoystick();
+                if (confirmPressed) UI_ConfirmProjectID();
+                if (resetPressed) ResetProjectIdInput();
+            }
+            else if (_projectMenuState == ProjectMenuState.Furniture)
+            {
+                UpdateFurnitureSelectionFromJoystick();
+                if (confirmPressed) UI_SpawnFurniture();
+                if (resetPressed) ReturnToProjectSelection();
+            }
+            else if (_projectMenuState == ProjectMenuState.Hidden && resetPressed)
+            {
+                _projectMenuState = ProjectMenuState.Furniture;
+                UpdateDisplay();
+            }
+        }
+
         // 🌟 截圖上傳功能：當玩家按下左手 X 鍵時觸發
         if (OVRInput.GetDown(OVRInput.RawButton.X))
         {
@@ -120,6 +226,7 @@ public class ModelLoader : MonoBehaviour
 
     void OnDisable()
     {
+        SceneAutoScanner.StartupFlowCompleted -= ShowProjectCanvas;
         StopProjectSync();
         _projectRequestVersion++;
     }
@@ -137,6 +244,7 @@ public class ModelLoader : MonoBehaviour
     {
         if (_uiInputProjectID.Length < 6) // 限制長度避免太長
         {
+            _joystickEditingProjectId = false;
             _uiInputProjectID += digit.ToString();
             UpdateDisplay();
         }
@@ -144,8 +252,15 @@ public class ModelLoader : MonoBehaviour
 
     public void UI_Backspace()
     {
+        if (_fetchedFurnitures != null)
+        {
+            ReturnToProjectSelection();
+            return;
+        }
+
         if (_uiInputProjectID.Length > 0)
         {
+            _joystickEditingProjectId = false;
             _uiInputProjectID = _uiInputProjectID.Substring(0, _uiInputProjectID.Length - 1);
             UpdateDisplay();
         }
@@ -153,18 +268,50 @@ public class ModelLoader : MonoBehaviour
 
     public void UI_ConfirmProjectID()
     {
+        if (_projectLoadInProgress) return;
         if (string.IsNullOrEmpty(_uiInputProjectID))
         {
-            Log("請先輸入專案 ID！");
+            Log("Enter a project ID first.");
             return;
         }
         ConfirmAndFetchAPI();
     }
 
+    private void ResetProjectIdInput()
+    {
+        _uiInputProjectID = "0000";
+        _joystickDigitIndex = 3;
+        _joystickEditingProjectId = true;
+        UpdateDisplay();
+    }
+
     public void UI_RefreshProject()
     {
+        if (_offlineTestMode)
+        {
+            LoadOfflineTestProject();
+            return;
+        }
         if (!string.IsNullOrWhiteSpace(_activeProjectId))
             _ = RefreshFurnitureList(false);
+    }
+
+    public void UI_ReturnToProjectSelection()
+    {
+        ReturnToProjectSelection();
+    }
+
+    private void ReturnToProjectSelection()
+    {
+        StopProjectSync();
+        _projectRequestVersion++;
+        _offlineTestMode = false;
+        _activeProjectId = "";
+        _fetchedFurnitures = null;
+        _currentFurnitureIndex = 0;
+        _projectMenuState = ProjectMenuState.ProjectId;
+        UpdateDisplay();
+        Log("已返回專案 ID 輸入畫面。");
     }
 
     public void UI_NextFurniture()
@@ -198,11 +345,8 @@ public class ModelLoader : MonoBehaviour
             Transform target = ReadFurnitureByIndex(data.index);
             if (target != null) 
             {
-                Log($"🗑️ 已從場景中刪除家具 index={data.index}: {target.name}");
-                // 刪除前強制寫入快取
-                UpdateCacheBeforeDestroy(target);
+                Log($"🗑️ 已從目前場景隱藏家具 index={data.index}: {target.name}");
                 Destroy(target.gameObject);
-                TriggerAutoSaveDelay(); // 延遲存檔
             }
             else
             {
@@ -235,18 +379,45 @@ public class ModelLoader : MonoBehaviour
     void UpdateDisplay()
     {
         if (idDisplay == null) return;
+
+        if (_projectMenuState == ProjectMenuState.Hidden)
+        {
+            idDisplay.gameObject.SetActive(false);
+            return;
+        }
+
         idDisplay.gameObject.SetActive(true);
+        UpdateProjectButtonVisibility();
 
         if (_fetchedFurnitures == null)
         {
-            // 尚未讀取成功，顯示輸入 ID 介面
-            string displayId = string.IsNullOrEmpty(_uiInputProjectID) ? "_" : _uiInputProjectID;
-            string text = "<b>Enter Project ID</b>\n";
-            text += $"<size=150%><color=#00FF00>{displayId}</color></size>\n\n";
-            text += "<size=50%>Use the UI buttons to enter ID and confirm.</size>";
-            idDisplay.text = text;
+            if (_projectLoadInProgress)
+            {
+                idDisplay.text = "<b>PROJECT ID</b>\n\n" +
+                    $"<size=150%><color=#00FF00>{_uiInputProjectID}</color></size>\n\n" +
+                    "<size=65%>Loading project...</size>";
+                return;
+            }
+
+            string displayId = FormatProjectIdForDisplay();
+            idDisplay.text = "<b>PROJECT ID</b>\n\n" +
+                "<size=55%>Right stick up/down: Change number\n" +
+                "Right stick left/right: Select digit\n" +
+                "A: Confirm    B: Reset</size>\n\n" +
+                $"<size=150%><color=#00FF00>{displayId}</color></size>";
+            return;
         }
-        else if (_fetchedFurnitures.Length == 0)
+
+        if (_offlineTestMode && _fetchedFurnitures.Length > 0)
+        {
+            FurnitureData data = _fetchedFurnitures[_currentFurnitureIndex];
+            idDisplay.text = $"<b>SELECT FURNITURE</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n" +
+                $"<size=150%><color=#00FF00>{data.name}</color></size>\n\n" +
+                "<size=50%>A: Spawn furniture    B: Back</size>";
+            return;
+        }
+
+        if (_fetchedFurnitures.Length == 0)
         {
             idDisplay.text = $"<b>Project {_activeProjectId}</b>\n\n<size=70%>No furniture in this project. Waiting for updates...</size>";
         }
@@ -263,7 +434,7 @@ public class ModelLoader : MonoBehaviour
             
             string text = $"<b>Select Furniture</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n";
             text += $"<size=150%><color=#00FF00>{displayName}</color></size>\n\n";
-            text += $"<size=50%>Use UI buttons to Next/Prev/Spawn/Delete.</size>";
+            text += $"<size=50%>Right A: Spawn　Right B: Back</size>";
             
             idDisplay.text = text;
         }
@@ -272,6 +443,8 @@ public class ModelLoader : MonoBehaviour
     // 確認送出並開始請求 API
     async void ConfirmAndFetchAPI()
     {
+        _projectLoadInProgress = true;
+        UpdateDisplay();
         StopProjectSync();
         int requestVersion = ++_projectRequestVersion;
 
@@ -289,17 +462,46 @@ public class ModelLoader : MonoBehaviour
         _fetchedFurnitures = null;
         _currentFurnitureIndex = 0;
 
-        string userId = _uiInputProjectID;
+        // Match the working lin branch: 0033 is project 33, not a literal "0033" ID.
+        string userId = int.TryParse(_uiInputProjectID, out int numericProjectId)
+            ? numericProjectId.ToString()
+            : _uiInputProjectID;
         _activeProjectId = userId;
         _lastProjectRevision = "";
+
+        _offlineTestMode = userId == OfflineProjectId;
+        if (_offlineTestMode)
+        {
+            _projectLoadInProgress = false;
+            LoadOfflineTestProject();
+            return;
+        }
 
         string finalApiUrl = BuildProjectApiUrl(userId, "models");
         Log($"🌐 Fetching API for ID {userId}: {finalApiUrl}");
         
         await FetchApiAndLoadModels(finalApiUrl, requestVersion);
         await CheckProjectRevision(true);
+        _projectLoadInProgress = false;
+        UpdateDisplay();
         if (isActiveAndEnabled)
             _projectSyncCoroutine = StartCoroutine(ProjectSyncLoop());
+    }
+
+    private void LoadOfflineTestProject()
+    {
+        _offlineTestMode = true;
+        _activeProjectId = OfflineProjectId;
+        _fetchedFurnitures = new[]
+        {
+            new FurnitureData { index = 900001, name = "Offline Chair", url = "offline://chair" },
+            new FurnitureData { index = 900002, name = "Offline Table", url = "offline://table" },
+            new FurnitureData { index = 900003, name = "Offline Cabinet", url = "offline://cabinet" }
+        };
+        _currentFurnitureIndex = 0;
+        _projectMenuState = ProjectMenuState.Furniture;
+        UpdateDisplay();
+        Log("離線測試模式已啟用：不會連線伺服器。選擇家具後按 UI 放置或右手 A。");
     }
 
     private IEnumerator ProjectSyncLoop()
@@ -311,6 +513,81 @@ public class ModelLoader : MonoBehaviour
             if (!_revisionCheckInFlight && !isTakingScreenshot)
                 _ = CheckProjectRevision(false);
         }
+    }
+
+    private void UpdateProjectIdFromJoystick()
+    {
+        if (Time.unscaledTime - _lastJoystickInputTime < JoystickInputCooldown)
+            return;
+
+        Vector2 joystick = OVRInput.Get(
+            OVRInput.Axis2D.PrimaryThumbstick,
+            OVRInput.Controller.RTouch);
+
+        if (Mathf.Abs(joystick.x) > 0.55f)
+        {
+            EnsureJoystickProjectId();
+            _joystickDigitIndex = Mathf.Clamp(
+                _joystickDigitIndex + (joystick.x > 0f ? 1 : -1),
+                0,
+                _uiInputProjectID.Length - 1);
+            _lastJoystickInputTime = Time.unscaledTime;
+            UpdateDisplay();
+        }
+        else if (Mathf.Abs(joystick.y) > 0.55f)
+        {
+            EnsureJoystickProjectId();
+            char[] digits = _uiInputProjectID.ToCharArray();
+            int value = digits[_joystickDigitIndex] - '0';
+            value = (value + (joystick.y > 0f ? 1 : 9)) % 10;
+            digits[_joystickDigitIndex] = (char)('0' + value);
+            _uiInputProjectID = new string(digits);
+            _lastJoystickInputTime = Time.unscaledTime;
+            UpdateDisplay();
+        }
+    }
+
+    private void UpdateFurnitureSelectionFromJoystick()
+    {
+        if (_fetchedFurnitures == null || _fetchedFurnitures.Length == 0)
+            return;
+        if (Time.unscaledTime - _lastJoystickInputTime < JoystickInputCooldown)
+            return;
+
+        Vector2 joystick = OVRInput.Get(
+            OVRInput.Axis2D.PrimaryThumbstick,
+            OVRInput.Controller.RTouch);
+        if (Mathf.Abs(joystick.x) <= 0.55f)
+            return;
+
+        int direction = joystick.x > 0f ? 1 : -1;
+        _currentFurnitureIndex =
+            (_currentFurnitureIndex + direction + _fetchedFurnitures.Length) %
+            _fetchedFurnitures.Length;
+        _lastJoystickInputTime = Time.unscaledTime;
+        UpdateDisplay();
+    }
+
+    private void EnsureJoystickProjectId()
+    {
+        if (string.IsNullOrEmpty(_uiInputProjectID))
+            _uiInputProjectID = "0000";
+
+        _joystickDigitIndex = Mathf.Clamp(_joystickDigitIndex, 0, _uiInputProjectID.Length - 1);
+        _joystickEditingProjectId = true;
+    }
+
+    private string FormatProjectIdForDisplay()
+    {
+        if (string.IsNullOrEmpty(_uiInputProjectID))
+            return "_";
+        if (!_joystickEditingProjectId)
+            return _uiInputProjectID;
+
+        string before = _uiInputProjectID.Substring(0, _joystickDigitIndex);
+        string selected = _uiInputProjectID[_joystickDigitIndex].ToString();
+        string after = _uiInputProjectID.Substring(_joystickDigitIndex + 1);
+        return $"{before}<u>{selected}</u>{after}";
     }
 
     private void StopProjectSync()
@@ -325,7 +602,7 @@ public class ModelLoader : MonoBehaviour
 
     private async Task CheckProjectRevision(bool establishBaseline)
     {
-        if (_revisionCheckInFlight || string.IsNullOrWhiteSpace(_activeProjectId)) return;
+        if (_offlineTestMode || _revisionCheckInFlight || string.IsNullOrWhiteSpace(_activeProjectId)) return;
         _revisionCheckInFlight = true;
         try
         {
@@ -440,6 +717,8 @@ public class ModelLoader : MonoBehaviour
                         _fetchedFurnitures = targetArray;
                         _currentFurnitureIndex = 0;
                         _lastRefreshSucceeded = true;
+                        if (_projectMenuState == ProjectMenuState.ProjectId)
+                            _projectMenuState = ProjectMenuState.Furniture;
                         UpdateDisplay();
                     } 
                     else 
@@ -494,8 +773,8 @@ public class ModelLoader : MonoBehaviour
         
         _ = LoadModelFromNetwork(data);
         
-        // 🌟 關閉選單
-        if (idDisplay != null) idDisplay.gameObject.SetActive(false);
+        _projectMenuState = ProjectMenuState.Hidden;
+        UpdateDisplay();
     }
 
     // ==========================================
@@ -589,8 +868,9 @@ public class ModelLoader : MonoBehaviour
 
         try
         {
-            var gltf = new GltfImport();
-            bool success = await gltf.Load(data.url);
+            bool isOfflineModel = data.url.StartsWith("offline://", System.StringComparison.OrdinalIgnoreCase);
+            var gltf = isOfflineModel ? null : new GltfImport();
+            bool success = isOfflineModel || await gltf.Load(data.url);
 
             if (!success)
             {
@@ -599,7 +879,9 @@ public class ModelLoader : MonoBehaviour
             }
 
             // 將模型的外觀塞進 Visuals 子物件裡
-            success = await gltf.InstantiateMainSceneAsync(modelVisuals.transform);
+            success = isOfflineModel
+                ? CreateOfflineTestVisuals(modelVisuals, data.url.Substring("offline://".Length))
+                : await gltf.InstantiateMainSceneAsync(modelVisuals.transform);
             if (!success)
             {
                 Log($"❌ Model instantiate failed! URL: {data.url}");
@@ -672,6 +954,55 @@ public class ModelLoader : MonoBehaviour
                 Destroy(rootObject);
             }
         }
+    }
+
+    private bool CreateOfflineTestVisuals(GameObject parent, string kind)
+    {
+        Color color = kind == "chair"
+            ? new Color(0.24f, 0.62f, 0.95f)
+            : kind == "table" ? new Color(0.96f, 0.58f, 0.22f) : new Color(0.42f, 0.78f, 0.48f);
+
+        if (kind == "chair")
+        {
+            AddOfflinePart(parent.transform, "Seat", new Vector3(0f, 0.48f, 0f), new Vector3(0.55f, 0.10f, 0.55f), color);
+            AddOfflinePart(parent.transform, "Back", new Vector3(0f, 0.82f, 0.23f), new Vector3(0.55f, 0.58f, 0.10f), color);
+            AddOfflineLegs(parent.transform, 0.22f, 0.22f, 0.45f, color);
+        }
+        else if (kind == "table")
+        {
+            AddOfflinePart(parent.transform, "Top", new Vector3(0f, 0.75f, 0f), new Vector3(1.1f, 0.12f, 0.7f), color);
+            AddOfflineLegs(parent.transform, 0.45f, 0.25f, 0.72f, color);
+        }
+        else
+        {
+            AddOfflinePart(parent.transform, "Body", new Vector3(0f, 0.65f, 0f), new Vector3(0.85f, 1.3f, 0.42f), color);
+            AddOfflinePart(parent.transform, "DoorGap", new Vector3(0f, 0.65f, -0.216f), new Vector3(0.025f, 1.15f, 0.01f), Color.black);
+        }
+
+        return true;
+    }
+
+    private void AddOfflineLegs(Transform parent, float x, float z, float height, Color color)
+    {
+        float y = height * 0.5f;
+        Vector3 scale = new Vector3(0.09f, height, 0.09f);
+        AddOfflinePart(parent, "Leg", new Vector3(x, y, z), scale, color);
+        AddOfflinePart(parent, "Leg", new Vector3(-x, y, z), scale, color);
+        AddOfflinePart(parent, "Leg", new Vector3(x, y, -z), scale, color);
+        AddOfflinePart(parent, "Leg", new Vector3(-x, y, -z), scale, color);
+    }
+
+    private void AddOfflinePart(Transform parent, string partName, Vector3 position, Vector3 scale, Color color)
+    {
+        GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        part.name = partName;
+        part.transform.SetParent(parent, false);
+        part.transform.localPosition = position;
+        part.transform.localScale = scale;
+        Collider generatedCollider = part.GetComponent<Collider>();
+        if (generatedCollider != null) Destroy(generatedCollider);
+        Renderer renderer = part.GetComponent<Renderer>();
+        if (renderer != null) renderer.material.color = color;
     }
 
     private BoxCollider ConfigureFurnitureCollider(GameObject rootObject, GameObject modelVisuals)
@@ -876,7 +1207,9 @@ public class ModelLoader : MonoBehaviour
     private async Task UploadScreenshotToDB(byte[] imageBytes)
     {
         // 取得當前輸入的專案 ID
-        string userId = _uiInputProjectID;
+        string userId = int.TryParse(_uiInputProjectID, out int numericProjectId)
+            ? numericProjectId.ToString()
+            : _uiInputProjectID;
         string uploadUrl = BuildProjectApiUrl(userId, "media");
 
         // 準備 MultipartFormData
@@ -976,6 +1309,8 @@ public class ModelLoader : MonoBehaviour
 
     private async Task SavePositionsToDB()
     {
+        if (_offlineTestMode) return;
+
         if (_isSavingPositions)
         {
             _savePositionsQueued = true;

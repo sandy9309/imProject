@@ -111,6 +111,9 @@ public class ModelLoader : MonoBehaviour
 
     void Update()
     {
+        // 啟動時的房間選擇畫面需要獨佔 A/B，避免 B 同時開啟專案選單。
+        if (SceneAutoScanner.IsWaitingForChoice) return;
+
         if (OVRInput.GetDown(OVRInput.RawButton.B, OVRInput.Controller.RTouch) || OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.RTouch))
         {
             if (_menuState == MenuState.Closed)

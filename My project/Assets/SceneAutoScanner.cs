@@ -3,17 +3,72 @@ using System.Collections;
 using System.Collections.Generic;
 using Meta.XR.MRUtilityKit;
 using System.Threading.Tasks;
+using TMPro;
 
 public class SceneAutoScanner : MonoBehaviour
 {
+    public static bool IsWaitingForChoice { get; private set; }
+
+    [Header("Startup scene choice")]
+    [Min(0f)] public float initialLoadWaitSeconds = 2f;
+    public bool autoScanWhenNoSavedScene = true;
+
     private bool _isScanning = false;
+    private bool _isWaitingForChoice;
+    private TextMeshPro _choiceText;
     private List<GameObject> _spawnedColliders = new List<GameObject>();
+
+    private void Awake()
+    {
+        IsWaitingForChoice = false;
+    }
 
     IEnumerator Start()
     {
-        Debug.Log("[Scanner] 遊戲啟動，等待 2 秒...");
-        yield return new WaitForSeconds(2.0f);
-        TriggerNewScan();
+        Debug.Log("[Scanner] 遊戲啟動，嘗試載入既有房間資料...");
+        yield return new WaitForSeconds(initialLoadWaitSeconds);
+
+        if (MRUK.Instance != null)
+        {
+            MRUK.Instance.LoadSceneFromDevice();
+            yield return new WaitForSeconds(1f);
+        }
+
+        if (MRUK.Instance != null && MRUK.Instance.GetCurrentRoom() != null)
+        {
+            yield return AskWhetherToRescan();
+            yield break;
+        }
+
+        Debug.Log("[Scanner] 找不到既有房間資料。");
+        if (autoScanWhenNoSavedScene)
+            TriggerNewScan();
+    }
+
+    private IEnumerator AskWhetherToRescan()
+    {
+        _isWaitingForChoice = true;
+        IsWaitingForChoice = true;
+        ShowChoiceText();
+        Debug.Log("[Scanner] 已找到既有房間。按 A 沿用，或按 B 重新掃描。");
+
+        while (_isWaitingForChoice)
+        {
+            if (OVRInput.GetDown(OVRInput.RawButton.A))
+            {
+                Debug.Log("[Scanner] 玩家選擇沿用既有房間。");
+                FinishChoice();
+                GenerateCollidersAndVisuals();
+            }
+            else if (OVRInput.GetDown(OVRInput.RawButton.B))
+            {
+                Debug.Log("[Scanner] 玩家選擇重新掃描房間。");
+                FinishChoice();
+                TriggerNewScan();
+            }
+
+            yield return null;
+        }
     }
 
     void Update()
@@ -21,7 +76,40 @@ public class SceneAutoScanner : MonoBehaviour
         if (OVRInput.GetDown(OVRInput.RawButton.Y))
         {
             Debug.Log("[Scanner] 玩家按下 Y 鍵，手動觸發掃描！");
+            FinishChoice();
             TriggerNewScan();
+        }
+    }
+
+    private void ShowChoiceText()
+    {
+        if (Camera.main == null) return;
+
+        GameObject prompt = new GameObject("SceneScanChoice");
+        prompt.transform.SetParent(Camera.main.transform, false);
+        prompt.transform.localPosition = new Vector3(0f, 0f, 1.2f);
+        prompt.transform.localRotation = Quaternion.identity;
+        prompt.transform.localScale = Vector3.one * 0.0025f;
+
+        _choiceText = prompt.AddComponent<TextMeshPro>();
+        _choiceText.alignment = TextAlignmentOptions.Center;
+        _choiceText.fontSize = 44f;
+        _choiceText.rectTransform.sizeDelta = new Vector2(600f, 240f);
+        _choiceText.text =
+            "<b>偵測到已設定的空間</b>\n\n" +
+            "<color=#62E6A5>按 A</color>  沿用目前空間\n" +
+            "<color=#FFB45E>按 B</color>  重新掃描";
+    }
+
+    private void FinishChoice()
+    {
+        _isWaitingForChoice = false;
+        IsWaitingForChoice = false;
+
+        if (_choiceText != null)
+        {
+            Destroy(_choiceText.gameObject);
+            _choiceText = null;
         }
     }
 
@@ -180,5 +268,10 @@ public class SceneAutoScanner : MonoBehaviour
         }
         
         Debug.Log($"[Scanner] 成功生成 {_spawnedColliders.Count} 個實體藍色碰撞體！");
+    }
+
+    private void OnDisable()
+    {
+        FinishChoice();
     }
 }

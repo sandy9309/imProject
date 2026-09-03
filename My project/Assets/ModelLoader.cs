@@ -127,6 +127,7 @@ public class ModelLoader : MonoBehaviour
     private void OnEnable()
     {
         SceneAutoScanner.StartupFlowCompleted += ShowProjectCanvas;
+        SceneAutoScanner.StartupFlowReset += HideProjectCanvas;
     }
 
     private void ShowProjectCanvas()
@@ -134,6 +135,12 @@ public class ModelLoader : MonoBehaviour
         if (_projectCanvas == null) return;
         _projectCanvas.gameObject.SetActive(true);
         UpdateDisplay();
+    }
+
+    private void HideProjectCanvas()
+    {
+        if (_projectCanvas != null)
+            _projectCanvas.gameObject.SetActive(false);
     }
 
     private void ConfigureProjectCanvasForXR()
@@ -227,6 +234,7 @@ public class ModelLoader : MonoBehaviour
     void OnDisable()
     {
         SceneAutoScanner.StartupFlowCompleted -= ShowProjectCanvas;
+        SceneAutoScanner.StartupFlowReset -= HideProjectCanvas;
         StopProjectSync();
         _projectRequestVersion++;
     }
@@ -898,6 +906,15 @@ public class ModelLoader : MonoBehaviour
                 }
 
                 // 1. 重新綁定 Unity XR Interaction Toolkit
+                FurnitureWallCollisionGuard wallGuard = rootObject.GetComponent<FurnitureWallCollisionGuard>();
+                if (wallGuard == null)
+                    wallGuard = rootObject.AddComponent<FurnitureWallCollisionGuard>();
+                if (!wallGuard.Configure(rootCollider, modelVisuals.transform))
+                {
+                    Log("無法放置家具：請確認房間牆面已載入，且附近有足夠空間。");
+                    return;
+                }
+
                 var xriGrab = rootObject.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
                 if (xriGrab != null)
                 {
@@ -1015,9 +1032,9 @@ public class ModelLoader : MonoBehaviour
 
         foreach (Renderer renderer in renderers)
         {
-            Bounds worldBounds = renderer.bounds;
-            Vector3 min = worldBounds.min;
-            Vector3 max = worldBounds.max;
+            Bounds meshBounds = renderer.localBounds;
+            Vector3 min = meshBounds.min;
+            Vector3 max = meshBounds.max;
 
             for (int x = 0; x <= 1; x++)
             {
@@ -1025,12 +1042,12 @@ public class ModelLoader : MonoBehaviour
                 {
                     for (int z = 0; z <= 1; z++)
                     {
-                        Vector3 worldCorner = new Vector3(
+                        Vector3 meshCorner = new Vector3(
                             x == 0 ? min.x : max.x,
                             y == 0 ? min.y : max.y,
                             z == 0 ? min.z : max.z
                         );
-                        Vector3 localCorner = rootObject.transform.InverseTransformPoint(worldCorner);
+                        Vector3 localCorner = rootObject.transform.InverseTransformPoint(renderer.transform.TransformPoint(meshCorner));
 
                         if (!hasBounds)
                         {
@@ -1411,4 +1428,3 @@ public class ModelLoader : MonoBehaviour
         }
     }
 }
-

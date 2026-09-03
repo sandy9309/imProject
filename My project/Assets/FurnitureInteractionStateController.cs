@@ -33,8 +33,11 @@ public class FurnitureInteractionStateController : MonoBehaviour
     {
         if (rb == null) return;
 
-        rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
+        if (!rb.isKinematic)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
 
         switch (state)
         {

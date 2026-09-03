@@ -9487,7 +9487,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &1015420040
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10913,7 +10913,7 @@ MonoBehaviour:
     - {fileID: 5618556046422172173, guid: 31818101cde292945ab80af5d14bec54, type: 3}
     - {fileID: 5618556046422172173, guid: c2bd5595e9fe2493a92d4bc0bb264603, type: 3}
     SceneJsons: []
-    LoadSceneOnStartup: 1
+    LoadSceneOnStartup: 0
     EnableHighFidelityScene: 0
     SeatWidth: 0.6
     SceneJson: 
@@ -13350,7 +13350,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1442916261
 MonoBehaviour:
   m_ObjectHideFlags: 0

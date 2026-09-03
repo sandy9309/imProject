@@ -27,3 +27,4 @@ wwwroot/uploads/
 .env
 .env.*
 !.env.example
+My project/TempAssembly.dll

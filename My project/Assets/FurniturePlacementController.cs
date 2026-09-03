@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using Oculus.Interaction;
+using System.Collections.Generic;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 /// <summary>Owns furniture input, grab/release lifecycle and the single validated pose commit.</summary>
@@ -7,6 +8,16 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 [DisallowMultipleComponent]
 public sealed class FurniturePlacementController : MonoBehaviour
 {
+    private static readonly HashSet<FurniturePlacementController> activeControllers = new HashSet<FurniturePlacementController>();
+    public static bool HasActiveGrab
+    {
+        get
+        {
+            foreach (var controller in activeControllers)
+                if (controller != null && controller.isActiveAndEnabled && controller.ReadSelected(out _)) return true;
+            return false;
+        }
+    }
     [Header("Input")]
     [Min(0f)] public float pushPullSpeed = 1f;
     [Min(0f)] public float rotationSpeed = 90f;
@@ -47,6 +58,7 @@ public sealed class FurniturePlacementController : MonoBehaviour
     {
         visual = model;
         validator = constraints;
+        activeControllers.Add(this);
         body = GetComponent<Rigidbody>();
         state = GetComponent<FurnitureInteractionStateController>();
         if (state == null && body != null) state = gameObject.AddComponent<FurnitureInteractionStateController>();
@@ -104,11 +116,7 @@ public sealed class FurniturePlacementController : MonoBehaviour
     public void ProcessFrame(float deltaTime)
     {
         if (!IsReady) return;
-        bool metaSelected = false;
-        if (metaGrabs != null)
-            foreach (Grabbable grab in metaGrabs)
-                if (grab != null && grab.GrabPoints != null && grab.GrabPoints.Count > 0) metaSelected = true;
-        bool selected = externalGrabbed || metaSelected || (xrGrab != null && xrGrab.isSelected);
+        bool selected = ReadSelected(out bool metaSelected);
         if (selected && !wasGrabbed)
         {
             grabOffset = Vector3.zero;
@@ -181,8 +189,20 @@ public sealed class FurniturePlacementController : MonoBehaviour
         }
         validator.AcceptPose(pose);
     }
+    private bool ReadSelected(out bool metaSelected)
+    {
+        metaSelected = false;
+        if (metaGrabs != null)
+            foreach (Grabbable grab in metaGrabs)
+                if (grab != null && grab.isActiveAndEnabled && grab.GrabPoints != null && grab.GrabPoints.Count > 0)
+                    metaSelected = true;
+        return externalGrabbed || metaSelected || (xrGrab != null && xrGrab.isActiveAndEnabled && xrGrab.isSelected);
+    }
+    private void OnEnable() { if (IsReady) activeControllers.Add(this); }
+    private void OnDisable() => activeControllers.Remove(this);
     private void OnDestroy()
     {
+        activeControllers.Remove(this);
         if (grabTarget == null) return;
         if (Application.isPlaying) Destroy(grabTarget.gameObject);
         else DestroyImmediate(grabTarget.gameObject);

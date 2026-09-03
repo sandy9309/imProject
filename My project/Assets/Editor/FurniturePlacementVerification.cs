@@ -34,6 +34,8 @@ public static class FurniturePlacementVerification
             RealObjectPhysics();
             Cleanup();
             RotationDestinations();
+            Cleanup();
+            GrabbedFloorAndWallHeight();
             Debug.Log($"[PlacementVerification] PASS: {checks} assertions.");
         }
         catch (Exception error) { Debug.LogException(error); result = 1; }
@@ -165,6 +167,7 @@ public static class FurniturePlacementVerification
         foreach (GameObject go in objects) if (go != null) UnityEngine.Object.DestroyImmediate(go);
         objects.Clear();
         SceneAutoScanner.PlacementWalls.RemoveWhere(wall => wall == null);
+        SceneAutoScanner.PlacementFloors.RemoveWhere(floor => floor == null);
     }
 
     private static void InputOwnership()
@@ -331,6 +334,39 @@ public static class FurniturePlacementVerification
             SceneAutoScanner.PlacementFloors.RemoveWhere(c => c == null);
             UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(scene);
         }
+    }
+
+    private static void GrabbedFloorAndWallHeight()
+    {
+        Wall(2);
+        var floorObject = new GameObject("Verification support floor");
+        objects.Add(floorObject);
+        var floor = floorObject.AddComponent<BoxCollider>();
+        floor.center = new Vector3(0, -0.02f, 0);
+        floor.size = new Vector3(30, 0.04f, 30);
+        SceneAutoScanner.PlacementFloors.Add(floor);
+        var controller = Furniture(new Vector3(0, -3, 0), Vector3.one, out Transform visual);
+        Check(visual.position.y >= 0.5f, "Below-floor spawn was not raised onto the support floor.");
+        controller.RequestGrabbed(true);
+        controller.RequestPose(new Pose(new Vector3(0.1f, -20, 0), Quaternion.identity));
+        controller.ProcessFrame(0.01f);
+        Check(visual.position.y >= 0.5f, "Kinematic grab passed through the floor.");
+        controller.RequestPose(new Pose(new Vector3(0.1f, 8, 0), Quaternion.identity));
+        controller.ProcessFrame(0.01f);
+        controller.RequestPose(new Pose(new Vector3(10, 8, 0), Quaternion.identity));
+        controller.ProcessFrame(0.01f);
+        Check(visual.position.x < 1.46f, "Furniture escaped over the top of a scanned wall.");
+        controller.RequestPose(new Pose(new Vector3(10, -20, 2), Quaternion.identity));
+        controller.ProcessFrame(0.01f);
+        Check(visual.position.x < 1.46f && visual.position.y >= 0.5f,
+            "Diagonal grab escaped the wall/floor corner.");
+        Check(FurniturePlacementController.HasActiveGrab, "Menu input lock cannot see the active grab.");
+        controller.RequestGrabbed(false);
+        controller.RequestPose(new Pose(new Vector3(10, -20, 2), Quaternion.identity));
+        controller.ProcessFrame(0.01f);
+        Check(visual.position.x < 1.46f && visual.position.y >= 0.5f,
+            "Release committed an out-of-room pose.");
+        Check(!FurniturePlacementController.HasActiveGrab, "Menu input lock did not release after the grab ended.");
     }
 
     private static void RotationDestinations()

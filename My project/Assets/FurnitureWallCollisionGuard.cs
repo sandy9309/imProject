@@ -87,6 +87,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
             return false;
         }
         Vector3 candidate = visual.position;
+        RaiseAboveFloor(ref candidate, visual.rotation);
         if (!IsValid(BoxAt(candidate, visual.rotation)) && !FindFreePose(ref candidate, visual.rotation))
         {
             Debug.LogWarning($"[FurniturePlacement] No free space near '{name}'; placement cancelled.");
@@ -130,6 +131,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         Quaternion requestedRotation = target.rotation;
         Vector3 position = safePosition;
         Quaternion rotation = safeRotation;
+        RaiseAboveFloor(ref position, rotation);
         if (!IsValid(BoxAt(position, rotation)))
         {
             bool canRetry = Time.unscaledTime >= nextRecoveryAttempt;
@@ -239,10 +241,39 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         blockers.Clear();
         foreach (BoxCollider wall in SceneAutoScanner.PlacementWalls)
             if (wall != null && wall.enabled && wall.gameObject.activeInHierarchy)
-                blockers.Add(FurniturePlacementGeometry.FromBounds(new Bounds(wall.center, wall.size), wall.transform).Expanded(wallClearance));
+            {
+                Box physicalWall = FurniturePlacementGeometry.FromBounds(new Bounds(wall.center, wall.size), wall.transform);
+                Vector3 tangent = Vector3.ProjectOnPlane(physicalWall.Axis(0), Vector3.up).normalized;
+                if (tangent.sqrMagnitude < 0.5f) continue;
+                Vector3 normal = Vector3.Cross(tangent, Vector3.up);
+                // Room walls constrain the horizontal footprint at every placement
+                // height, so dragging above/below scanned wall bounds cannot escape.
+                blockers.Add(new Box(new Vector3(physicalWall.center.x, 0f, physicalWall.center.z),
+                    new Vector3(physicalWall.Radius(tangent) + wallClearance, 10000f,
+                        physicalWall.Radius(normal) + wallClearance), Quaternion.LookRotation(normal, Vector3.up)));
+            }
+        foreach (Collider floor in SceneAutoScanner.PlacementFloors)
+            if (floor is BoxCollider plane && floor.enabled && floor.gameObject.activeInHierarchy)
+                blockers.Add(FurniturePlacementGeometry.FromBounds(new Bounds(plane.center, plane.size), plane.transform));
         foreach (FurnitureWallCollisionGuard other in instances)
             if (other != this && other != null && other.hasSafePose && other.visual != null && other.isActiveAndEnabled)
                 blockers.Add(other.BoxAt(other.safePosition, other.safeRotation).Expanded(furnitureClearance));
+    }
+    private void RaiseAboveFloor(ref Vector3 position, Quaternion rotation)
+    {
+        Box box = BoxAt(position, rotation);
+        foreach (Collider floor in SceneAutoScanner.PlacementFloors)
+        {
+            if (!(floor is BoxCollider plane) || !floor.enabled || !floor.gameObject.activeInHierarchy) continue;
+            Box ground = FurniturePlacementGeometry.FromBounds(new Bounds(plane.center, plane.size), plane.transform);
+            if (Mathf.Abs(box.center.x - ground.center.x) > box.Radius(Vector3.right) + ground.Radius(Vector3.right) ||
+                Mathf.Abs(box.center.z - ground.center.z) > box.Radius(Vector3.forward) + ground.Radius(Vector3.forward)) continue;
+            float lift = ground.center.y + ground.Radius(Vector3.up) + 0.002f
+                - (box.center.y - box.Radius(Vector3.up));
+            if (lift <= 0f) continue;
+            position.y += lift;
+            box.center.y += lift;
+        }
     }
     private bool IsValid(Box box)
     {

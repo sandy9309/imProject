@@ -195,6 +195,9 @@ public class ModelLoader : MonoBehaviour
 
     void Update()
     {
+        // Room setup and an active grab own the controller inputs exclusively.
+        if (FurniturePlacementController.HasActiveGrab || !SceneAutoScanner.StartupFlowComplete ||
+            SceneAutoScanner.IsWaitingForChoice) return;
         // SceneAutoScanner owns A/B only while its startup choice is visible.
         if (!SceneAutoScanner.IsWaitingForChoice)
         {

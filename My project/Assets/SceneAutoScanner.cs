@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -400,6 +400,17 @@ public class SceneAutoScanner : MonoBehaviour
             Debug.Log("[Scanner] Post-setup room load result: " + loadResult);
             if (this == null || !isActiveAndEnabled) return;
             _roomLoadStatus = loadResult.ToString();
+
+            // 新增：動態等待 MRUK 載入房間結構 (解決 MRUK 需要幾幀時間建立 Room 的 Bug)
+            if (loadResult == MRUK.LoadDeviceResult.Success)
+            {
+                int retries = 20;
+                while (MRUK.Instance.GetCurrentRoom() == null && retries > 0)
+                {
+                    await Task.Delay(500);
+                    retries--;
+                }
+            }
 
             if (loadResult == MRUK.LoadDeviceResult.Success &&
                 MRUK.Instance.GetCurrentRoom() != null)

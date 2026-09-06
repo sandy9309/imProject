@@ -35,7 +35,6 @@ const Projects = () => {
       );
       if (res.ok) {
         const body = await res.json();
-        console.log('學校伺服器回傳的原始專案資料：', body);
         setProjects(body.data || []);
       }
     } catch (err) {
@@ -131,36 +130,6 @@ const Projects = () => {
     );
   };
 
-  const removeFurnitureFromProject = async (project, targetIndex) => {
-    const confirmed = await showConfirm({
-      message: '確定要從專案中移除這件家具嗎？',
-      danger: true,
-    });
-    if (!confirmed) return;
-
-    const currentItems = Array.isArray(project.items) ? project.items : [];
-    const newItems = currentItems.filter((_, idx) => idx !== targetIndex);
-    try {
-      const res = await fetch(`${API_BASE}/api/projects/${project.id}`, {
-        method: 'PUT',
-        headers: mutateHeaders,
-        body: JSON.stringify({ name: project.name, itemsRaw: JSON.stringify(newItems) }),
-      });
-      if (res.ok) {
-        setProjects(prev =>
-          prev.map(p =>
-            p.id === project.id ? { ...p, items: newItems } : p
-          )
-        );
-      } else {
-        throw new Error(`伺服器回應 ${res.status}`);
-      }
-    } catch (err) {
-      console.error('移除家具失敗:', err);
-      showToast('移除家具失敗，請稍後再試', 'error');
-    }
-  };
-
   const deleteProject = async (id) => {
     if (!await showConfirm({ message: '確定要刪除這個專案嗎？', danger: true })) return;
     try {
@@ -192,7 +161,7 @@ const Projects = () => {
       }
     } catch (err) {
       console.error('送到 VR 失敗:', err);
-      showToast(`送到 VR 失敗：${err.message}`, 'error');
+      showToast(`傳送至 VR 失敗：${err.message}`, 'error');
     }
   };
 
@@ -220,14 +189,28 @@ const Projects = () => {
     );
   });
 
+  const getFurnitureId = (item) =>
+    item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
+
   const getItemPrice = (item) => {
-    const furnitureId =
-      item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
-    return Number(furnitureMap[furnitureId]?.price || 0);
+    return Number(furnitureMap[getFurnitureId(item)]?.price || 0);
   };
 
   const getProjectTotal = (items) =>
     items.reduce((sum, item) => sum + getItemPrice(item), 0);
+
+  const groupItems = (items) => {
+    const map = {};
+    items.forEach(item => {
+      const fid = getFurnitureId(item);
+      const key = fid === undefined || fid === null ? 'unknown' : String(fid);
+      if (!map[key]) {
+        map[key] = { fid, count: 0, sample: item };
+      }
+      map[key].count += 1;
+    });
+    return Object.values(map);
+  };
 
   if (!currentUserId) {
     return (
@@ -381,7 +364,7 @@ const Projects = () => {
                   </div>
 
                   <p className="panel-subtitle">
-                    當前配置家具清單（點擊刪除鍵可從專案內移除）：
+                    此清單僅供檢視，如需新增或刪減家具，請點右上角「修改專案」：
                   </p>
 
                   {items.length === 0 ? (
@@ -390,17 +373,17 @@ const Projects = () => {
                     </p>
                   ) : (
                     <div className="panel-furniture-list">
-                      {items.map((item, idx) => {
-                        const furnitureId =
-                          item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
-                        const furnitureInfo = furnitureMap[furnitureId];
+                      {groupItems(items).map(({ fid, count, sample }) => {
+                        const furnitureInfo = furnitureMap[fid];
                         const displayName =
                           furnitureInfo?.name ||
-                          item.name ||
-                          (furnitureId !== undefined ? `家具 ID: ${furnitureId}` : '未知家具');
+                          sample.name ||
+                          (fid !== undefined && fid !== null ? `家具 ID: ${fid}` : '未知家具');
 
+                        const unitPrice = Number(furnitureInfo?.price || 0);
+                        const subtotal = unitPrice * count;
                         return (
-                          <div key={idx} className="panel-furniture-item">
+                          <div key={`${fid}`} className="panel-furniture-item">
                             <img
                               className="panel-furniture-thumb"
                               src={
@@ -412,17 +395,13 @@ const Projects = () => {
                             <span className="furniture-name">
                               {displayName}
                             </span>
-                            <span className="furniture-price">
-                              NT$ {getItemPrice(item).toLocaleString()}
+                            <span className="furniture-unit">
+                              NT$ {unitPrice.toLocaleString()}
+                              <span className="furniture-times"> × {count}</span>
                             </span>
-                            <button
-                              className="btn-remove-furniture"
-                              onClick={() =>
-                                removeFurnitureFromProject(project, idx)
-                              }
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                            <span className="furniture-subtotal">
+                              NT$ {subtotal.toLocaleString()}
+                            </span>
                           </div>
                         );
                       })}

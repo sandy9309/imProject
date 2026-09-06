@@ -24,7 +24,7 @@ const Cart = () => {
   const [originalExistingItems, setOriginalExistingItems] = useState([]);
   const [furnitureMap, setFurnitureMap] = useState({});
 
-  // 編輯模式
+  // 編輯
   useEffect(() => {
     if (!editProjectId || !currentUserId) return;
 
@@ -60,59 +60,27 @@ const Cart = () => {
     fetchExisting();
   }, [editProjectId, currentUserId]);
 
-  // 載入購物車 
   useEffect(() => {
     if (!currentUserId) return;
 
-    const fetchUserCart = async () => {
-      try {
-        setLoading(true);
+    const lastCartUserId = localStorage.getItem('cart_user_id');
+    if (lastCartUserId && lastCartUserId !== currentUserId) {
+      localStorage.removeItem('cart');
+    }
+    localStorage.setItem('cart_user_id', currentUserId);
 
-        const lastCartUserId = localStorage.getItem('cart_user_id');
-        if (lastCartUserId && lastCartUserId !== currentUserId) {
-          localStorage.removeItem('cart');
-        }
-        localStorage.setItem('cart_user_id', currentUserId);
-
-        const response = await fetch(
-          `${API_BASE}/api/cart?userId=${currentUserId}`,
-          { headers: getHeaders }
-        );
-
-        if (response.ok) {
-          const resBody = await response.json();
-          const realCartList = resBody.data || [];
-          if (realCartList.length > 0) {
-            const formattedList = realCartList.map(item => ({
-              ...item,
-              id: item.id,
-              product_id: item.product_id || item.id,
-            }));
-            setCartItems(formattedList);
-            localStorage.setItem('cart', JSON.stringify(formattedList));
-            return;
-          }
-        }
-      } catch (err) {
-        console.error('後端連線失敗，採用本地快取備案:', err);
-      } finally {
-        setLoading(false);
-      }
-
-      const savedCart = JSON.parse(localStorage.getItem('cart')) || [];
-      setCartItems(savedCart);
-    };
-
-    fetchUserCart();
+    const savedCart = JSON.parse(localStorage.getItem('cart')) || [];
+    setCartItems(savedCart);
   }, [currentUserId]);
 
-  const getExistingId = (item) =>
-    item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
+  const getExistingId = (item) => {
+    const raw = item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
+    return raw === undefined || raw === null ? 'unknown' : String(raw);
+  };
 
-  // 調整既有家具數量（減到 0 時先確認）
   const changeExistingQty = async (furnitureId, delta) => {
     const currentCount = existingItems.filter(
-      it => getExistingId(it) === furnitureId
+      it => getExistingId(it) === String(furnitureId)
     ).length;
     const newCount = currentCount + delta;
 
@@ -123,7 +91,7 @@ const Cart = () => {
 
     if (newCount <= 0) {
       const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
-      if (!confirmed) return; 
+      if (!confirmed) return;
     }
 
     if (delta > 0) {
@@ -132,7 +100,7 @@ const Cart = () => {
       setExistingItems(prev => {
         let removedOne = false;
         return prev.filter(it => {
-          if (!removedOne && getExistingId(it) === furnitureId) {
+          if (!removedOne && getExistingId(it) === String(furnitureId)) {
             removedOne = true;
             return false;
           }
@@ -156,15 +124,11 @@ const Cart = () => {
 
     if (newQty <= 0) {
       const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
-      if (!confirmed) return; 
+      if (!confirmed) return;
 
       const updatedCart = cartItems.filter(item => item.id !== cartItemId);
       setCartItems(updatedCart);
       localStorage.setItem('cart', JSON.stringify(updatedCart));
-      fetch(`${API_BASE}/api/cart/${cartItemId}`, {
-        method: 'DELETE',
-        headers: mutateHeaders,
-      }).catch(err => console.error('後端刪除失敗，仍從畫面移除:', err));
       return;
     }
 
@@ -175,17 +139,16 @@ const Cart = () => {
     localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
-  // 儲存變更
+  // 儲存變更 → 合併家具
   const handleAddToExistingProject = async () => {
     if (!currentUserId || !editProjectId) return;
-    // 沒有任何變動就不用送出
-    const hasExistingChanges =
+    const hasChanges =
       JSON.stringify(existingItems) !== JSON.stringify(originalExistingItems);
-    if (cartItems.length === 0 && !hasExistingChanges) return;
+    if (cartItems.length === 0 && !hasChanges) return;
 
     try {
       setLoading(true);
-      
+
       const newItems = cartItems.flatMap(item => {
         const qty = item.quantity || 1;
         return Array.from({ length: qty }, () => ({
@@ -210,22 +173,6 @@ const Cart = () => {
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || '新增失敗');
-      }
-
-      // 4. 資料庫確認收到後，清掉伺服器端購物車
-      const deleteResults = await Promise.allSettled(
-        cartItems.map(item =>
-          fetch(`${API_BASE}/api/cart/${item.id}`, {
-            method: 'DELETE',
-            headers: mutateHeaders,
-          })
-        )
-      );
-      const failedDeletes = deleteResults.filter(
-        r => r.status === 'rejected' || (r.value && !r.value.ok)
-      );
-      if (failedDeletes.length > 0) {
-        console.warn(`⚠️ 有 ${failedDeletes.length} 筆購物車項目在伺服器端刪除失敗`);
       }
 
       setCartItems([]);
@@ -277,30 +224,13 @@ const Cart = () => {
           name: projectName.trim(),
           l: null,
           w: null,
-          itemsRaw: JSON.stringify(items), 
+          itemsRaw: JSON.stringify(items),
         }),
       });
 
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || '建立專案失敗');
-      }
-
-      const deleteResults = await Promise.allSettled(
-        cartItems.map(item =>
-          fetch(`${API_BASE}/api/cart/${item.id}`, {
-            method: 'DELETE',
-            headers: mutateHeaders,
-          })
-        )
-      );
-      const failedDeletes = deleteResults.filter(
-        r => r.status === 'rejected' || (r.value && !r.value.ok)
-      );
-      if (failedDeletes.length > 0) {
-        console.warn(
-          `⚠️ 有 ${failedDeletes.length} 筆購物車項目在伺服器端刪除失敗，可能會在下次載入時重新出現`
-        );
       }
 
       setCartItems([]);
@@ -327,7 +257,7 @@ const Cart = () => {
       <div className="cart-header">
         <h1><ShoppingBag /> 我的配置清單</h1>
         {!currentUserId && (
-          <p style={{ color: '#dc2626', fontWeight: 'bold' }}>
+          <p style={{ color: 'var(--color-danger)', fontWeight: 'bold' }}>
             ⚠️ 請先登入系統才能進行配置
           </p>
         )}
@@ -336,7 +266,6 @@ const Cart = () => {
       {currentUserId && (cartItems.length > 0 || (editProjectId && existingItems.length > 0)) ? (
         <div className="cart-content">
           <div className="cart-list">
-            {/* 數量被調整過的會變底色 */}
             {editProjectId && (() => {
               const countMap = existingItems.reduce((acc, it) => {
                 const fid = getExistingId(it);

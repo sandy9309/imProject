@@ -385,3 +385,74 @@
     gap: 10px;
   }
 }
+
+
+.panel-furniture-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--color-surface);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+}
+ 
+.panel-furniture-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+}
+ 
+
+.furniture-name {
+  flex: 1;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  min-width: 0;
+}
+ 
+
+.furniture-unit {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  text-align: right;
+  min-width: 130px;
+}
+ 
+.furniture-times {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+ 
+.furniture-subtotal {
+  color: var(--color-text);
+  font-weight: 800;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  text-align: right;
+  min-width: 96px;
+}
+ 
+@media (max-width: 768px) {
+  .panel-furniture-item {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+  .furniture-name {
+    flex: 1 1 100%;
+  }
+  .furniture-unit {
+    min-width: auto;
+    text-align: left;
+    flex: 1;
+  }
+  .furniture-subtotal {
+    min-width: auto;
+    flex: 0 0 auto;
+  }
+}

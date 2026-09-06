@@ -93,6 +93,8 @@ public class ModelLoader : MonoBehaviour
     private int _currentFurnitureIndex = 0;
     private enum ProjectMenuState { ProjectId, Furniture, Hidden }
     private ProjectMenuState _projectMenuState = ProjectMenuState.ProjectId;
+    private System.Collections.Generic.HashSet<int> _knownFurnitureIndices = new System.Collections.Generic.HashSet<int>();
+    private bool _isFirstFetchOfProject = true;
 
     // 方便把訊息同時印在 Console 和眼鏡裡的 3D 文字上
     void Log(string msg)
@@ -456,8 +458,21 @@ public class ModelLoader : MonoBehaviour
                 displayName = System.IO.Path.GetFileNameWithoutExtension(data.url); 
                 if (string.IsNullOrEmpty(displayName)) displayName = "Model " + (_currentFurnitureIndex + 1);
             }
+
+            int newItemCount = 0;
+            foreach (var f in _fetchedFurnitures)
+            {
+                if (_knownFurnitureIndices != null && !_knownFurnitureIndices.Contains(f.index))
+                    newItemCount++;
+            }
+
+            if (_knownFurnitureIndices != null && !_knownFurnitureIndices.Contains(data.index))
+            {
+                displayName = "<color=#FFFF00>[NEW]</color> " + displayName;
+            }
             
-            string text = $"<b>Select Furniture</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n";
+            string updateHint = newItemCount > 0 ? $"<size=70%><color=#FFA500>專案已更新 新增 {newItemCount} 件家具</color></size>\n" : "";
+            string text = $"<b>Select Furniture</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n{updateHint}";
             text += $"<size=150%><color=#00FF00>{displayName}</color></size>\n\n";
             text += $"<size=50%>Right A: Spawn　Right B: Back　X: Delete</size>";
             
@@ -486,6 +501,8 @@ public class ModelLoader : MonoBehaviour
 
         _fetchedFurnitures = null;
         _currentFurnitureIndex = 0;
+        _knownFurnitureIndices.Clear();
+        _isFirstFetchOfProject = true;
 
         // Match the working lin branch: 0033 is project 33, not a literal "0033" ID.
         string userId = int.TryParse(_uiInputProjectID, out int numericProjectId)
@@ -738,6 +755,12 @@ public class ModelLoader : MonoBehaviour
 
                         Log($"🌐 Success! Found {targetArray.Length} models.");
                         
+                        if (_isFirstFetchOfProject)
+                        {
+                            foreach (var f in targetArray) _knownFurnitureIndices.Add(f.index);
+                            _isFirstFetchOfProject = false;
+                        }
+
                         // 儲存資料，並更新選單
                         _fetchedFurnitures = targetArray;
                         _currentFurnitureIndex = 0;
@@ -797,6 +820,8 @@ public class ModelLoader : MonoBehaviour
         Log($"✨ 正在生成傢俱: {filename}\n座標: ({data.x:F2}, {data.y:F2}, {data.z:F2})");
         
         _ = LoadModelFromNetwork(data);
+        
+        if (_knownFurnitureIndices != null) _knownFurnitureIndices.Add(data.index);
         
         _projectMenuState = ProjectMenuState.Hidden;
         UpdateDisplay();

@@ -29,6 +29,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
     private float nextRoomRefresh;
     private MRUKRoom cachedRoom;
     private float nextRecoveryAttempt;
+    private int observedGeometryVersion = -1;
 
     // Layer overrides exclude raw scan colliders even when they are created later.
     public static bool BlocksFurniturePhysics(Collider other)
@@ -97,6 +98,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         safePosition = candidate;
         safeRotation = visual.rotation;
         hasSafePose = true;
+        observedGeometryVersion = SceneAutoScanner.PlacementGeometryVersion;
 
         appearance = GetComponent<FurnitureOverlapAppearance>();
         if (appearance == null) appearance = gameObject.AddComponent<FurnitureOverlapAppearance>();
@@ -121,6 +123,15 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
     public Pose ResolvePose(Pose target, bool previewRotation = false)
     {
         if (visual == null || !hasSafePose) return target;
+        // 房間重掃或重建手動牆後，舊的房間快取與復原等待時間都已失效；
+        // 立即重設，避免家具仍依上一組牆面判斷位置。
+        if (observedGeometryVersion != SceneAutoScanner.PlacementGeometryVersion)
+        {
+            observedGeometryVersion = SceneAutoScanner.PlacementGeometryVersion;
+            cachedRoom = null;
+            nextRoomRefresh = 0f;
+            nextRecoveryAttempt = 0f;
+        }
         RefreshRoom();
         if (SceneAutoScanner.PlacementWalls.Count == 0)
         {
@@ -129,6 +140,9 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         CollectBlockers();
         Vector3 requestedPosition = target.position;
         Quaternion requestedRotation = target.rotation;
+        // 掃掠前先把目標位置抬回支撐地板上。地板不加入水平阻擋清單，
+        // 因此既不會穿入地下，也不會因傾斜地板在空地產生透明牆。
+        RaiseAboveFloor(ref requestedPosition, requestedRotation);
         Vector3 position = safePosition;
         Quaternion rotation = safeRotation;
         RaiseAboveFloor(ref position, rotation);
@@ -158,9 +172,12 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
             Box start = BoxAt(position, rotation);
             float fraction = 1f;
             Box contact = default;
-            foreach (Box obstacle in blockers)
+            for (int obstacleIndex = 0; obstacleIndex < blockers.Count; obstacleIndex++)
+            {
+                Box obstacle = blockers[obstacleIndex];
                 if (FurniturePlacementGeometry.Sweep(start, obstacle, delta, out float hit) && hit < fraction)
                 { fraction = hit; contact = obstacle; }
+            }
             float advance = fraction < 1f ? Mathf.Max(0f, fraction - 0.0005f / delta.magnitude) : 1f;
             Vector3 next = position + delta * advance;
             if (!IsValid(BoxAt(next, rotation))) break;
@@ -259,9 +276,8 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
                     new Vector3(physicalWall.Radius(tangent) + wallClearance, 10000f,
                         physicalWall.Radius(normal) + wallClearance), Quaternion.LookRotation(normal, Vector3.up)));
             }
-        foreach (Collider floor in SceneAutoScanner.PlacementFloors)
-            if (floor is BoxCollider plane && floor.enabled && floor.gameObject.activeInHierarchy)
-                blockers.Add(FurniturePlacementGeometry.FromBounds(new Bounds(plane.center, plane.size), plane.transform));
+        // 地板只交給 RaiseAboveFloor 校正高度。若把掃描地板的完整方盒當成
+        // 水平障礙，稍微傾斜或重複的地板錨點就會在空地形成透明牆。
         
         bool isFrozen = _stateController != null && _stateController.CurrentState == FurnitureInteractionState.Frozen;
         if (!isFrozen)
@@ -271,6 +287,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
                     blockers.Add(other.BoxAt(other.safePosition, other.safeRotation).Expanded(furnitureClearance));
         }
     }
+
     private void RaiseAboveFloor(ref Vector3 position, Quaternion rotation)
     {
         Box box = BoxAt(position, rotation);
@@ -291,14 +308,16 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
     {
         foreach (Box obstacle in blockers)
             if (FurniturePlacementGeometry.Overlaps(box, obstacle)) return false;
-        if (cachedRoom != null && cachedRoom.FloorAnchors.Count > 0)
+        if (SceneAutoScanner.ActivePlacementSpace == SceneAutoScanner.PlacementSpaceKind.ManualWalls)
         {
+            // 手動牆除了逐面防穿透，也要確認家具底部四角仍在封閉多邊形內，
+            // 防止家具從牆角縫隙或一次大幅移動跑到房外。
             for (int x = -1; x <= 1; x += 2)
-            for (int y = -1; y <= 1; y += 2)
             for (int z = -1; z <= 1; z += 2)
             {
-                Vector3 corner = box.center + box.rotation * Vector3.Scale(box.half, new Vector3(x, y, z));
-                if (!cachedRoom.IsPositionInRoom(corner, false)) return false;
+                Vector3 corner = box.center + box.rotation * Vector3.Scale(box.half,
+                    new Vector3(x, 0f, z));
+                if (!SceneAutoScanner.IsPointInsideActiveBoundary(corner)) return false;
             }
         }
         return true;
@@ -306,11 +325,24 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
     private bool FindFreePose(ref Vector3 position, Quaternion rotation)
     {
         Vector3 origin = position;
+        if (SceneAutoScanner.TryGetPlacementCenter(out Vector3 roomCenter))
+        {
+            // 原位置不合法時優先嘗試房間中心，再由中心向外搜尋；這比從
+            // 錯位牆旁開始搜尋更容易找到可看見且可操作的位置。
+            origin = roomCenter;
+            RaiseAboveFloor(ref origin, rotation);
+            if (IsValid(BoxAt(origin, rotation)))
+            {
+                position = origin;
+                return true;
+            }
+        }
         for (int ring = 1; ring <= 12; ring++)
         for (int step = 0; step < 24; step++)
         {
             float angle = step * Mathf.PI / 12f;
             Vector3 candidate = origin + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (ring * 0.25f);
+            RaiseAboveFloor(ref candidate, rotation);
             if (!IsValid(BoxAt(candidate, rotation))) continue;
             position = candidate;
             return true;

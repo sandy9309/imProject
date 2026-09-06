@@ -20,6 +20,7 @@ public static class FurniturePlacementVerification
         {
             checks = 0;
             Geometry();
+            ManualRoomBoundary();
             WallAndRotation();
             Cleanup();
             VirtualFurniture();
@@ -30,6 +31,7 @@ public static class FurniturePlacementVerification
             Cleanup();
             PrefabBindings();
             RoomSetupChoices();
+            ScannedWallLabels();
             Cleanup();
             RealObjectPhysics();
             Cleanup();
@@ -367,6 +369,32 @@ public static class FurniturePlacementVerification
         Check(visual.position.x < 1.46f && visual.position.y >= 0.5f,
             "Release committed an out-of-room pose.");
         Check(!FurniturePlacementController.HasActiveGrab, "Menu input lock did not release after the grab ended.");
+    }
+
+    private static void ManualRoomBoundary()
+    {
+        // 驗證手動牆的房內外判斷，避免家具從牆角移出封閉範圍。
+        var polygon = new List<Vector3> {
+            new Vector3(-2, 0, -2), new Vector3(2, 0, -2),
+            new Vector3(2, 0, 2), new Vector3(-2, 0, 2)
+        };
+        Check(SceneAutoScanner.IsPointInPolygonXZ(polygon, Vector3.zero),
+            "Manual room rejected an interior point.");
+        Check(!SceneAutoScanner.IsPointInPolygonXZ(polygon, new Vector3(3, 0, 0)),
+            "Manual room accepted an exterior point.");
+    }
+
+    private static void ScannedWallLabels()
+    {
+        // 概念分區牆不可產生碰撞，實體外牆與內部結構則必須保留。
+        Check(SceneAutoScanner.IsPhysicalWallLabel(Meta.XR.MRUtilityKit.MRUKAnchor.SceneLabels.WALL_FACE),
+            "A physical wall was excluded from collision.");
+        Check(SceneAutoScanner.IsPhysicalWallLabel(Meta.XR.MRUtilityKit.MRUKAnchor.SceneLabels.INNER_WALL_FACE),
+            "An inner physical wall was excluded from collision.");
+        Check(!SceneAutoScanner.IsPhysicalWallLabel(
+                Meta.XR.MRUtilityKit.MRUKAnchor.SceneLabels.WALL_FACE |
+                Meta.XR.MRUtilityKit.MRUKAnchor.SceneLabels.INVISIBLE_WALL_FACE),
+            "An invisible open-space divider was treated as a physical wall.");
     }
 
     private static void RotationDestinations()

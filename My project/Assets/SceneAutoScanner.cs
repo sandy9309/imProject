@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 using Meta.XR.MRUtilityKit;
 using TMPro;
@@ -9,9 +8,12 @@ using UnityEngine;
 
 public class SceneAutoScanner : MonoBehaviour
 {
+    public enum PlacementSpaceKind { None, ScannedRoom, ManualWalls }
     public static readonly HashSet<BoxCollider> PlacementWalls = new HashSet<BoxCollider>();
     public static readonly HashSet<Collider> PlacementFloors = new HashSet<Collider>();
     public static int ActiveWallColliderCount { get; private set; }
+    public static PlacementSpaceKind ActivePlacementSpace { get; private set; }
+    public static int PlacementGeometryVersion { get; private set; }
     public static bool IsWaitingForChoice { get; private set; }
     public static bool StartupFlowComplete { get; private set; }
     public static event System.Action StartupFlowCompleted;
@@ -29,7 +31,7 @@ public class SceneAutoScanner : MonoBehaviour
     [Min(0.5f)] public float manualWallHeight = 2.6f;
     [Tooltip("Maximum distance of the controller ray used for manual wall setup.")]
     [Min(1f)] public float manualSetupRayDistance = 8f;
-    [Tooltip("Hold Y for this many seconds to replace saved manual walls.")]
+    [Tooltip("Hold Y for this many seconds to rebuild the current session's manual walls.")]
     [Min(0.5f)] public float resetManualWallsHoldSeconds = 2f;
 
     private bool _isScanning;
@@ -53,28 +55,105 @@ public class SceneAutoScanner : MonoBehaviour
     private GameObject _manualFloorObject;
     private readonly List<GameObject> _scannedFloorObjects = new List<GameObject>();
     private readonly List<Vector3> _manualWallPoints = new List<Vector3>();
+    private static readonly List<Vector3> ActiveManualBoundary = new List<Vector3>();
+    private static Vector3 _placementOrigin;
+    private static Vector3 _placementRecoveryCenter;
+    private static Quaternion _placementRotation = Quaternion.identity;
+    private static bool _hasPlacementReference;
     private readonly List<GameObject> _manualMarkers = new List<GameObject>();
     private OVRCameraRig _cameraRig;
     private LineRenderer _manualPreviewLine;
     private LineRenderer _manualOutlineLine;
     private Material _manualPreviewMaterial;
 
-    private const int ManualWallDataVersion = 1;
-    private const string ManualWallFileName = "manual-walls.json";
-
-    [Serializable]
-    private sealed class ManualWallData
-    {
-        public int version = ManualWallDataVersion;
-        public float wallHeight = 2.6f;
-        public float wallThickness = 0.08f;
-        public List<Vector3> points = new List<Vector3>();
-    }
-
     private void Awake()
     {
         IsWaitingForChoice = false;
         StartupFlowComplete = false;
+        ActivePlacementSpace = PlacementSpaceKind.None;
+        ActiveManualBoundary.Clear();
+        _hasPlacementReference = false;
+    }
+
+    public static bool IsPointInsideActiveBoundary(Vector3 worldPoint)
+    {
+        if (ActivePlacementSpace != PlacementSpaceKind.ManualWalls || ActiveManualBoundary.Count < 3)
+            return true;
+        return IsPointInPolygonXZ(ActiveManualBoundary, worldPoint);
+    }
+
+    public static bool IsPointInPolygonXZ(IReadOnlyList<Vector3> polygon, Vector3 point)
+    {
+        if (polygon == null || polygon.Count < 3) return false;
+        bool inside = false;
+        for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
+        {
+            Vector3 a = polygon[i];
+            Vector3 b = polygon[j];
+            bool crosses = (a.z > point.z) != (b.z > point.z);
+            if (!crosses) continue;
+            float crossingX = (b.x - a.x) * (point.z - a.z) / (b.z - a.z) + a.x;
+            if (point.x < crossingX) inside = !inside;
+        }
+        return inside;
+    }
+
+    public static bool TryGetPlacementCenter(out Vector3 center)
+    {
+        if (!_hasPlacementReference) { center = Vector3.zero; return false; }
+        center = _placementRecoveryCenter;
+        return true;
+    }
+
+    public static bool TryWorldToPlacementPose(Vector3 worldPosition, Quaternion worldRotation,
+        out Vector3 localPosition, out float localYaw)
+    {
+        // 家具座標以目前房間為基準保存，Quest 重新定位世界原點時，
+        // 家具與牆仍會一起移動，不會只有其中一方發生偏移。
+        if (!_hasPlacementReference)
+        {
+            localPosition = worldPosition;
+            localYaw = worldRotation.eulerAngles.y;
+            return false;
+        }
+        localPosition = Quaternion.Inverse(_placementRotation) * (worldPosition - _placementOrigin);
+        localYaw = (Quaternion.Inverse(_placementRotation) * worldRotation).eulerAngles.y;
+        return true;
+    }
+
+    public static bool TryPlacementToWorldPose(Vector3 localPosition, float localYaw,
+        out Vector3 worldPosition, out Quaternion worldRotation)
+    {
+        if (!_hasPlacementReference)
+        {
+            worldPosition = localPosition;
+            worldRotation = Quaternion.Euler(0f, localYaw, 0f);
+            return false;
+        }
+        worldPosition = _placementOrigin + _placementRotation * localPosition;
+        worldRotation = _placementRotation * Quaternion.Euler(0f, localYaw, 0f);
+        return true;
+    }
+
+    private static void SetPlacementReference(PlacementSpaceKind kind, Vector3 origin, Vector3 forward,
+        Vector3? recoveryCenter = null)
+    {
+        Vector3 flatForward = Vector3.ProjectOnPlane(forward, Vector3.up).normalized;
+        if (flatForward.sqrMagnitude < 0.5f) flatForward = Vector3.forward;
+        ActivePlacementSpace = kind;
+        _placementOrigin = origin;
+        _placementRecoveryCenter = recoveryCenter ?? origin;
+        _placementRotation = Quaternion.LookRotation(flatForward, Vector3.up);
+        _hasPlacementReference = true;
+        PlacementGeometryVersion++;
+    }
+
+    public static bool IsPhysicalWallLabel(MRUKAnchor.SceneLabels label)
+    {
+        // Meta 的 INVISIBLE_WALL_FACE 只用來概念性切分開放空間，不代表實體牆，
+        // 因此不能拿來阻擋家具；一般外牆與內部柱體仍保留碰撞。
+        if ((label & MRUKAnchor.SceneLabels.INVISIBLE_WALL_FACE) != 0) return false;
+        return (label & (MRUKAnchor.SceneLabels.WALL_FACE | MRUKAnchor.SceneLabels.INNER_WALL_FACE)) != 0;
     }
 
     private IEnumerator Start()
@@ -119,8 +198,7 @@ public class SceneAutoScanner : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[Scanner] MRUK room unavailable. Checking saved manual walls without entering manual setup.");
-            if (TryLoadManualWalls()) _roomLoadStatus += " / saved manual walls";
+            Debug.LogWarning("[Scanner] MRUK room unavailable. Manual walls must be created for this app session.");
         }
         yield return AskWhetherToRescan();
     }
@@ -233,7 +311,6 @@ public class SceneAutoScanner : MonoBehaviour
             {
                 _resetConfirmationActive = false;
                 FinishChoice();
-                DeleteManualWallFile();
                 BeginManualWallSetup("confirmed manual reset");
             }
             else if (OVRInput.GetDown(OVRInput.RawButton.B, OVRInput.Controller.RTouch))
@@ -246,7 +323,7 @@ public class SceneAutoScanner : MonoBehaviour
         }
 
         if (_isWaitingForChoice || _isScanning) return;
-        // Hold Y to deliberately replace the saved manual calibration.
+        // Hold Y to deliberately replace the current session's manual calibration.
         if (OVRInput.Get(OVRInput.RawButton.Y))
         {
             if (_resetHoldStartedAt < 0f)
@@ -433,14 +510,12 @@ public class SceneAutoScanner : MonoBehaviour
             else
             {
                 Debug.LogWarning("[Scanner] Room setup closed, but no usable room was loaded.");
-                if (TryLoadManualWalls()) _roomLoadStatus += " / saved manual walls";
             }
         }
         catch (System.Exception exception)
         {
             Debug.LogError("[Scanner] Room scanning failed: " + exception.Message);
             _roomLoadStatus = "Scan/load failed (see device log)";
-            if (ActiveWallColliderCount == 0 && TryLoadManualWalls()) _roomLoadStatus += " / saved manual walls";
         }
         finally
         {
@@ -448,8 +523,6 @@ public class SceneAutoScanner : MonoBehaviour
             if (this != null && isActiveAndEnabled) StartCoroutine(AskWhetherToRescan());
         }
     }
-
-    private string ManualWallFilePath => Path.Combine(Application.persistentDataPath, ManualWallFileName);
 
     private Transform TrackingSpace
     {
@@ -508,7 +581,7 @@ public class SceneAutoScanner : MonoBehaviour
         _choiceText.alignment = TextAlignmentOptions.Center;
         _choiceText.fontSize = 42f;
         _choiceText.rectTransform.sizeDelta = new Vector2(720f, 240f);
-        _choiceText.text = "<b>REPLACE SAVED WALLS?</b>\n\n" +
+        _choiceText.text = "<b>REBUILD MANUAL WALLS?</b>\n\n" +
                            "<color=#62E6A5>A: Replace</color>    B: Cancel";
     }
 
@@ -626,77 +699,14 @@ public class SceneAutoScanner : MonoBehaviour
             return;
         }
 
-        if (!SaveManualWalls())
-        {
-            ClearWallColliders();
-            UpdateManualSetupPrompt("Could not save walls. Please try again.");
-            return;
-        }
-
+        // 手動牆只保留在本次 App 執行期間。離開 App 後不寫入磁碟，避免
+        // 下次啟動時因 Quest tracking origin 改變而載入錯位牆面。
         _manualSetupActive = false;
         _isWaitingForChoice = false;
         IsWaitingForChoice = false;
         ClearManualSetupVisuals();
-        Debug.Log($"[ManualWalls] Saved and built {ActiveWallColliderCount} walls.");
+        Debug.Log($"[ManualWalls] Built {ActiveWallColliderCount} session-only walls.");
         SignalStartupFlowComplete();
-    }
-
-    private bool SaveManualWalls()
-    {
-        try
-        {
-            Transform trackingSpace = TrackingSpace;
-            var data = new ManualWallData
-            {
-                wallHeight = manualWallHeight,
-                wallThickness = wallColliderThickness
-            };
-
-            foreach (Vector3 worldPoint in _manualWallPoints)
-                data.points.Add(trackingSpace != null ? trackingSpace.InverseTransformPoint(worldPoint) : worldPoint);
-
-            File.WriteAllText(ManualWallFilePath, JsonUtility.ToJson(data, true));
-            return true;
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError("[ManualWalls] Save failed: " + exception.Message);
-            return false;
-        }
-    }
-
-    private bool TryLoadManualWalls()
-    {
-        if (!File.Exists(ManualWallFilePath)) return false;
-
-        try
-        {
-            ManualWallData data = JsonUtility.FromJson<ManualWallData>(File.ReadAllText(ManualWallFilePath));
-            if (data == null || data.version != ManualWallDataVersion ||
-                data.points == null || data.points.Count < 3)
-            {
-                Debug.LogWarning("[ManualWalls] Saved wall data is missing or incompatible.");
-                return false;
-            }
-
-            manualWallHeight = Mathf.Max(0.5f, data.wallHeight);
-            wallColliderThickness = Mathf.Max(0.01f, data.wallThickness);
-            Transform trackingSpace = TrackingSpace;
-            var worldPoints = new List<Vector3>(data.points.Count);
-            foreach (Vector3 localPoint in data.points)
-                worldPoints.Add(trackingSpace != null ? trackingSpace.TransformPoint(localPoint) : localPoint);
-
-            bool built = BuildManualWallColliders(worldPoints);
-            Debug.Log(built
-                ? $"[ManualWalls] Loaded {ActiveWallColliderCount} saved walls."
-                : "[ManualWalls] Saved data could not create valid wall colliders.");
-            return built;
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError("[ManualWalls] Load failed: " + exception.Message);
-            return false;
-        }
     }
 
     private bool BuildManualWallColliders(IReadOnlyList<Vector3> points)
@@ -726,7 +736,17 @@ public class SceneAutoScanner : MonoBehaviour
         }
 
         ActiveWallColliderCount = _wallColliderObjects.Count;
-        if (ActiveWallColliderCount >= 3) BuildManualFloor(points);
+        if (ActiveWallColliderCount >= 3)
+        {
+            ActiveManualBoundary.Clear();
+            foreach (Vector3 point in points) ActiveManualBoundary.Add(point);
+            Vector3 center = Vector3.zero;
+            foreach (Vector3 point in points) center += point;
+            center /= points.Count;
+            Vector3 forward = Vector3.ProjectOnPlane(points[1] - points[0], Vector3.up);
+            SetPlacementReference(PlacementSpaceKind.ManualWalls, center, forward);
+            BuildManualFloor(points);
+        }
         Physics.SyncTransforms();
         return ActiveWallColliderCount >= 3;
     }
@@ -745,20 +765,6 @@ public class SceneAutoScanner : MonoBehaviour
         floor.center = new Vector3(bounds.center.x, bounds.min.y - 0.02f, bounds.center.z);
         floor.size = new Vector3(Mathf.Max(bounds.size.x, 0.1f), 0.04f, Mathf.Max(bounds.size.z, 0.1f));
         PlacementFloors.Add(floor);
-    }
-
-    private void DeleteManualWallFile()
-    {
-        try
-        {
-            if (File.Exists(ManualWallFilePath))
-                File.Delete(ManualWallFilePath);
-            Debug.Log("[ManualWalls] Saved manual wall data deleted.");
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError("[ManualWalls] Could not delete saved data: " + exception.Message);
-        }
     }
 
     private void EnablePassthroughView()
@@ -904,16 +910,11 @@ public class SceneAutoScanner : MonoBehaviour
         var room = MRUK.Instance.GetCurrentRoom();
         if (room == null) return;
 
-        MRUKAnchor.SceneLabels wallLabels =
-            MRUKAnchor.SceneLabels.WALL_FACE |
-            MRUKAnchor.SceneLabels.INVISIBLE_WALL_FACE |
-            MRUKAnchor.SceneLabels.INNER_WALL_FACE;
-
         int createdCount = 0;
         Debug.Log($"[Scanner] Room contains {room.Anchors.Count} anchors before wall filtering.");
         foreach (var anchor in room.Anchors)
         {
-            if ((anchor.Label & wallLabels) == 0)
+            if (!IsPhysicalWallLabel(anchor.Label))
                 continue;
 
             if (!anchor.PlaneRect.HasValue)
@@ -955,6 +956,9 @@ public class SceneAutoScanner : MonoBehaviour
             PlacementFloors.Add(floor);
         }
         ActiveWallColliderCount = createdCount;
+        if (createdCount > 0)
+            SetPlacementReference(PlacementSpaceKind.ScannedRoom, room.transform.position, room.transform.forward,
+                room.GetRoomBounds().center);
         Physics.SyncTransforms();
         Debug.Log($"[Scanner] Built {createdCount} invisible MRUK wall colliders.");
     }
@@ -985,6 +989,10 @@ public class SceneAutoScanner : MonoBehaviour
         _wallColliderObjects.Clear();
         PlacementWalls.RemoveWhere(wall => wall == null);
         ActiveWallColliderCount = 0;
+        ActiveManualBoundary.Clear();
+        ActivePlacementSpace = PlacementSpaceKind.None;
+        _hasPlacementReference = false;
+        PlacementGeometryVersion++;
     }
 
     private void OnDisable()

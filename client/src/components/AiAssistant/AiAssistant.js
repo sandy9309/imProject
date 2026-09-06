@@ -24,11 +24,7 @@ const AiAssistant = () => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [furnitureMap, setFurnitureMap] = useState({});
-<<<<<<< HEAD
-=======
   const [recommendationSort, setRecommendationSort] = useState('recommended');
-  // 🚀 3D 預覽中的家具(null = 沒開)
->>>>>>> cc83a1a6221006049ca91b25ca2a751a3f12cdd8
   const [preview, setPreview] = useState(null);
   const [messages, setMessages] = useState([
     {
@@ -100,7 +96,7 @@ const AiAssistant = () => {
     }
   };
 
-  // ── 從對話直接加入配置清單　──
+  // ── 對話直接加入配置清單　──
   const addToCart = async (furnitureId) => {
     const product = furnitureMap[furnitureId];
     if (!product) return;
@@ -309,7 +305,6 @@ const AiAssistant = () => {
         </div>
       )}
 
-      
       <button
         className={`ai-fab ${open ? 'open' : ''}`}
         onClick={() => setOpen(v => !v)}

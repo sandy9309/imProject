@@ -30,6 +30,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
     private MRUKRoom cachedRoom;
     private float nextRecoveryAttempt;
     private int observedGeometryVersion = -1;
+    private bool preserveSavedOverlap;
 
     // Layer overrides exclude raw scan colliders even when they are created later.
     public static bool BlocksFurniturePhysics(Collider other)
@@ -60,10 +61,11 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         foreach (Collider floor in SceneAutoScanner.PlacementFloors)
             if (floor != null) floor.gameObject.layer = geometryLayer;
     }
-    public bool Configure(BoxCollider targetCollider, Transform movingVisual)
+    public bool Configure(BoxCollider targetCollider, Transform movingVisual, bool preserveSavedOverlap = false)
     {
         furnitureCollider = targetCollider;
         visual = movingVisual != null ? movingVisual : transform;
+        this.preserveSavedOverlap = preserveSavedOverlap;
 
 
         // Root-local collider coordinates must be converted to the moving Visuals frame.
@@ -137,7 +139,8 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         {
             return new Pose(safePosition, safeRotation);
         }
-        CollectBlockers();
+        // 還原專案時只用房間牆壁檢查儲存座標，其他虛擬家具不可把它推到新位置。
+        CollectBlockers(!preserveSavedOverlap);
         Vector3 requestedPosition = target.position;
         Quaternion requestedRotation = target.rotation;
         // 掃掠前先把目標位置抬回支撐地板上。地板不加入水平阻擋清單，
@@ -260,7 +263,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         _stateController = GetComponent<FurnitureInteractionStateController>();
     }
 
-    private void CollectBlockers()
+    private void CollectBlockers(bool includeVirtualFurniture = true)
     {
         blockers.Clear();
         foreach (BoxCollider wall in SceneAutoScanner.PlacementWalls)
@@ -280,7 +283,10 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         // 水平障礙，稍微傾斜或重複的地板錨點就會在空地形成透明牆。
         
         bool isFrozen = _stateController != null && _stateController.CurrentState == FurnitureInteractionState.Frozen;
-        if (!isFrozen)
+        // 使用者再次抓取家具後恢復一般防重疊；在此之前完整保留專案儲存的位置。
+        if (_stateController != null && _stateController.CurrentState == FurnitureInteractionState.Grabbed)
+            preserveSavedOverlap = false;
+        if (includeVirtualFurniture && !isFrozen && !preserveSavedOverlap)
         {
             foreach (FurnitureWallCollisionGuard other in instances)
                 if (other != this && other != null && other.hasSafePose && other.visual != null && other.isActiveAndEnabled)

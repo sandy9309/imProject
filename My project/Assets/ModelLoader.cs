@@ -1016,9 +1016,11 @@ public class ModelLoader : MonoBehaviour
                 FurnitureWallCollisionGuard wallGuard = rootObject.GetComponent<FurnitureWallCollisionGuard>();
                 if (wallGuard == null)
                     wallGuard = rootObject.AddComponent<FurnitureWallCollisionGuard>();
-                if (!wallGuard.Configure(rootCollider, modelVisuals.transform))
+                // 已儲存的位置可能刻意讓家具重疊；重新載入時不可用其他虛擬家具
+                // 改寫原本位置，但牆壁與房間邊界仍需要通過檢查。
+                if (!wallGuard.Configure(rootCollider, modelVisuals.transform, data.isPlaced))
                 {
-                    Log("無法放置家具：請確認房間牆面已載入，且附近有足夠空間。");
+                    Log("Cannot place furniture. Check that room walls are loaded and nearby space is clear.");
                     return;
                 }
 

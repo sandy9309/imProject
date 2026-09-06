@@ -323,6 +323,12 @@ public class SceneAutoScanner : MonoBehaviour
         }
 
         if (_isWaitingForChoice || _isScanning) return;
+        // 進入專案後 Y 交由截圖功能使用，避免長按時誤開手動牆重設。
+        if (ModelLoader.Instance != null && ModelLoader.Instance.HasActiveProject)
+        {
+            _resetHoldStartedAt = -1f;
+            return;
+        }
         // Hold Y to deliberately replace the current session's manual calibration.
         if (OVRInput.Get(OVRInput.RawButton.Y))
         {

@@ -8,14 +8,15 @@ using System.Threading.Tasks;
 public class ModelLoader : MonoBehaviour
 {
     public static ModelLoader Instance { get; private set; }
+    public bool HasActiveProject => _lastRefreshSucceeded && !string.IsNullOrWhiteSpace(_activeProjectId);
 
     void Awake()
     {
         Instance = this;
     }
 
-    [Header("API 伺服器設定")]
-    [Tooltip("基礎 API 網址 (請包含 /furnitures/，但不要包含後面的數字)")]
+    [Header("API Server Settings")]
+    [Tooltip("Base API URL ending with /projects/")]
     public string apiBaseUrl = "http://163.13.202.116:5050/api/projects/"; 
 
     [Min(1)] public int requestTimeoutSeconds = 10;
@@ -40,6 +41,8 @@ public class ModelLoader : MonoBehaviour
     private bool _projectLoadInProgress;
     private bool _returnInProgress;
     private bool _serverSupportsCoordinateSpace;
+    private bool _screenshotYHeld;
+    private int _screenshotStatusVersion;
 
     private string BuildProjectApiUrl(string projectId, string resource)
     {
@@ -49,18 +52,18 @@ public class ModelLoader : MonoBehaviour
         return $"{baseUrl}/{cleanProjectId}/{cleanResource}";
     }
 
-    [Header("VR 搖桿輸入設定")]
-    [Tooltip("請把 Unity 裡的 CenterEyeAnchor (頭部攝影機) 拖曳到這裡")]
+    [Header("VR Controller Input")]
+    [Tooltip("Assign the CenterEyeAnchor camera here")]
     public Transform headCamera;
     
-    [Tooltip("請在場景建立一個 3D Text (TextMeshPro) 拖拉到這裡 (選號 UI)")]
+    [Tooltip("Assign the project selection TextMeshPro object here")]
     public TextMeshPro idDisplay;
 
-    [Tooltip("如果需要除錯，把 ApiTester 用的那個文字拖進來這裡 (非必填)")]
+    [Tooltip("Optional debug TextMeshPro output")]
     public TextMeshPro debugText;
 
-    [Header("傢俱互動設定")]
-    [Tooltip("請把你設定好「可抓取」的空殼 Prefab 拖曳到這裡！")]
+    [Header("Furniture Interaction")]
+    [Tooltip("Assign the configured grabbable prefab here")]
     public GameObject interactablePrefab;
 
     // 🌟 定義單一個傢俱的資料結構 (包含網址與座標)
@@ -201,6 +204,14 @@ public class ModelLoader : MonoBehaviour
 
     void Update()
     {
+        // 使用按住狀態自行判斷第一次按下，避免部分 Quest 執行環境漏掉 GetDown 事件。
+        bool screenshotYHeld = OVRInput.Get(OVRInput.RawButton.Y) ||
+            OVRInput.Get(OVRInput.Button.Four, OVRInput.Controller.LTouch);
+        bool screenshotPressed = HasActiveProject && screenshotYHeld && !_screenshotYHeld;
+        _screenshotYHeld = screenshotYHeld;
+        if (screenshotPressed)
+            StartCoroutine(TakeScreenshotAndUploadRoutine());
+
         if (_returnInProgress) return;
         // Room setup and an active grab own the controller inputs exclusively.
         if (FurniturePlacementController.HasActiveGrab || !SceneAutoScanner.StartupFlowComplete ||
@@ -233,7 +244,7 @@ public class ModelLoader : MonoBehaviour
                 UpdateFurnitureSelectionFromJoystick();
                 if (confirmPressed) UI_SpawnFurniture();
                 if (resetPressed) ReturnToProjectSelection();
-
+                // 左手 X 保留刪除功能，左手 Y 負責截圖，避免兩個功能互相覆蓋。
                 if (OVRInput.GetDown(OVRInput.RawButton.X))
                 {
                     UI_DeleteFurniture();
@@ -245,12 +256,6 @@ public class ModelLoader : MonoBehaviour
                 _projectMenuState = ProjectMenuState.Furniture;
                 UpdateDisplay();
             }
-        }
-
-        // 🌟 截圖上傳功能：當玩家按下左手 X 鍵時觸發
-        if (OVRInput.GetDown(OVRInput.RawButton.X))
-        {
-            StartCoroutine(TakeScreenshotAndUploadRoutine());
         }
     }
 
@@ -338,7 +343,7 @@ public class ModelLoader : MonoBehaviour
         _returnInProgress = true;
         StopProjectSync();
         _projectRequestVersion++;
-        Log("正在儲存目前專案位置...");
+        Log("Saving the current project layout...");
         // Finish the last drag/rotation save before removing the objects that
         // provide their positions. This makes rapid project switching reliable.
         if (!_offlineTestMode && !string.IsNullOrWhiteSpace(_activeProjectId))
@@ -355,7 +360,7 @@ public class ModelLoader : MonoBehaviour
         _projectMenuState = ProjectMenuState.ProjectId;
         _returnInProgress = false;
         UpdateDisplay();
-        Log("已返回專案 ID 輸入畫面。");
+        Log("Returned to project ID entry.");
     }
 
     private void ClearSpawnedFurniture()
@@ -470,7 +475,7 @@ public class ModelLoader : MonoBehaviour
             FurnitureData data = _fetchedFurnitures[_currentFurnitureIndex];
             idDisplay.text = $"<b>SELECT FURNITURE</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n" +
                 $"<size=150%><color=#00FF00>{data.name}</color></size>\n\n" +
-                "<size=50%>A: Spawn furniture    B: Back    X: Delete</size>";
+                "<size=50%>A: Spawn　B: Back　Left X: Delete\nLeft Y: Screenshot</size>";
             return;
         }
 
@@ -501,10 +506,10 @@ public class ModelLoader : MonoBehaviour
                 displayName = "<color=#FFFF00>[NEW]</color> " + displayName;
             }
             
-            string updateHint = newItemCount > 0 ? $"<size=70%><color=#FFA500>專案已更新 新增 {newItemCount} 件家具</color></size>\n" : "";
+            string updateHint = newItemCount > 0 ? $"<size=70%><color=#FFA500>Project updated: {newItemCount} new item(s)</color></size>\n" : "";
             string text = $"<b>Select Furniture</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n{updateHint}";
             text += $"<size=150%><color=#00FF00>{displayName}</color></size>\n\n";
-            text += $"<size=50%>Right A: Spawn　Right B: Back　X: Delete</size>";
+            text += $"<size=50%>Right A: Spawn　Right B: Back　Left X: Delete\nLeft Y: Screenshot</size>";
             
             idDisplay.text = text;
         }
@@ -519,7 +524,7 @@ public class ModelLoader : MonoBehaviour
         int requestVersion = ++_projectRequestVersion;
 
         // 🌟 切換專案時，自動清空場景中所有的傢俱！
-        Log("🧹 清空舊專案的所有傢俱...");
+        Log("🧹 Clearing furniture from the previous project...");
         ClearSpawnedFurniture();
 
         _fetchedFurnitures = null;
@@ -566,7 +571,7 @@ public class ModelLoader : MonoBehaviour
         _currentFurnitureIndex = 0;
         _projectMenuState = ProjectMenuState.Furniture;
         UpdateDisplay();
-        Log("離線測試模式已啟用：不會連線伺服器。選擇家具後按 UI 放置或右手 A。");
+        Log("Offline test mode enabled. Select furniture and press the UI button or Right A.");
     }
 
     private IEnumerator ProjectSyncLoop()
@@ -725,7 +730,7 @@ public class ModelLoader : MonoBehaviour
     {
         _lastRefreshSucceeded = false;
         // 因為不再一次全生成，我們只抓資料，不需要清除畫面上的東西！
-        Log("⏳ 正在讀取傢俱清單...");
+        Log("⏳ Loading furniture list...");
 
         try
         {
@@ -750,7 +755,7 @@ public class ModelLoader : MonoBehaviour
                 {
                     if (requestVersion != _projectRequestVersion)
                     {
-                        Log("ℹ️ 已忽略舊專案的逾期回應。");
+                        Log("ℹ️ Ignored an outdated response from the previous project.");
                         return;
                     }
 
@@ -786,7 +791,7 @@ public class ModelLoader : MonoBehaviour
                         }
                         if (!ValidateFurnitureIndices(targetArray, out string indexError))
                         {
-                            Log("❌ 家具資料拒絕載入：" + indexError);
+                            Log("❌ Furniture data rejected: " + indexError);
                             return;
                         }
 
@@ -843,13 +848,13 @@ public class ModelLoader : MonoBehaviour
         {
             if (furniture.index < 0)
             {
-                error = $"index 不可小於 0，目前收到 {furniture.index}";
+                error = $"Furniture index cannot be negative: {furniture.index}";
                 return false;
             }
 
             if (!seenIndices.Add(furniture.index))
             {
-                error = $"同一專案收到重複 index={furniture.index}";
+                error = $"Duplicate furniture index in the project: {furniture.index}";
                 return false;
             }
         }
@@ -867,7 +872,7 @@ public class ModelLoader : MonoBehaviour
         string filename = string.IsNullOrEmpty(data.name) ? System.IO.Path.GetFileNameWithoutExtension(data.url) : data.name;
         
         // 🌟 印出座標來證明 Unity 是 100% 聽從 API/快取 的數據！
-        Log($"✨ 正在生成傢俱: {filename}\n座標: ({data.x:F2}, {data.y:F2}, {data.z:F2})");
+        Log($"✨ Spawning furniture: {filename}\nPosition: ({data.x:F2}, {data.y:F2}, {data.z:F2})");
         
         _ = LoadModelFromNetwork(data);
         
@@ -875,6 +880,8 @@ public class ModelLoader : MonoBehaviour
         
         _projectMenuState = ProjectMenuState.Hidden;
         UpdateDisplay();
+        // 左手 X 始終保留刪除家具；進入專案後使用左手 Y 截圖。
+        Log("Furniture is loading. Press Left Y to take a screenshot. Press Right B to return.");
     }
 
     // ==========================================
@@ -1238,27 +1245,45 @@ public class ModelLoader : MonoBehaviour
     // ==========================================
     private bool isTakingScreenshot = false;
 
+    private void ShowScreenshotStatus(string message, bool restoreMenuAfterDelay = false)
+    {
+        Log(message);
+        if (idDisplay == null) return;
+
+        int statusVersion = ++_screenshotStatusVersion;
+        idDisplay.gameObject.SetActive(true);
+        idDisplay.text = $"<b>{message}</b>";
+        if (restoreMenuAfterDelay)
+            StartCoroutine(RestoreDisplayAfterScreenshotStatus(statusVersion));
+    }
+
+    private IEnumerator RestoreDisplayAfterScreenshotStatus(int statusVersion)
+    {
+        yield return new WaitForSecondsRealtime(2.5f);
+        if (statusVersion == _screenshotStatusVersion)
+            UpdateDisplay();
+    }
+
     private System.Collections.IEnumerator TakeScreenshotAndUploadRoutine()
     {
         if (isTakingScreenshot) yield break;
 
-        if (string.IsNullOrWhiteSpace(_uiInputProjectID))
-        {
-            Log("❌ 請先輸入並確認專案 ID，再上傳截圖。");
+        if (!HasActiveProject)
             yield break;
-        }
 
         isTakingScreenshot = true;
 
-        Log("📸 正在擷取畫面，請保持頭部穩定...");
+        Debug.Log("[Screenshot] Capturing...");
 
         // 確保當前幀的畫面已經完全渲染完畢
         yield return new WaitForEndOfFrame();
 
-        Camera mainCam = Camera.main;
+        // 場景的 CenterEyeAnchor 不一定有 MainCamera 標籤；優先使用 Inspector 已綁定的頭部相機。
+        Camera mainCam = headCamera != null ? headCamera.GetComponent<Camera>() : null;
+        if (mainCam == null) mainCam = Camera.main;
         if (mainCam == null)
         {
-            Log("❌ 找不到主相機，無法截圖！");
+            Debug.LogError("[Screenshot] Main camera not found.");
             isTakingScreenshot = false;
             yield break;
         }
@@ -1301,9 +1326,7 @@ public class ModelLoader : MonoBehaviour
         byte[] imageBytes = screenShot.EncodeToJPG(85);
         Destroy(screenShot);
 
-        Log("🚀 畫面擷取完成，準備上傳至伺服器...");
-
-        // 呼叫非同步上傳 API
+        Debug.Log("[Screenshot] Uploading...");
         UploadScreenshotAndReset(imageBytes);
     }
 
@@ -1321,10 +1344,8 @@ public class ModelLoader : MonoBehaviour
 
     private async Task UploadScreenshotToDB(byte[] imageBytes)
     {
-        // 取得當前輸入的專案 ID
-        string userId = int.TryParse(_uiInputProjectID, out int numericProjectId)
-            ? numericProjectId.ToString()
-            : _uiInputProjectID;
+        // 使用已確認並載入的專案 ID；輸入框可能正被編輯，不能讓截圖誤傳到別的專案。
+        string userId = _activeProjectId;
         string uploadUrl = BuildProjectApiUrl(userId, "media");
 
         // 準備 MultipartFormData
@@ -1345,19 +1366,19 @@ public class ModelLoader : MonoBehaviour
 
                 if (req.result == UnityWebRequest.Result.Success)
                 {
-                    Log("✅ 截圖上傳成功！網頁端已可預覽");
+                    ShowScreenshotStatus("SCREENSHOT SAVED", true);
                     Debug.Log("Upload Response: " + req.downloadHandler.text);
                 }
                 else
                 {
-                    Log($"❌ 上傳失敗: {req.error}");
+                    Debug.LogError($"[Screenshot] Upload failed: {req.error}");
                     Debug.LogError("Upload Error: " + req.error + "\nResponse: " + req.downloadHandler.text);
                 }
             }
         }
         catch (System.Exception e)
         {
-            Log($"❌ 上傳發生例外錯誤: {e.Message}");
+            Debug.LogError($"[Screenshot] Error: {e.Message}");
         }
     }
 
@@ -1526,17 +1547,17 @@ public class ModelLoader : MonoBehaviour
 
                 if (req.result == UnityWebRequest.Result.Success)
                 {
-                    Log("✅ 座標已自動儲存成功！");
+                    Log("✅ Furniture position saved.");
                 }
                 else
                 {
-                    Log("❌ 座標自動儲存失敗: " + req.error);
+                    Log("❌ Failed to save furniture position: " + req.error);
                 }
             }
         }
         catch (System.Exception ex)
         {
-            Log("❌ 自動儲存發生錯誤: " + ex.Message);
+            Log("❌ Furniture position save error: " + ex.Message);
         }
     }
 }

@@ -269,7 +269,7 @@ public class SceneAutoScanner : MonoBehaviour
         prompt.transform.SetParent(Camera.main.transform, false);
         prompt.transform.localPosition = new Vector3(0f, 0f, 1.2f);
         prompt.transform.localRotation = Quaternion.identity;
-        prompt.transform.localScale = Vector3.one * 0.0025f;
+        prompt.transform.localScale = Vector3.one * 0.005f;
 
         _choiceText = prompt.AddComponent<TextMeshPro>();
         _choiceText.alignment = TextAlignmentOptions.Center;
@@ -339,6 +339,18 @@ public class SceneAutoScanner : MonoBehaviour
             Destroy(_choiceText.gameObject);
             _choiceText = null;
         }
+    }
+
+    public void ReturnToRoomSetup()
+    {
+        if (_isScanning) return;
+        FinishChoice();
+        if (StartupFlowComplete)
+        {
+            StartupFlowComplete = false;
+            StartupFlowReset?.Invoke();
+        }
+        StartCoroutine(AskWhetherToRescan());
     }
 
     public async void TriggerNewScan()
@@ -491,7 +503,7 @@ public class SceneAutoScanner : MonoBehaviour
         prompt.transform.SetParent(Camera.main.transform, false);
         prompt.transform.localPosition = new Vector3(0f, 0.1f, 1.2f);
         prompt.transform.localRotation = Quaternion.identity;
-        prompt.transform.localScale = Vector3.one * 0.0025f;
+        prompt.transform.localScale = Vector3.one * 0.005f;
         _choiceText = prompt.AddComponent<TextMeshPro>();
         _choiceText.alignment = TextAlignmentOptions.Center;
         _choiceText.fontSize = 42f;
@@ -773,7 +785,7 @@ public class SceneAutoScanner : MonoBehaviour
         prompt.transform.SetParent(Camera.main.transform, false);
         prompt.transform.localPosition = new Vector3(0f, 0.18f, 1.2f);
         prompt.transform.localRotation = Quaternion.identity;
-        prompt.transform.localScale = Vector3.one * 0.0025f;
+        prompt.transform.localScale = Vector3.one * 0.005f;
         _choiceText = prompt.AddComponent<TextMeshPro>();
         _choiceText.alignment = TextAlignmentOptions.Center;
         _choiceText.fontSize = 40f;

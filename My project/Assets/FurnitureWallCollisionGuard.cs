@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using Meta.XR.MRUtilityKit;
 using Box = FurniturePlacementGeometry.Box;
@@ -236,6 +236,13 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         return new Box(position + rotation * Vector3.Scale(visualBounds.center, scale),
             Vector3.Scale(visualBounds.extents, absoluteScale), rotation);
     }
+    private FurnitureInteractionStateController _stateController;
+
+    private void Awake()
+    {
+        _stateController = GetComponent<FurnitureInteractionStateController>();
+    }
+
     private void CollectBlockers()
     {
         blockers.Clear();
@@ -255,9 +262,14 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         foreach (Collider floor in SceneAutoScanner.PlacementFloors)
             if (floor is BoxCollider plane && floor.enabled && floor.gameObject.activeInHierarchy)
                 blockers.Add(FurniturePlacementGeometry.FromBounds(new Bounds(plane.center, plane.size), plane.transform));
-        foreach (FurnitureWallCollisionGuard other in instances)
-            if (other != this && other != null && other.hasSafePose && other.visual != null && other.isActiveAndEnabled)
-                blockers.Add(other.BoxAt(other.safePosition, other.safeRotation).Expanded(furnitureClearance));
+        
+        bool isFrozen = _stateController != null && _stateController.CurrentState == FurnitureInteractionState.Frozen;
+        if (!isFrozen)
+        {
+            foreach (FurnitureWallCollisionGuard other in instances)
+                if (other != this && other != null && other.hasSafePose && other.visual != null && other.isActiveAndEnabled)
+                    blockers.Add(other.BoxAt(other.safePosition, other.safeRotation).Expanded(furnitureClearance));
+        }
     }
     private void RaiseAboveFloor(ref Vector3 position, Quaternion rotation)
     {

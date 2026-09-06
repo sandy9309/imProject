@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Oculus.Interaction;
 using System.Collections.Generic;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -167,10 +167,12 @@ public sealed class FurniturePlacementController : MonoBehaviour
         {
             xrHand = null;
             RequestSettle();
-            if (Application.isPlaying && ModelLoader.Instance != null) ModelLoader.Instance.TriggerAutoSaveDelay(1000);
         }
         else if (!selected && state != null && state.CurrentState == FurnitureInteractionState.Placed && Time.time >= settleUntil)
+        {
             state.SetState(FurnitureInteractionState.Frozen);
+            if (Application.isPlaying && ModelLoader.Instance != null) ModelLoader.Instance.TriggerAutoSaveDelay(0);
+        }
         if (!selected) grabTarget.SetPositionAndRotation(transform.position, transform.rotation);
         wasGrabbed = selected;
     }

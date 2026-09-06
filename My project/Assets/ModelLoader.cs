@@ -33,7 +33,7 @@ public class ModelLoader : MonoBehaviour
     private const string OfflineProjectId = "00000";
     private Canvas _projectCanvas;
     private UnityEngine.UI.Button[] _projectButtons;
-    private int _joystickDigitIndex = 3;
+    private int _joystickDigitIndex = 4;
     private float _lastJoystickInputTime;
     private const float JoystickInputCooldown = 0.2f;
     private bool _joystickEditingProjectId = true;
@@ -85,7 +85,7 @@ public class ModelLoader : MonoBehaviour
     private class RevisionResponse { public string revision = ""; }
 
     // --- UI 專案輸入變數 ---
-    private string _uiInputProjectID = "0000";
+    private string _uiInputProjectID = "00000";
     private int _projectRequestVersion = 0;
 
     // --- 傢俱挑選變數 ---
@@ -155,6 +155,7 @@ public class ModelLoader : MonoBehaviour
         canvasTransform.SetParent(headCamera, false);
         canvasTransform.localPosition = new Vector3(0f, -0.08f, 1.2f);
         canvasTransform.localRotation = Quaternion.identity;
+        canvasTransform.localScale = Vector3.one * 0.0006f;
 
         StyleAndArrangeProjectCanvas();
     }
@@ -213,12 +214,25 @@ public class ModelLoader : MonoBehaviour
                 UpdateProjectIdFromJoystick();
                 if (confirmPressed) UI_ConfirmProjectID();
                 if (resetPressed) ResetProjectIdInput();
+                
+                if (OVRInput.GetDown(OVRInput.RawButton.X))
+                {
+                    var scanner = FindObjectOfType<SceneAutoScanner>();
+                    if (scanner != null) scanner.ReturnToRoomSetup();
+                    return;
+                }
             }
             else if (_projectMenuState == ProjectMenuState.Furniture)
             {
                 UpdateFurnitureSelectionFromJoystick();
                 if (confirmPressed) UI_SpawnFurniture();
                 if (resetPressed) ReturnToProjectSelection();
+
+                if (OVRInput.GetDown(OVRInput.RawButton.X))
+                {
+                    UI_DeleteFurniture();
+                    return;
+                }
             }
             else if (_projectMenuState == ProjectMenuState.Hidden && resetPressed)
             {
@@ -290,8 +304,8 @@ public class ModelLoader : MonoBehaviour
 
     private void ResetProjectIdInput()
     {
-        _uiInputProjectID = "0000";
-        _joystickDigitIndex = 3;
+        _uiInputProjectID = "00000";
+        _joystickDigitIndex = 4;
         _joystickEditingProjectId = true;
         UpdateDisplay();
     }
@@ -414,7 +428,7 @@ public class ModelLoader : MonoBehaviour
             idDisplay.text = "<b>PROJECT ID</b>\n\n" +
                 "<size=55%>Right stick up/down: Change number\n" +
                 "Right stick left/right: Select digit\n" +
-                "A: Confirm    B: Reset</size>\n\n" +
+                "A: Confirm    B: Reset    X: Back</size>\n\n" +
                 $"<size=150%><color=#00FF00>{displayId}</color></size>";
             return;
         }
@@ -424,7 +438,7 @@ public class ModelLoader : MonoBehaviour
             FurnitureData data = _fetchedFurnitures[_currentFurnitureIndex];
             idDisplay.text = $"<b>SELECT FURNITURE</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n" +
                 $"<size=150%><color=#00FF00>{data.name}</color></size>\n\n" +
-                "<size=50%>A: Spawn furniture    B: Back</size>";
+                "<size=50%>A: Spawn furniture    B: Back    X: Delete</size>";
             return;
         }
 
@@ -445,7 +459,7 @@ public class ModelLoader : MonoBehaviour
             
             string text = $"<b>Select Furniture</b> ({_currentFurnitureIndex + 1} / {_fetchedFurnitures.Length})\n";
             text += $"<size=150%><color=#00FF00>{displayName}</color></size>\n\n";
-            text += $"<size=50%>Right A: Spawn　Right B: Back</size>";
+            text += $"<size=50%>Right A: Spawn　Right B: Back　X: Delete</size>";
             
             idDisplay.text = text;
         }
@@ -582,7 +596,7 @@ public class ModelLoader : MonoBehaviour
     private void EnsureJoystickProjectId()
     {
         if (string.IsNullOrEmpty(_uiInputProjectID))
-            _uiInputProjectID = "0000";
+            _uiInputProjectID = "00000";
 
         _joystickDigitIndex = Mathf.Clamp(_joystickDigitIndex, 0, _uiInputProjectID.Length - 1);
         _joystickEditingProjectId = true;
@@ -818,22 +832,9 @@ public class ModelLoader : MonoBehaviour
         // 將外殼設定為 NetworkModelManager 的子物件
         rootObject.transform.SetParent(this.transform); 
         
-        // 未擺放的家具生在玩家面前；已擺放家具永遠採用後端座標，包括合法的世界原點。
-        if (!data.isPlaced && headCamera != null)
-        {
-            Vector3 spawnPos = headCamera.position + headCamera.forward * 1.0f;
-            rootObject.transform.position = spawnPos;
-            
-            // 讓新傢俱面向玩家
-            Vector3 lookDir = rootObject.transform.position - headCamera.position;
-            lookDir.y = 0; 
-            if (lookDir != Vector3.zero) rootObject.transform.rotation = Quaternion.LookRotation(lookDir);
-        }
-        else
-        {
-            rootObject.transform.position = new Vector3(data.x, data.y, data.z);
-            rootObject.transform.rotation = Quaternion.Euler(0, data.ry, 0);
-        }
+        // 永遠採用 API 紀錄的座標與旋轉角度
+        rootObject.transform.position = new Vector3(data.x, data.y, data.z);
+        rootObject.transform.rotation = Quaternion.Euler(0, data.ry, 0);
 
         // 🌟 掛上標籤，記錄這件傢俱在資料庫裡的流水號 (index)
         FurnitureTag tag = rootObject.GetComponent<FurnitureTag>();

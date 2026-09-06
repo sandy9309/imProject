@@ -38,6 +38,8 @@ public class ModelLoader : MonoBehaviour
     private const float JoystickInputCooldown = 0.2f;
     private bool _joystickEditingProjectId = true;
     private bool _projectLoadInProgress;
+    private bool _returnInProgress;
+    private bool _serverSupportsCoordinateSpace;
 
     private string BuildProjectApiUrl(string projectId, string resource)
     {
@@ -73,6 +75,7 @@ public class ModelLoader : MonoBehaviour
         public float z;
         public float ry; // 新增：Y 軸旋轉
         public bool isPlaced; // 是否已由使用者儲存過位置；不再用 (0,0,0) 猜測
+        public string coordinateSpace;
     }
 
     [System.Serializable]
@@ -198,6 +201,7 @@ public class ModelLoader : MonoBehaviour
 
     void Update()
     {
+        if (_returnInProgress) return;
         // Room setup and an active grab own the controller inputs exclusively.
         if (FurniturePlacementController.HasActiveGrab || !SceneAutoScanner.StartupFlowComplete ||
             SceneAutoScanner.IsWaitingForChoice) return;
@@ -328,17 +332,43 @@ public class ModelLoader : MonoBehaviour
         ReturnToProjectSelection();
     }
 
-    private void ReturnToProjectSelection()
+    private async void ReturnToProjectSelection()
     {
+        if (_returnInProgress) return;
+        _returnInProgress = true;
         StopProjectSync();
         _projectRequestVersion++;
+        Log("正在儲存目前專案位置...");
+        // Finish the last drag/rotation save before removing the objects that
+        // provide their positions. This makes rapid project switching reliable.
+        if (!_offlineTestMode && !string.IsNullOrWhiteSpace(_activeProjectId))
+        {
+            _autoSaveVersion++;
+            while (_isSavingPositions) await Task.Yield();
+            await SavePositionsOnceToDB();
+        }
+        ClearSpawnedFurniture();
         _offlineTestMode = false;
         _activeProjectId = "";
         _fetchedFurnitures = null;
         _currentFurnitureIndex = 0;
         _projectMenuState = ProjectMenuState.ProjectId;
+        _returnInProgress = false;
         UpdateDisplay();
         Log("已返回專案 ID 輸入畫面。");
+    }
+
+    private void ClearSpawnedFurniture()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = transform.GetChild(i);
+            if (child.GetComponent<FurnitureTag>() == null) continue;
+            // Disable immediately so an object waiting for end-of-frame Destroy cannot
+            // remain visible or keep contributing a collision blocker on the ID screen.
+            child.gameObject.SetActive(false);
+            Destroy(child.gameObject);
+        }
     }
 
     public void UI_NextFurniture()
@@ -490,14 +520,7 @@ public class ModelLoader : MonoBehaviour
 
         // 🌟 切換專案時，自動清空場景中所有的傢俱！
         Log("🧹 清空舊專案的所有傢俱...");
-        for (int i = transform.childCount - 1; i >= 0; i--)
-        {
-            Transform child = transform.GetChild(i);
-            if (child.GetComponent<FurnitureTag>() != null)
-            {
-                Destroy(child.gameObject);
-            }
-        }
+        ClearSpawnedFurniture();
 
         _fetchedFurnitures = null;
         _currentFurnitureIndex = 0;
@@ -733,6 +756,11 @@ public class ModelLoader : MonoBehaviour
 
                     string jsonString = webRequest.downloadHandler.text;
                     Log("✅ API responded! Parsing...");
+                    // 正式新版 API 會明確回傳 isPlaced 與 coordinateSpace；目前線上舊版
+                    // 沒有這兩欄，因此必須先辨識伺服器能力，不能直接相信 bool 預設值 false。
+                    bool hasPlacementFlag = jsonString.IndexOf("\"isPlaced\"", System.StringComparison.Ordinal) >= 0;
+                    _serverSupportsCoordinateSpace = jsonString.IndexOf(
+                        "\"coordinateSpace\"", System.StringComparison.Ordinal) >= 0;
                     
                     FurnitureData[] targetArray = null;
                     
@@ -747,6 +775,15 @@ public class ModelLoader : MonoBehaviour
 
                     if (targetArray != null)
                     {
+                        // 舊 API 沒有 isPlaced。舊資料只要任一位置或角度不是 0，就代表曾在
+                        // VR 中擺放過；重新進入專案時應自動還原，而不是只留在家具清單。
+                        if (!hasPlacementFlag)
+                        {
+                            foreach (FurnitureData furniture in targetArray)
+                                furniture.isPlaced = Mathf.Abs(furniture.x) > 0.0001f ||
+                                    Mathf.Abs(furniture.y) > 0.0001f || Mathf.Abs(furniture.z) > 0.0001f ||
+                                    Mathf.Abs(furniture.ry) > 0.0001f;
+                        }
                         if (!ValidateFurnitureIndices(targetArray, out string indexError))
                         {
                             Log("❌ 家具資料拒絕載入：" + indexError);
@@ -755,7 +792,8 @@ public class ModelLoader : MonoBehaviour
 
                         Log($"🌐 Success! Found {targetArray.Length} models.");
                         
-                        if (_isFirstFetchOfProject)
+                        bool firstFetch = _isFirstFetchOfProject;
+                        if (firstFetch)
                         {
                             foreach (var f in targetArray) _knownFurnitureIndices.Add(f.index);
                             _isFirstFetchOfProject = false;
@@ -768,6 +806,18 @@ public class ModelLoader : MonoBehaviour
                         if (_projectMenuState == ProjectMenuState.ProjectId)
                             _projectMenuState = ProjectMenuState.Furniture;
                         UpdateDisplay();
+
+                        // A placed item belongs to the saved project layout. Restore
+                        // it automatically when the project is opened; unplaced items
+                        // remain available in the selection list for manual spawning.
+                        if (firstFetch)
+                        {
+                            foreach (FurnitureData furniture in targetArray)
+                            {
+                                if (!furniture.isPlaced || requestVersion != _projectRequestVersion) continue;
+                                await LoadModelFromNetwork(furniture);
+                            }
+                        }
                     } 
                     else 
                     {
@@ -857,9 +907,27 @@ public class ModelLoader : MonoBehaviour
         // 將外殼設定為 NetworkModelManager 的子物件
         rootObject.transform.SetParent(this.transform); 
         
-        // 永遠採用 API 紀錄的座標與旋轉角度
-        rootObject.transform.position = new Vector3(data.x, data.y, data.z);
-        rootObject.transform.rotation = Quaternion.Euler(0, data.ry, 0);
+        // New saves use the active room as their coordinate reference. Legacy world-space
+        // records remain readable and are migrated on the next successful save.
+        if (data.isPlaced && data.coordinateSpace == "placement-local-v1")
+        {
+            SceneAutoScanner.TryPlacementToWorldPose(new Vector3(data.x, data.y, data.z), data.ry,
+                out Vector3 worldPosition, out Quaternion worldRotation);
+            rootObject.transform.SetPositionAndRotation(worldPosition, worldRotation);
+        }
+        else if (data.isPlaced)
+        {
+            rootObject.transform.SetPositionAndRotation(new Vector3(data.x, data.y, data.z),
+                Quaternion.Euler(0, data.ry, 0));
+        }
+        else if (headCamera != null)
+        {
+            Vector3 spawnForward = Vector3.ProjectOnPlane(headCamera.forward, Vector3.up).normalized;
+            if (spawnForward.sqrMagnitude < 0.5f) spawnForward = headCamera.forward;
+            Vector3 spawnPosition = headCamera.position + spawnForward;
+            rootObject.transform.SetPositionAndRotation(spawnPosition,
+                Quaternion.LookRotation(spawnForward, Vector3.up));
+        }
 
         // 🌟 掛上標籤，記錄這件傢俱在資料庫裡的流水號 (index)
         FurnitureTag tag = rootObject.GetComponent<FurnitureTag>();
@@ -1137,6 +1205,7 @@ public class ModelLoader : MonoBehaviour
         public float y;
         public float z;
         public float ry;
+        public string coordinateSpace;
     }
 
     [System.Serializable]
@@ -1383,8 +1452,10 @@ public class ModelLoader : MonoBehaviour
     {
         if (_fetchedFurnitures == null) return;
 
-        // 使用目前的專案 ID
-        string userId = _uiInputProjectID;
+        // Capture the active project. The editable ID can already point at the
+        // next project while a queued save from the previous project is finishing.
+        string userId = _activeProjectId;
+        if (string.IsNullOrWhiteSpace(userId)) return;
         string putUrl = BuildProjectApiUrl(userId, "positions");
         
         var list = new System.Collections.Generic.List<PosItem>();
@@ -1396,10 +1467,20 @@ public class ModelLoader : MonoBehaviour
             FurnitureTag tag = child.GetComponent<FurnitureTag>();
             if (tag != null)
             {
-                float newX = child.position.x;
-                float newY = child.position.y;
-                float newZ = child.position.z;
-                float newRy = child.eulerAngles.y;
+                Vector3 savedPosition = child.position;
+                float savedYaw = child.eulerAngles.y;
+                Vector3 localPosition = Vector3.zero;
+                float localYaw = 0f;
+                // 只有新版伺服器能保存 coordinateSpace 標記。若舊伺服器收到房間
+                // 相對座標卻遺失標記，下次會誤當世界座標，家具便會跑到錯誤位置。
+                bool hasPlacementReference = _serverSupportsCoordinateSpace &&
+                    SceneAutoScanner.TryWorldToPlacementPose(
+                        child.position, child.rotation, out localPosition, out localYaw);
+                if (hasPlacementReference)
+                {
+                    savedPosition = localPosition;
+                    savedYaw = localYaw;
+                }
 
                 // 🌟 同步更新記憶體裡的暫存資料，這樣刪除後重新叫出才會是最新的位置！
                 // 這裡改用 index + url 雙重嚴謹比對，絕對不會把 A 桌子的座標存到 B 椅子身上！
@@ -1407,21 +1488,23 @@ public class ModelLoader : MonoBehaviour
                 {
                     if (_fetchedFurnitures[i].index == tag.index)
                     {
-                        _fetchedFurnitures[i].x = newX;
-                        _fetchedFurnitures[i].y = newY;
-                        _fetchedFurnitures[i].z = newZ;
-                        _fetchedFurnitures[i].ry = newRy;
+                        _fetchedFurnitures[i].x = savedPosition.x;
+                        _fetchedFurnitures[i].y = savedPosition.y;
+                        _fetchedFurnitures[i].z = savedPosition.z;
+                        _fetchedFurnitures[i].ry = savedYaw;
                         _fetchedFurnitures[i].isPlaced = true;
+                        _fetchedFurnitures[i].coordinateSpace = hasPlacementReference ? "placement-local-v1" : "world-v0";
                         break;
                     }
                 }
 
                 list.Add(new PosItem {
                     index = tag.index,
-                    x = newX,
-                    y = newY,
-                    z = newZ,
-                    ry = newRy
+                    x = savedPosition.x,
+                    y = savedPosition.y,
+                    z = savedPosition.z,
+                    ry = savedYaw,
+                    coordinateSpace = hasPlacementReference ? "placement-local-v1" : "world-v0"
                 });
             }
         }

@@ -350,7 +350,10 @@ public static class ProjectEndpoints
                     result.Add(new {
                         index = stableIndex, url = urlMap[fid],
                         x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry"),
-                        isPlaced
+                        isPlaced,
+                        coordinateSpace = it.TryGetValue("coordinateSpace", out var coordinateSpace)
+                            ? coordinateSpace?.ToString() ?? "world-v0"
+                            : "world-v0"
                     });
                 }
 
@@ -398,6 +401,9 @@ public static class ProjectEndpoints
                     item["z"] = pos.z;
                     item["ry"] = pos.ry;
                     item["isPlaced"] = true;
+                    item["coordinateSpace"] = string.IsNullOrWhiteSpace(pos.coordinateSpace)
+                        ? "world-v0"
+                        : pos.coordinateSpace;
                 }
 
                 var updateCmd = new MySqlCommand("UPDATE projects SET items = @items WHERE id = @id", conn);
@@ -620,7 +626,8 @@ public static class ProjectEndpoints
                 ["y"]  = src.Value<double?>("y")  ?? 0,
                 ["z"]  = src.Value<double?>("z")  ?? 0,
                 ["ry"] = src.Value<double?>("ry") ?? 0,
-                ["isPlaced"] = isPlaced
+                ["isPlaced"] = isPlaced,
+                ["coordinateSpace"] = src.Value<string>("coordinateSpace") ?? "world-v0"
             });
         }
         return result;

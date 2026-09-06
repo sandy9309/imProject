@@ -17,4 +17,5 @@ public class PositionItem
     public double y { get; set; }
     public double z { get; set; }
     public double ry { get; set; }
+    public string? coordinateSpace { get; set; }
 }

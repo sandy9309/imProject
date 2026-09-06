@@ -407,12 +407,15 @@ public class ModelLoader : MonoBehaviour
             Transform target = ReadFurnitureByIndex(data.index);
             if (target != null) 
             {
-                Log($"🗑️ 已從目前場景隱藏家具 index={data.index}: {target.name}");
+                Log($"🗑️ Furniture removed from the scene. index={data.index}: {target.name}");
+                // Destroy 會等到幀末才真正移除；先停用可避免下一次刪除又找到同一件家具。
+                target.gameObject.SetActive(false);
                 Destroy(target.gameObject);
+                UpdateDisplay();
             }
             else
             {
-                Log($"場景中沒有找到 index={data.index} 的家具");
+                Log($"Furniture index={data.index} was not found in the scene.");
             }
         }
     }

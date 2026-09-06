@@ -125,6 +125,8 @@ public sealed class FurniturePlacementController : MonoBehaviour
         }
         // While released, normal floor settling is the physics input to the same validator.
         Pose target = new Pose(visual.position, visual.rotation);
+        Vector3 rawInputPosition = transform.position;
+        Quaternion rawInputRotation = transform.rotation;
         if (selected || wasGrabbed)
         {
             Pose rootTarget = new Pose(grabTarget.position, grabTarget.rotation);
@@ -140,6 +142,8 @@ public sealed class FurniturePlacementController : MonoBehaviour
                 rootTarget = new Pose(hand.position + xrOffset, hand.rotation * xrRotationOffset);
                 grabTarget.SetPositionAndRotation(rootTarget.position, rootTarget.rotation);
             }
+            rawInputPosition = rootTarget.position;
+            rawInputRotation = rootTarget.rotation;
             if (selected && Application.isPlaying)
             {
                 Vector2 stick = FilterThumbstick(OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.RTouch));
@@ -160,9 +164,17 @@ public sealed class FurniturePlacementController : MonoBehaviour
         else if (pendingYaw != 0)
             target.rotation = Quaternion.AngleAxis(pendingYaw, Vector3.up) * target.rotation;
         pendingYaw = 0f;
+        bool usedRequestedPose = hasRequest;
         if (hasRequest) { target = requestedPose; hasRequest = false; }
         // Input angle is never replaced by an automatically selected angle.
         CommitPose(validator.ResolvePose(target));
+        if (selected && !usedRequestedPose)
+        {
+            // A blocked stick/hand target must not keep accumulating invisibly behind a wall.
+            // Rebase the input offset on the pose that collision validation actually accepted.
+            grabOffset = transform.position - rawInputPosition;
+            grabYaw = Mathf.DeltaAngle(rawInputRotation.eulerAngles.y, transform.rotation.eulerAngles.y);
+        }
         if (wasGrabbed && !selected)
         {
             xrHand = null;

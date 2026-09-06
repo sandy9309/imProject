@@ -1,6 +1,6 @@
 /* src/components/Ui/UiRoot.css */
 
-/* ── 輕提示 Toast ─────────────────────────────────────────── */
+/* ── 輕提示 ── */
 .toast-stack {
   position: fixed;
   top: 84px;
@@ -42,7 +42,7 @@
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* ── 確認彈窗 ─────────────────────────────────────────────── */
+/* ── 確認彈窗 ── */
 .confirm-overlay {
   position: fixed;
   inset: 0;
@@ -116,7 +116,7 @@
 .confirm-ok.danger { background: var(--color-danger); }
 .confirm-ok.danger:hover { background: var(--color-danger-hover); }
 
-/* ── 載入轉圈動畫(全站共用) ─────────────────────────────── */
+/* ── 載入轉圈動畫 ── */
 .loading-wrap {
   display: flex;
   align-items: center;

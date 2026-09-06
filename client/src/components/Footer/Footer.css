@@ -1,4 +1,4 @@
-/* Footer 是固定的深色區塊,不跟主題翻轉,亮暗模式都用同一套配色 */
+
 .footer {
   background-color: var(--color-dark);
   color: #d6cbbd;

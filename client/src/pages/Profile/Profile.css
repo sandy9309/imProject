@@ -1,4 +1,4 @@
-/* 容器佈局 */
+
 .profile-container {
   padding: 60px 8%;
   background-color: var(--color-bg-subtle);
@@ -7,7 +7,6 @@
   justify-content: center;
 }
 
-/* 個人資料大卡片 */
 .profile-card {
   display: flex;
   background: var(--color-surface);
@@ -28,7 +27,6 @@
   flex-direction: column;
 }
 
-/* 頭貼區域 */
 .avatar-section {
   text-align: center;
   margin-bottom: 40px;
@@ -59,7 +57,6 @@
   margin-top: 5px;
 }
 
-/* 側邊導覽按鈕 */
 .profile-nav {
   display: flex;
   flex-direction: column;
@@ -97,7 +94,7 @@
   color: var(--color-danger) !important;
 }
 
-/* 右側主內容區 */
+/* 右側內容區 */
 .profile-main {
   flex: 1;
   padding: 50px;
@@ -108,7 +105,6 @@
   color: var(--color-text);
 }
 
-/* 資訊網格 */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -132,7 +128,6 @@
   margin: 0;
 }
 
-/* 編輯按鈕 */
 .edit-profile-btn {
   padding: 12px 25px;
   background-color: var(--color-primary);
@@ -148,17 +143,17 @@
   background-color: var(--color-primary-hover);
 }
 
-/* 手機版適應 */
+/* RWD */
 @media (max-width: 768px) {
   .profile-container {
-    padding: 24px 12px; /* 手機縮小外距,卡片有更多空間 */
+    padding: 24px 12px; 
   }
   .profile-card {
     flex-direction: column;
   }
   .profile-sidebar {
     width: 100%;
-    box-sizing: border-box; /* 🚀 修正:讓 padding 算進寬度,不再凸出卡片 */
+    box-sizing: border-box; 
     padding: 24px 16px;
     border-right: none;
     border-bottom: 1px solid var(--color-bg-muted);
@@ -168,10 +163,6 @@
     box-sizing: border-box;
   }
 }
-/* ════════════════════════════════════════════
-   會員中心：帳號設定分頁樣式
-   👉 請加到現有 Profile.css 裡
-   ════════════════════════════════════════════ */
 
 .settings-section {
   margin-bottom: 32px;
@@ -199,7 +190,7 @@
   max-width: 360px;
 }
 
-/* ── 深色模式開關 ── */
+/* 深色模式 */
 .dark-mode-row {
   display: flex;
   align-items: center;
@@ -244,7 +235,6 @@
   transform: translateX(22px);
 }
 
-/* ── 危險區：刪除帳號 ── */
 .danger-zone h3 {
   color: var(--color-danger);
 }
@@ -272,22 +262,6 @@
   background: var(--color-danger-border);
   cursor: not-allowed;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-/* ════════════════════════════════════════════
-   會員中心：編輯資料的輸入框與按鈕樣式
-   👉 請加到現有 Profile.css 裡
-   ════════════════════════════════════════════ */
 
 .profile-edit-input {
   background: var(--color-surface);
@@ -330,13 +304,12 @@
 .edit-profile-cancel-btn:hover {
   background: var(--color-bg-muted);
 }
-/* ── 密碼欄位:顯示/隱藏切換 ──────────────────────────────── */
 .pw-input-wrap {
   position: relative;
 }
 
 .pw-input-wrap .profile-edit-input {
-  padding-right: 42px; /* 留出眼睛按鈕的空間 */
+  padding-right: 42px; 
 }
 
 .pw-toggle-btn {

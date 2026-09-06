@@ -20,7 +20,7 @@
 
 .nav-links {
   display: flex;
-  align-items: center; /* 修正：確保所有項目垂直居中對齊 */
+  align-items: center; 
   gap: 30px;
 }
 
@@ -48,16 +48,11 @@
   border-radius: 8px;
 }
 
-/* =========================================
-   新增：使用者頭像與下拉選單樣式區塊
-   ========================================= */
-
-/* 1. 整個頭像區域的容器 */
+/* 使用者頭像 */
 .user-menu-container {
-  position: relative; /* 關鍵：讓下拉選單相對此容器定位 */
+  position: relative; 
 }
 
-/* 2. 頭像包裹按鈕 */
 .nav-avatar-wrapper {
   display: flex;
   align-items: center;
@@ -72,7 +67,6 @@
   background-color: var(--color-bg-muted);
 }
 
-/* 3. 圓形頭像設計 */
 .nav-avatar {
   width: 35px;
   height: 35px;
@@ -86,11 +80,11 @@
   font-size: 0.9rem;
 }
 
-/* 4. 下拉選單主體 */
+/* 頭像下拉選單 */
 .user-dropdown {
   overflow: hidden;
   position: absolute;
-  top: 130%; /* 距離上方導覽列的距離 */
+  top: 130%; 
   right: 0;
   width: 200px;
   background: var(--color-surface);
@@ -99,10 +93,9 @@
   border: 1px solid var(--color-border);
   padding: 10px 0;
   z-index: 1001;
-  animation: slideIn 0.2s ease-out; /* 彈出動畫 */
+  animation: slideIn 0.2s ease-out; 
 }
 
-/* 5. 下拉選單內容項目 */
 .dropdown-info {
   padding: 5px 15px 10px;
 }
@@ -155,7 +148,6 @@
   background-color: var(--color-danger-soft);
 }
 
-/* 6. 動畫與小工具 */
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -165,7 +157,7 @@
   transform: rotate(180deg);
   transition: transform 0.3s;
 }
-/* ── RWD:手機版排版 ─────────────────────────────────────── */
+/* ── RWD ── */
 @media (max-width: 768px) {
   .navbar {
     flex-wrap: wrap;
@@ -177,7 +169,7 @@
     width: 100%;
     justify-content: space-around;
     gap: 4px;
-    flex-wrap: wrap; /* 改用換行,不用 overflow,避免下拉選單被裁切 */
+    flex-wrap: wrap; 
   }
   .nav-links a {
     font-size: 0.85rem;

@@ -6,7 +6,7 @@ const Footer = () => {
     <footer className="footer">
       <div className="footer-content">
         <div className="footer-section">
-          <h3>FitRoom</h3>
+          <h3>FitRoom - 適室</h3>
           <p>沈浸式虛擬實境家具模擬系統</p>
         </div>
         <div className="footer-section">

@@ -1,7 +1,5 @@
 // src/components/Ui/ui.js
-// 全站共用的提示系統:任何檔案 import 這兩個函式即可使用
-//   showToast('儲存成功', 'success')   → 右上角輕提示,自動消失
-//   await showConfirm({ message: '確定要刪除嗎?' }) → 確認彈窗,回傳 true/false
+// 共用提示
 
 export const showToast = (message, type = 'info') => {
   window.dispatchEvent(

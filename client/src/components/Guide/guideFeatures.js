@@ -1,5 +1,5 @@
 // src/components/Guide/guideFeatures.js
-// 📖 網頁功能詳解(只用在 /guide 說明頁下方,導覽彈窗維持精簡不受影響)
+// 網頁功能詳解
 
 export const GUIDE_FEATURES = [
   {

@@ -26,7 +26,6 @@
 .summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; color: var(--color-text-muted); }
 .summary-row.total { border-top: 1px solid var(--color-border); padding-top: 15px; font-weight: bold; color: var(--color-text); font-size: 1.2rem; }
 
-/* 原本漂亮的藍色進入場景按鈕 */
 .checkout-btn {
   width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-surface);
   border: none; border-radius: 10px; font-weight: bold; cursor: pointer;
@@ -35,24 +34,21 @@
 }
 
 .checkout-btn:hover {
-  background-color: var(--color-primary-hover); /* 補上藍色按鈕滑鼠懸停變深藍，更有互動感 */
+  background-color: var(--color-primary-hover); 
 }
 
-/* ==========================================================================
-   新增：儲存配置清單按鈕與外殼樣式
-   ========================================================================== */
+
 .cart-action-area {
   margin-top: 20px;
 }
 
-/* 儲存配置清單按鈕（修正打字錯誤並優化） */
 .save-btn {
   width: 100%;
-  padding: 15px;             /* 💡 從 12px 改成 15px，這樣高度才會跟藍色按鈕完全一樣高！ */
-  background-color: var(--color-success); /* 漂亮的綠色 */
+  padding: 15px;            
+  background-color: var(--color-success); 
   color: var(--color-surface);
-  border: none;              /* 💡 修正：刪除原本打錯的 border: some */
-  border-radius: 10px;       /* 💡 從 8px 改成 10px，圓角跟藍色按鈕完美對齊 */
+  border: none;             
+  border-radius: 10px;       
   font-weight: bold;
   cursor: pointer;
   display: flex;
@@ -63,18 +59,13 @@
 }
 
 .save-btn:hover {
-  background-color: var(--color-success-hover); /* 滑鼠移上去變深綠 */
+  background-color: var(--color-success-hover); 
 }
 
-/* 當按鈕在載入中（同步後端時）的停用狀態 */
 .save-btn:disabled {
   background-color: var(--color-text-faint);
   cursor: not-allowed;
 }
-/* ════════════════════════════════════════════
-   配置清單頁：取消編輯既有專案按鈕
-   👉 請加到現有 Cart.css 裡
-   ════════════════════════════════════════════ */
 
 .cancel-edit-btn {
   width: 100%;
@@ -91,10 +82,7 @@
 .cancel-edit-btn:hover {
   background: var(--color-bg-muted);
 }
-/* ════════════════════════════════════════════
-   配置清單頁：既有家具 vs 新增家具 的視覺區分
-   👉 請加到現有 Cart.css 裡
-   ════════════════════════════════════════════ */
+/* 既有家具 vs 新增家具 的視覺區分 */
 
 .cart-list-section-label {
   font-size: 13px;
@@ -103,19 +91,7 @@
   margin: 12px 0 6px;
 }
 
-
-
-
-
-
-
-
-
-
-/* ════════════════════════════════════════════
-   配置清單頁：數量 +/- 調整按鈕
-   👉 請加到現有 Cart.css 裡
-   ════════════════════════════════════════════ */
+/* 數量 +/- 調整按鈕 */
 
 .qty-stepper {
   display: flex;
@@ -152,7 +128,7 @@
   font-weight: 700;
   color: var(--color-text);
 }
-/* ── 空清單狀態美化 ───────────────────────────────────────── */
+
 .empty-cart {
   text-align: center;
   padding: 80px 0;
@@ -180,18 +156,15 @@
   background: var(--color-primary-hover);
 }
 
-
-
-/* ── 有任何變動(新增/調整數量,尚未儲存)的統一底色 ────────── */
 .cart-item-changed {
   background: var(--color-accent-soft);
   border: 1px solid var(--color-accent-border);
 }
 
-/* ── RWD:手機版排版 ─────────────────────────────────────── */
+/* ── RWD ── */
 @media (max-width: 768px) {
   .cart-content {
-    grid-template-columns: 1fr; /* 摘要區移到清單下方,單欄排列 */
+    grid-template-columns: 1fr; 
   }
   .cart-item {
     flex-wrap: wrap;

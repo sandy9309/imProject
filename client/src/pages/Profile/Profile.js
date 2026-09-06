@@ -6,13 +6,11 @@ import { useNavigate } from 'react-router-dom';
 import './Profile.css';
 import { showToast, showConfirm } from '../../components/Ui/ui';
 
-// 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
 
 const Profile = () => {
   const navigate = useNavigate();
 
-  // 確保初始狀態全都是純字串
   const [user, setUser] = useState({
     name: "會員",
     email: "未綁定",
@@ -20,25 +18,19 @@ const Profile = () => {
     joinDate: "未提供"
   });
 
-  // 🚀 頁籤切換：個人資訊 / 帳號設定
   const [activeTab, setActiveTab] = useState('info');
 
-  // 🚀 編輯資料：只開放姓名、電話兩個欄位
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // 🚀 修改密碼
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwSaving, setPwSaving] = useState(false);
-  // 🚀 顯示/隱藏密碼(三個欄位各自獨立控制)
   const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
 
-  // 🚀 深色模式（純前端功能，存在瀏覽器本機）
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
 
-  // 🚀 刪除帳號
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
@@ -59,7 +51,6 @@ const Profile = () => {
           displayName = displayName.split('@')[0];
         }
 
-        // 🚀 加入日期：格式化成 YYYY-MM-DD；後端沒給就顯示「未提供」，不再用寫死的假日期
         const rawJoinDate = userObj.joinDate || '';
         let displayJoinDate = '未提供';
         if (rawJoinDate) {
@@ -85,7 +76,7 @@ const Profile = () => {
     }
   }, []);
 
-  // ── 深色模式：套用 / 移除 <body> 的 class，並記住使用者的選擇 ──
+  // ── 深色模式 ──
   useEffect(() => {
     document.body.classList.toggle('dark-mode', darkMode);
     localStorage.setItem('darkMode', String(darkMode));
@@ -99,7 +90,6 @@ const Profile = () => {
     window.location.reload();
   };
 
-  // ── 開始編輯：把目前顯示的值帶入輸入框 ─────────────────────
   const startEditing = () => {
     setEditName(user.name);
     setEditPhone(user.phone === '尚未填寫電話' ? '' : user.phone);
@@ -110,7 +100,6 @@ const Profile = () => {
     setIsEditing(false);
   };
 
-  // ── 儲存編輯：呼叫後端更新姓名 / 電話 ───────────────────────
   const saveProfile = async () => {
     const trimmedName = editName.trim();
     if (!trimmedName) {
@@ -150,7 +139,6 @@ const Profile = () => {
         phone: editPhone.trim(),
       }));
       localStorage.setItem('username', trimmedName);
-      // 🚀 通知 Navbar 等其他元件:使用者資料更新了,立刻重新讀取顯示
       window.dispatchEvent(new Event('user-updated'));
 
       setIsEditing(false);
@@ -163,7 +151,6 @@ const Profile = () => {
     }
   };
 
-  // ── 修改密碼 ─────────────────────────────────────────────────
   const handleChangePassword = async (e) => {
     e.preventDefault();
 
@@ -202,7 +189,7 @@ const Profile = () => {
         throw new Error(text || '修改密碼失敗，請確認目前密碼是否正確');
       }
 
-      showToast('✅ 密碼已更新！下次登入請使用新密碼', 'success');
+      showToast('密碼已更新！下次登入請使用新密碼', 'success');
       setPwForm({ current: '', next: '', confirm: '' });
     } catch (err) {
       console.error('修改密碼失敗:', err);
@@ -212,14 +199,13 @@ const Profile = () => {
     }
   };
 
-  // ── 永久刪除帳號 ─────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== '刪除我的帳號') {
       showToast('請在輸入框裡準確輸入「刪除我的帳號」以進行最終確認', 'error');
       return;
     }
 
-    const finalConfirm = await showConfirm({ message: '⚠️ 這是最後一次確認：帳號刪除後無法復原，所有專案與資料都會一併消失。真的要繼續嗎？', danger: true });
+    const finalConfirm = await showConfirm({ message: '⚠️ 帳號刪除後無法復原，所有專案與資料都會一併消失。真的要繼續嗎？', danger: true });
     if (!finalConfirm) return;
 
     const userId = localStorage.getItem('user_id');
@@ -397,7 +383,7 @@ const Profile = () => {
                         {showPw.next ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
-                    {/* 🚀 密碼安全性即時檢測 */}
+                    {/* 密碼安全性即時檢測 */}
                     <PasswordStrength password={pwForm.next} />
                   </div>
                   <div className="info-item">
@@ -444,7 +430,6 @@ const Profile = () => {
                 </div>
               </section>
 
-              {/* ── 危險區：永久刪除帳號 ── */}
               <section className="settings-section danger-zone">
                 <h3><AlertTriangle size={18}/> 刪除帳號</h3>
                 <p className="profile-readonly-hint">

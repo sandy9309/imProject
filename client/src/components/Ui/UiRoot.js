@@ -1,5 +1,4 @@
 // src/components/Ui/UiRoot.js
-// 全站唯一的提示渲染中心:在 App.js 掛一次 <UiRoot /> 即可
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import './UiRoot.css';

@@ -1,5 +1,4 @@
 // src/pages/ForgotPassword/ForgotPassword.js
-// 忘記密碼頁:支援兩種模式,改 RESET_MODE 一行即可切換
 //   'simple' → 方案B:驗證 Email+手機 後直接重設(不用寄信)
 //   'email'  → 方案A:寄重設連結到信箱(需後端接寄信服務)
 import React, { useState } from 'react';
@@ -11,7 +10,7 @@ import './ForgotPassword.css';
 
 const API_BASE = 'http://163.13.202.116:5050';
 
-// 🔧 切換重設模式:'simple'(驗證手機) 或 'email'(寄信)
+// 切換重設模式:'simple'(驗證手機) 或 'email'(寄信)
 const RESET_MODE = 'email';
 
 const ForgotPassword = () => {
@@ -32,7 +31,7 @@ const ForgotPassword = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // ── 方案A:寄重設信 ─────────────────────────────────────────
+  // 方案A:寄重設信
   const handleEmailRequest = async (e) => {
     e.preventDefault();
     if (!form.email.trim()) {
@@ -50,7 +49,6 @@ const ForgotPassword = () => {
       if (!res.ok) {
         throw new Error(data.message || '申請失敗');
       }
-      // 後端不論 email 是否存在都回 200 + 同一句 message(防帳號猜測),直接顯示它
       setServerMessage(data.message || '重設連結已寄出,請查收信箱');
       setEmailSent(true);
     } catch (err) {
@@ -61,7 +59,7 @@ const ForgotPassword = () => {
     }
   };
 
-  // ── 方案B:驗證 Email+手機 後直接重設 ───────────────────────
+  // 方案B:驗證 Email+手機 後直接重設 
   const handleSimpleReset = async (e) => {
     e.preventDefault();
     if (!form.email.trim() || !form.phone.trim()) {
@@ -91,7 +89,7 @@ const ForgotPassword = () => {
         const text = await res.text();
         throw new Error(text || 'Email 或手機號碼驗證失敗');
       }
-      showToast('✅ 密碼已重設,請用新密碼登入', 'success');
+      showToast('密碼已重設,請用新密碼登入', 'success');
       navigate('/login');
     } catch (err) {
       console.error('重設失敗:', err);
@@ -110,7 +108,7 @@ const ForgotPassword = () => {
         {RESET_MODE === 'email' && (
           emailSent ? (
             <div className="forgot-sent">
-              <p>📮 {serverMessage}</p>
+              <p> {serverMessage}</p>
               <p className="forgot-hint">
                 (連結 30 分鐘內有效,沒收到請檢查垃圾郵件)
               </p>

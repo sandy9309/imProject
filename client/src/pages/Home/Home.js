@@ -7,7 +7,6 @@ const Home = () => {
 
   return (
     <div className="home-container">
-      {/* 英雄區 Banner */}
       <header className="hero-section">
         <h1>讓想像中的家具，在現實中落地</h1>
         <p>結合 MR 技術與 3D 模擬，為您打造最直觀的居家配置體驗。</p>
@@ -17,17 +16,16 @@ const Home = () => {
         </div>
       </header>
 
-      {/* 特色介紹 */}
       <section className="features">
         <div className="feature-card">
           <div className="icon">🥽</div>
           <h3>沈浸式體驗</h3>
-          <p>透過 VR/MR 設備，1:1 預覽家具在房間的實際比例。</p>
+          <p>透過 VR/MR 設備，預覽家具在房間的實際比例與擺放效果。</p>
         </div>
         <div className="feature-card">
           <div className="icon">🛋️</div>
           <h3>多樣化型錄</h3>
-          <p>數百款精選家具模型，支援即時材質與色彩更換。</p>
+          <p>精選多款 3D 家具模型，支援 360 度線上互動檢視。</p>
         </div>
         {/* <div className="feature-card">
           <div className="icon">📊</div>

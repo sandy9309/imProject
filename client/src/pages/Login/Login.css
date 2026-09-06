@@ -2,7 +2,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 80px); /* 扣除導覽列高度 */
+  min-height: calc(100vh - 80px); 
   background: linear-gradient(135deg, var(--color-bg-subtle) 0%, var(--color-border) 100%);
 }
 
@@ -111,14 +111,13 @@
   font-weight: bold;
   text-decoration: none;
 }
-/* ── 密碼欄位:顯示/隱藏切換 ──────────────────────────────── */
 .pw-input-wrap {
   position: relative;
 }
 
 .pw-input-wrap input {
   width: 100%;
-  padding-right: 42px; /* 留出眼睛按鈕的空間 */
+  padding-right: 42px;
   box-sizing: border-box;
 }
 
@@ -138,4 +137,20 @@
 
 .pw-toggle-btn:hover {
   color: var(--color-text-strong);
+}
+
+.login-card input.input-error {
+  border-color: var(--color-danger) !important;
+}
+
+.login-card input.input-error:focus {
+  border-color: var(--color-danger) !important;
+  box-shadow: 0 0 0 2px var(--color-danger-soft);
+}
+
+.field-error {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.8rem;
+  color: var(--color-danger);
 }

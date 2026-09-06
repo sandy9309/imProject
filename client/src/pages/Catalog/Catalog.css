@@ -48,9 +48,9 @@
   border-radius: 10px;
   cursor: pointer;
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
-/* 網格系統 */
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -59,19 +59,25 @@
 
 .furniture-card {
   background: var(--color-surface);
-  border-radius: 15px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  transition: transform 0.3s;
+  box-shadow: 0 2px 10px rgba(61, 43, 31, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .furniture-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-6px);
+  box-shadow: 0 14px 30px rgba(61, 43, 31, 0.13);
 }
 
 .image-wrapper {
   position: relative;
-  height: 200px;
+  height: 210px;
+  margin: 14px 14px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-bg-subtle);
+  box-shadow: 0 4px 14px rgba(61, 43, 31, 0.10);
 }
 
 .image-wrapper img {
@@ -93,44 +99,89 @@
 }
 
 .card-info {
-  padding: 20px;
+  padding: 18px 20px 20px;
 }
 
 .card-info h3 {
   font-size: 1.1rem;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   color: var(--color-text);
+}
+
+.card-dimensions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+}
+
+.card-dimensions svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
 }
 
 .price {
   color: var(--color-primary);
   font-weight: bold;
-  font-size: 1.2rem;
-  margin-bottom: 15px;
+  font-size: 1.25rem;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.card-buttons {
+  display: flex;
+  gap: 8px;
 }
 
 .preview-btn {
-  width: 100%;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 11px;
   background-color: var(--color-bg-muted);
   border: none;
   border-radius: 8px;
   color: var(--color-text-strong);
   font-weight: bold;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: 0.3s;
 }
 
 .preview-btn:hover {
-  background-color: var(--color-primary);
-  color: var(--color-surface);
+  background-color: var(--color-bg-muted);
+  color: var(--color-primary);
 }
 
-/* 1. 背景遮罩：加入模糊效果提升質感 */
+.card-add-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px;
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  color: var(--color-surface);
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.card-add-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -146,13 +197,12 @@
   padding: 20px;
 }
 
-/* 2. 彈窗主體：【大修正】拿掉卡死高度的 max-height，改用 flex 垂直自動撐開 */
 .modal-content {
   background: var(--color-surface);
   padding: 25px;
   border-radius: 24px;
   width: 95%;
-  max-width: 460px; /* 稍微拓寬一點點，讓 3D 比例更好看 */
+  max-width: 460px; 
   position: relative;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   animation: modalShow 0.3s ease-out;
@@ -160,7 +210,6 @@
   flex-direction: column;
 }
 
-/* 3. 關閉按鈕：移到右上角稍微內縮 */
 .close-btn {
   position: absolute;
   top: 20px;
@@ -185,14 +234,13 @@
   transform: rotate(90deg);
 }
 
-/* 4. 調整 3D 模型容器 */
 .model-container {
   background: var(--color-bg-subtle);
   border-radius: 16px;
   margin: 20px 0 10px 0;
   overflow: hidden;
   border: 1px solid var(--color-bg-muted);
-  height: 300px; /* 稍微調高到 300px，展示沙發更精緻 */
+  height: 300px; 
   width: 100%;
   position: relative;
   display: flex;
@@ -200,7 +248,6 @@
   align-items: center;
 }
 
-/* 確保模型標籤填滿容器 */
 .model-container model-viewer {
   display: block;
   width: 100%;
@@ -208,7 +255,6 @@
   --poster-color: transparent;
 }
 
-/* 🚀 補上讀取提示層樣式：讓它絕對定位，穩穩貼在 3D 灰框正中央 */
 .model-loading-poster {
   position: absolute;
   top: 0;
@@ -225,7 +271,6 @@
   z-index: 1;
 }
 
-/* 5. 底部資訊區 */
 .modal-footer {
   display: flex;
   justify-content: space-between;
@@ -256,13 +301,11 @@
   background: var(--color-primary-hover);
 }
 
-/* 簡單的彈出動畫 */
 @keyframes modalShow {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
 }
 
-/* 分類按鈕列樣式 */
 .category-filter {
   display: flex;
   gap: 12px;
@@ -359,25 +402,13 @@
 
 .reset-btn:hover { background: var(--color-border); }
 
-.dim-tag {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  background: rgba(20, 14, 8, 0.65);
-  color: #ffffff;
-  padding: 3px 8px;
-  border-radius: 5px;
-  font-size: 0.75rem;
-}
-
-/* 讓篩選按鈕被點擊時有變色效果 */
+/* 篩選按鈕點擊時變色 */
 .filter-btn.active {
   background-color: var(--color-primary);
   color: var(--color-surface);
   border-color: var(--color-primary);
 }
 
-/* 下拉式篩選區塊樣式 */
 .dimension-filter-dropdown {
   background: var(--color-surface);
   padding: 20px;
@@ -410,10 +441,7 @@
   background-color: var(--color-primary);
   color: var(--color-surface);
 }
-/* ════════════════════════════════════════════
-   型錄頁：編輯既有專案中的提示橫幅
-   👉 請加到現有 Catalog.css 裡
-   ════════════════════════════════════════════ */
+/* 編輯既有專案提示 */
 
 .catalog-edit-banner {
   display: flex;
@@ -445,10 +473,7 @@
 .catalog-edit-banner button:hover {
   background: var(--color-accent-soft);
 }
-/* ════════════════════════════════════════════
-   型錄頁：尺寸區間 & 金額範圍 篩選輸入框
-   👉 請加到現有 Catalog.css 裡
-   ════════════════════════════════════════════ */
+/* 尺寸區間 & 金額範圍 篩選輸入框 */
 
 .range-pair {
   display: flex;
@@ -473,7 +498,7 @@
   color: var(--color-text-faint);
   font-weight: 600;
 }
-/* ── RWD:手機版排版 ─────────────────────────────────────── */
+/* ── RWD ── */
 @media (max-width: 768px) {
   .catalog-header {
     flex-direction: column;
@@ -481,7 +506,7 @@
     gap: 12px;
   }
   .catalog-grid {
-    grid-template-columns: 1fr; /* 手機單欄 */
+    grid-template-columns: 1fr;
     gap: 20px;
   }
   .dim-inputs,
@@ -493,13 +518,13 @@
     width: 100%;
   }
   .category-filter {
-    overflow-x: auto;       /* 分類按鈕改成可橫向滑動 */
+    overflow-x: auto;       
     flex-wrap: nowrap;
     padding-bottom: 6px;
   }
 }
 
-/* ── RWD:3D 預覽彈窗手機置中保險 ─────────────────────────── */
+/* ── RWD:3D 預覽彈窗 ── */
 @media (max-width: 768px) {
   .modal-overlay {
     padding: 16px;

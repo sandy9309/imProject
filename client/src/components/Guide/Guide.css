@@ -1,7 +1,6 @@
 /* src/components/Guide/Guide.css
    使用手冊樣式:導覽彈窗 + 使用說明頁 共用 */
 
-/* ══════════ 首次登入導覽彈窗 ══════════ */
 .guide-overlay {
   position: fixed;
   inset: 0;
@@ -341,7 +340,6 @@
   .guide-btn-prev, .guide-btn-next { flex: 1; justify-content: center; }
 }
 
-/* ══════════ 說明頁:區塊標題 ══════════ */
 .guide-section-title {
   margin: 0 0 6px;
   font-size: 1.15rem;
@@ -360,7 +358,6 @@
   color: var(--color-text-faint);
 }
 
-/* ══════════ 說明頁:網頁功能詳解(手風琴) ══════════ */
 .guide-feature-list {
   display: flex;
   flex-direction: column;

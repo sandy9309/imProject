@@ -1,10 +1,9 @@
 // src/pages/Catalog/Catalog.js
 import React, { useState, useEffect } from 'react'; 
-import { Search, Filter, Box, X, Maximize, PackagePlus } from 'lucide-react';
+import { Search, Filter, Box, X, Maximize, PackagePlus, ArrowUpDown, ArrowUp, ArrowDown, Ruler } from 'lucide-react';
 import './Catalog.css';
 import { showToast, showConfirm } from '../../components/Ui/ui';
 
-// 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
 
 const Catalog = () => {
@@ -12,24 +11,18 @@ const Catalog = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("全部");
-  // 🚀 尺寸區間：長/寬/高各有最小、最大，可擇一填寫、也可全填
   const [dims, setDims] = useState({
     minLength: '', maxLength: '',
     minWidth: '', maxWidth: '',
     minHeight: '', maxHeight: '',
   });
-  // 🚀 金額範圍：可擇一填寫、也可全填
   const [priceRange, setPriceRange] = useState({ minPrice: '', maxPrice: '' });
-
+  const [priceSort, setPriceSort] = useState('none');
   const [items, setItems] = useState([]);
-  // 🚀 分類清單：從後端動態抓取，「全部」由前端固定保留在最前面
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // 🚀 每次加入購物車後 +1，用來強制卡片重新渲染，即時反映最新數量
   const [cartVersion, setCartVersion] = useState(0);
-
-  // 🚀 偵測是不是從「我的專案」點「新增家具」進來的，是的話顯示編輯中提示
   const editProjectId = localStorage.getItem('editProjectId');
   const editProjectName = localStorage.getItem('editProjectName');
 
@@ -59,8 +52,7 @@ const Catalog = () => {
         setLoading(false);
       }
     };
-
-    // 🚀 動態抓取分類清單（床、椅子、書桌、沙發、收納、桌子...），前端不寫死
+    // 動態抓取分類清單前端不寫死
     const fetchCategories = async () => {
       try {
         const response = await fetch(`${API_BASE}/api/furnitures/categories`, {
@@ -69,17 +61,13 @@ const Catalog = () => {
         });
         if (!response.ok) throw new Error(`狀態碼：${response.status}`);
         const data = await response.json();
-        // 容錯：後端可能回傳 ["床","椅子",...] 或 { data: [...] } 兩種包裝
         const rawList = Array.isArray(data) ? data : (data.data || []);
-        // 🚀 正規化：每一項可能是純字串 "床"，也可能是物件 { name: "床" } 或 { category: "床" }
-        // 統一轉成純文字，避免 React 渲染物件時報錯
         const list = rawList
           .map(c => (typeof c === 'string' ? c : (c?.name ?? c?.category ?? '')))
           .filter(Boolean);
         setCategories(list);
       } catch (err) {
         console.error("分類清單 API 連線失敗:", err);
-        // 抓不到就先空著，畫面只顯示「全部」，不影響其他功能
         setCategories([]);
       }
     };
@@ -88,7 +76,6 @@ const Catalog = () => {
     fetchCategories();
   }, []);
 
-  // 🚀 通用的區間比對小工具：沒填的欄位不列入條件
   const inRange = (value, min, max) => {
     if (min !== '' && value < Number(min)) return false;
     if (max !== '' && value > Number(max)) return false;
@@ -98,33 +85,41 @@ const Catalog = () => {
   const filteredItems = items.filter(item => {
     const name = item.name || '';
     const category = item.category || '其它';
-    
-    // 💡 修正：精準對齊後端回傳的真實欄位
     const itemL = Number(item.length_cm || 0);
     const itemW = Number(item.width || 0);
     const itemH = Number(item.height || 0);
     const itemPrice = Number(item.price || 0);
-
-    // 1. 名稱搜尋邏輯
     const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // 2. 分類篩選邏輯
     const matchesCategory = activeCategory === "全部" || category === activeCategory;
-    
-    // 3. 尺寸區間邏輯（最小 / 最大都可擇一填寫）
     const matchesL = inRange(itemL, dims.minLength, dims.maxLength);
     const matchesW = inRange(itemW, dims.minWidth, dims.maxWidth);
     const matchesH = inRange(itemH, dims.minHeight, dims.maxHeight);
-
-    // 4. 金額範圍邏輯
     const matchesPrice = inRange(itemPrice, priceRange.minPrice, priceRange.maxPrice);
 
     return matchesSearch && matchesCategory && matchesL && matchesW && matchesH && matchesPrice;
   });
 
+  const displayedItems = priceSort === 'none'
+    ? filteredItems
+    : [...filteredItems].sort((a, b) => {
+        const pa = Number(a.price || 0);
+        const pb = Number(b.price || 0);
+        return priceSort === 'asc' ? pa - pb : pb - pa;
+      });
+
+  const togglePriceSort = () => {
+    setPriceSort(prev =>
+      prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none'
+    );
+  };
+
+  const sortLabel =
+    priceSort === 'asc' ? '價格：低到高'
+    : priceSort === 'desc' ? '價格：高到低'
+    : '價格排序';
+
   const handleDimChange = (e) => {
     const v = e.target.value;
-    // 🚀 禁止負數:清空可以,但只要有值就不能小於 0
     if (v !== '' && Number(v) < 0) return;
     setDims({ ...dims, [e.target.name]: v });
   };
@@ -140,10 +135,8 @@ const Catalog = () => {
     setPriceRange({ minPrice: '', maxPrice: '' });
   };
 
-  // 🛒 翻新後的 addToCart：支援同一家具重複加入(上限10個)，第二次以上會先跟使用者確認
   const MAX_QTY = 10;
   const addToCart = async (product) => {
-    // 🚀 未登入不能加入配置清單:提示後引導到登入頁
     const isLoggedIn = !!localStorage.getItem('token') && !!localStorage.getItem('user_id');
     if (!isLoggedIn) {
       const goLogin = await showConfirm({
@@ -179,18 +172,17 @@ const Catalog = () => {
       localStorage.setItem('cart', JSON.stringify(updatedCart));
       setCartVersion(v => v + 1);
     } else {
-      // 🔥 核心關鍵：轉換格式，讓暫存結構跟後端回傳的欄位完全一致
       const formattedProduct = {
-        id: product.id,                        // 這是家具本身的 ID
-        product_id: product.id,                // 備份一組 product_id 供後端 POST 使用
+        id: product.id,                        
+        product_id: product.id,               
         name: product.name,
         price: Number(product.price || 0),
-        image: product.image_url || '',         // 對齊 Cart.js 渲染所需的 image 欄位
+        image: product.image_url || '',        
         image_url: product.image_url || '',
-        length_cm: product.length_cm,          // 長度對齊後端 length_cm
+        length_cm: product.length_cm,         
         width: product.width,
         height: product.height,
-        quantity: 1,                            // 🚀 新增：這件家具目前的加入件數
+        quantity: 1,                          
       };
 
       const updatedCart = [...currentCart, formattedProduct];
@@ -208,7 +200,7 @@ const Catalog = () => {
 
   return (
     <div className="catalog-container">
-      {/* 🚀 編輯既有專案中的提示橫幅 */}
+      {/* 編輯既有專案提示 */}
       {editProjectId && (
         <div className="catalog-edit-banner">
           <span>
@@ -232,6 +224,19 @@ const Catalog = () => {
               onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
+
+          {/* 價格排序按鈕，循環切換 低到高 → 高到低 → 預設 */}
+          <button
+            className={`filter-btn ${priceSort !== 'none' ? 'active' : ''}`}
+            onClick={togglePriceSort}
+            title="點擊切換價格排序"
+          >
+            {priceSort === 'asc' ? <ArrowUp size={18} />
+              : priceSort === 'desc' ? <ArrowDown size={18} />
+              : <ArrowUpDown size={18} />}
+            {sortLabel}
+          </button>
+
           <button 
             className={`filter-btn ${showFilters ? 'active' : ''}`}
             onClick={() => setShowFilters(!showFilters)}
@@ -274,7 +279,7 @@ const Catalog = () => {
           </div>
 
           <div className="filter-title" style={{ marginTop: '16px' }}>
-            💰 金額範圍 (NT$)：
+            價格範圍 (NT$)：
           </div>
           <div className="dim-inputs range-inputs">
             <div className="input-field">
@@ -290,7 +295,6 @@ const Catalog = () => {
         </div>
       )}
 
-      {/* 分類切換按鈕：「全部」固定在最前，其餘從後端動態抓取 */}
       <div className="category-filter">
         {["全部", ...categories].map(cat => (
           <button 
@@ -303,35 +307,40 @@ const Catalog = () => {
         ))}
       </div>
 
-      {/* 狀態分流機制 */}
       {loading ? (
         <div className="no-results">
           <div className="loading-wrap"><span className="loading-spinner" />家具型錄載入中...</div>
         </div>
       ) : error ? (
-        <div className="no-results" style={{ color: '#ef4444' }}>
-          <p>❌ 無法連線至後端伺服器：{error}</p>
-          <p style={{ fontSize: '14px', color: '#64748b', marginTop: '8px' }}>請確認後端同學的 Ngrok 是否正常開啟</p>
+        <div className="no-results">
+          <p style={{ color: 'var(--color-danger)' }}>⚠️ 目前無法載入家具型錄</p>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '8px' }}>
+            可能是網路連線問題，請稍後再試一次，或確認伺服器是否正常運作。
+          </p>
         </div>
       ) : (
-        /* 家具展示網格 */
+        /* 家具展示 */
         <div className="catalog-grid" key={`grid-${cartVersion}`}>
-          {filteredItems.map(item => {
+          {displayedItems.map(item => {
             return (
             <div key={item.id} className="furniture-card">
               <div className="image-wrapper">
                 <img src={item.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'} alt={item.name} />
                 <div className="category-tag">{item.category || '其它'}</div>
-                <div className="dim-tag">
-                  {item.length_cm}x{item.width}x{item.height} cm
-                </div>
               </div>
               <div className="card-info">
                 <h3>{item.name}</h3>
+                <p className="card-dimensions">
+                  <Ruler size={14} />
+                  {item.length_cm} × {item.width} × {item.height} cm
+                </p>
                 <p className="price">NT$ {Number(item.price || 0).toLocaleString()}</p>
                 <div className="card-buttons">
                   <button className="preview-btn" onClick={() => setSelectedItem(item)}>
-                    <Box size={16} /> 3D 模擬預覽
+                    <Box size={16} /> 3D 預覽
+                  </button>
+                  <button className="card-add-btn" onClick={() => addToCart(item)} title="加入配置清單">
+                    <PackagePlus size={16} /> 加入清單
                   </button>
                 </div>
               </div>
@@ -341,14 +350,13 @@ const Catalog = () => {
         </div>
       )}
 
-      {/* 找不到結果時的顯示 */}
-      {!loading && !error && filteredItems.length === 0 && (
+      {!loading && !error && displayedItems.length === 0 && (
         <div className="no-results">
           <p>找不到符合條件的家具喔！</p>
         </div>
       )}
 
-      {/* 3D 彈窗邏輯 */}
+      {/* 3D 彈窗 */}
       {selectedItem && (
         <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -362,10 +370,9 @@ const Catalog = () => {
               <model-viewer 
                 src={
                   (() => {
-                    // 1. 多重相容撈出網址結構
                     const rawUrl = selectedItem.download_url || selectedItem.model_url || selectedItem.glb_url || '';
                     
-                    // 2. 核心跨域破解：自動將 GitHub Raw 網址替換為 githack 代理
+                    // 將 GitHub Raw 網址替換為 githack 代理
                     if (rawUrl.includes('raw.githubusercontent.com')) {
                       return rawUrl.replace('raw.githubusercontent.com', 'raw.githack.com');
                     }
@@ -376,7 +383,6 @@ const Catalog = () => {
                 auto-rotate 
                 shadow-intensity="1"
               >
-                {/* ⏳ 讀取提示層：完全交給 CSS 去做定位與圓角控制 */}
                 <div slot="poster" className="model-loading-poster">
                   ⏳ 3D 互動模型讀取中，請稍候...
                 </div>

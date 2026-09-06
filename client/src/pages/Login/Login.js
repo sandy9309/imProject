@@ -11,58 +11,81 @@ const Login = () => {
     password: ''
   });
 
-  // 載入中狀態，防止使用者重複點擊
   const [isLoading, setIsLoading] = useState(false);
-  // 🚀 顯示/隱藏密碼
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'email':
+        if (!value.trim()) return '請輸入 Email';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Email 格式不正確';
+        return '';
+      case 'password':
+        if (!value) return '請輸入密碼';
+        return '';
+      default:
+        return '';
+    }
+  };
 
   const handleChange = (e) => {
-    setLoginData({ ...loginData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setLoginData({ ...loginData, [name]: value });
+    if (touched[name]) {
+      setErrors(prev => ({ ...prev, [name]: validateField(name, value) }));
+    }
   };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    setErrors(prev => ({ ...prev, [name]: validateField(name, value) }));
+  };
+
+  const showErr = (name) => touched[name] && errors[name];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true); // 開始連線，進入載入狀態
 
-    // 🌐 1. 已更新為學校伺服器的正式內網 IP 網址
+    const allErrors = {};
+    Object.keys(loginData).forEach(key => {
+      const msg = validateField(key, loginData[key]);
+      if (msg) allErrors[key] = msg;
+    });
+    setErrors(allErrors);
+    setTouched({ email: true, password: true });
+    if (Object.keys(allErrors).length > 0) {
+      showToast('請確認 Email 與密碼欄位', 'error');
+      return;
+    }
+
+    setIsLoading(true);
     const BASE_URL = "http://163.13.202.116:5050";
 
     try {
-      // 2. 發送 POST 請求給後端
       const response = await fetch(`${BASE_URL}/api/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-          // 💡 已移除 Ngrok 專用的破防標頭
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData) 
       });
 
       const data = await response.json();
-      console.log("後端回傳資料：", JSON.stringify(data));
 
       if (response.ok) {
-        // 3. 登入成功！
         showToast("登入成功！歡迎回來", 'success');
-        
-        // 除錯紀錄：在 Console 印出資料，方便隨時檢查後端欄位
-        console.log("後端登入 API 真正回傳的原始資料：", data);
-        
-        // 4. 把後端回傳的 Token 存入瀏覽器暫存
+
         localStorage.setItem('token', data.token || '');
-        
-        // 關鍵修改點 1：獨立儲存單獨的 username 與 user_id，讓 Navbar 與 Cart.js 能直接、安全地讀取
+
         const realUserId = data.user_id || data.userId || data.id;
         const realUserName = data.username || '會員';
-        
-        if (realUserId) {
-          localStorage.setItem('user_id', String(realUserId)); // 這樣 Cart.js 就能直接拿到 "13" 或 "14" 了！
-        }
-        localStorage.setItem('username', String(realUserName)); // 方便 Navbar 認人
 
-        // 5. 保留原本的打包儲存，維持其他頁面功能不損壞
-        // 🚀 新增 joinDate：把後端回傳的加入日期一併存起來，會員中心才有真實資料可顯示
-        // （容錯：後端欄位可能叫 joinDate / join_date / created_at，都試著接）
+        if (realUserId) {
+          localStorage.setItem('user_id', String(realUserId));
+        }
+        localStorage.setItem('username', String(realUserName));
+
         const realJoinDate = data.joinDate || data.join_date || data.created_at || '';
         localStorage.setItem('user', JSON.stringify({
           name: realUserName,
@@ -72,24 +95,19 @@ const Login = () => {
           joinDate: realJoinDate,
         }));
 
-        // 關鍵修改點 2：安全防禦！在登入新帳號時，強制洗掉前一個人殘留的購物車本地快取，杜絕隱私大混亂
         localStorage.removeItem('cart');
         localStorage.removeItem('cart_user_id');
-        
-        // 6. 自動跳轉到家具型錄
+
         navigate('/catalog');
-        
-        // 7. 重新整理一下網頁，讓 Navbar 立刻去抓最新的 localStorage 狀態
         window.location.reload();
       } else {
-        // 4. 登入失敗處理
         showToast(`登入失敗：${data.message || '請檢查帳號密碼'}`, 'error');
       }
     } catch (error) {
       console.error("連線出錯：", error);
-      showToast("無法連線到伺服器，請確認學校伺服器（163.13.202.116:5050）是否正常在線，或確認網路是否正常。", 'error');
+      showToast("無法連線到伺服器，請稍後再試一次。", 'error');
     } finally {
-      setIsLoading(false); // 不管成功還是失敗，最後都要結束連線狀態
+      setIsLoading(false);
     }
   };
 
@@ -98,23 +116,25 @@ const Login = () => {
       <div className="login-card">
         <div className="login-header">
           <div className="login-icon">
-            <LogIn size={32} color="#2563eb" />
+            <LogIn size={32} color="var(--color-primary)" />
           </div>
           <h2>歡迎回來</h2>
           <p>請輸入您的帳號密碼以繼續</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label><Mail size={16} /> Email 帳號</label>
             <input 
               name="email" 
               type="email" 
+              className={showErr('email') ? 'input-error' : ''}
               placeholder="example@gmail.com" 
               value={loginData.email} 
               onChange={handleChange} 
-              required 
+              onBlur={handleBlur}
             />
+            {showErr('email') && <span className="field-error">{errors.email}</span>}
           </div>
 
           <div className="form-group">
@@ -123,10 +143,11 @@ const Login = () => {
               <input 
                 name="password" 
                 type={showPassword ? 'text' : 'password'} 
+                className={showErr('password') ? 'input-error' : ''}
                 placeholder="請輸入密碼" 
                 value={loginData.password} 
                 onChange={handleChange} 
-                required 
+                onBlur={handleBlur}
               />
               <button
                 type="button"
@@ -137,6 +158,7 @@ const Login = () => {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {showErr('password') && <span className="field-error">{errors.password}</span>}
           </div>
 
           <div className="login-options">

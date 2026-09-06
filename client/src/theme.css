@@ -1,44 +1,34 @@
-/* ═══════════════════════════════════════════════════════════
-   theme.css — 全站色彩系統(唯一需要改色的地方)
-
-   設計方向:深咖啡黑 × 暖米白(參考質感設計工作室風格)
-   - 主色:深咖啡黑,所有主要按鈕(溫暖又俐落)
-   - 背景:暖米白,卡片純白分層
-   - 亮點:琥珀銅,只給 VR 編碼等關鍵焦點
-   - 綠色只留給「已送到 VR」狀態徽章
-   ═══════════════════════════════════════════════════════════ */
-
 :root {
   /* ── 主色:深咖啡黑(所有主要操作按鈕) ── */
   --color-primary:        #3d2b1f;
   --color-primary-hover:  #5a4234;
-  --color-primary-soft:   #f3ede5;   /* 主色淡底(選中態) */
+  --color-primary-soft:   #f3ede5;  
   --color-primary-border: #d9cbbc;
 
-  /* ── 亮點色:琥珀銅(VR 編碼、關鍵焦點) ── */
+  /* ── 琥珀銅(VR 編碼、關鍵焦點) ── */
   --color-accent:         #b45309;
   --color-accent-soft:    #fdf3e3;
   --color-accent-border:  #ecd3ab;
 
-  /* ── 語意色:成功(僅徽章使用,不當按鈕) ── */
+  /* ── 成功(僅徽章使用,不當按鈕) ── */
   --color-success:        #3f6212;
   --color-success-hover:  #365314;
   --color-success-soft:   #f2f7e8;
   --color-success-border: #d3e4b4;
 
-  /* ── 語意色:危險(刪除、警告) ── */
+  /* ── 危險(刪除、警告) ── */
   --color-danger:         #b91c1c;
   --color-danger-hover:   #991b1b;
   --color-danger-soft:    #fdf0ee;
   --color-danger-border:  #f3cfc9;
 
-  /* ── 文字(暖深棕灰) ── */
+  /* ── 文字 ── */
   --color-text:           #2b2118;
   --color-text-strong:    #4a3b2f;
   --color-text-muted:     #857767;
   --color-text-faint:     #b3a695;
 
-  /* ── 背景與邊框(暖米白系) ── */
+  /* ── 背景與邊框 ── */
   --color-bg:             #faf6f0;
   --color-bg-subtle:      #f5efe7;
   --color-bg-muted:       #ece3d7;
@@ -46,7 +36,7 @@
   --color-border:         #e8dfd3;
   --color-border-strong:  #d9cbbc;
 
-  /* ── 深色元素(Navbar、Footer 可用) ── */
+  /* ── 深色元素(Navbar、Footer ) ── */
   --color-dark:           #241a12;
   --color-dark-soft:      #3d2b1f;
 
@@ -59,7 +49,7 @@
   --font-mono:    'SF Mono', 'Consolas', 'Courier New', monospace;
 }
 
-/* ── 深色模式:同一套變數換一組值 ── */
+/* ── 深色模式 ── */
 body.dark-mode {
   --color-primary:        #f5efe7;
   --color-primary-hover:  #d9cbbc;

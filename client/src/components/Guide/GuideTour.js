@@ -1,5 +1,5 @@
 // src/components/Guide/GuideTour.js
-// 📖 首次登入自動跳出的分頁式導覽(可跳過,看過就不再顯示)
+//　首次登入自動跳出的分頁式導覽
 import React, { useState, useEffect } from 'react';
 import {
   X, ChevronLeft, ChevronRight, Layout, ShoppingCart,
@@ -14,7 +14,7 @@ const GuideTour = ({ forceOpen = false, onClose }) => {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
 
-  // 首次登入自動跳出:登入後且沒看過導覽就顯示
+  // 首次登入自動跳出
   useEffect(() => {
     if (forceOpen) {
       setOpen(true);
@@ -69,7 +69,6 @@ const GuideTour = ({ forceOpen = false, onClose }) => {
         <p className="guide-desc">{current.desc}</p>
         {current.tip && <p className="guide-tip">{current.tip}</p>}
 
-        {/* 進度圓點 */}
         <div className="guide-dots">
           {GUIDE_STEPS.map((_, i) => (
             <button

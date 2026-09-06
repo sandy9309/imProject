@@ -1,6 +1,5 @@
 // src/pages/ResetPassword/ResetPassword.js
 // (方案A專用)使用者點信件裡的重設連結會到這頁:
-// 網址格式:/reset-password?token=xxxxx
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
@@ -17,7 +16,6 @@ const ResetPassword = () => {
   const [showPw, setShowPw] = useState({ next: false, confirm: false });
   const [failMessage, setFailMessage] = useState('');
 
-  // 從網址 query string 取出 token
   const token = useMemo(
     () => new URLSearchParams(window.location.search).get('token') || '',
     []
@@ -46,11 +44,10 @@ const ResetPassword = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // 400:token 無效/過期 → 顯示後端 message + 引導重新申請
         setFailMessage(data.message || '連結已失效,請重新申請');
         return;
       }
-      showToast(data.message || '✅ 密碼已重設,請用新密碼登入', 'success');
+      showToast(data.message || '密碼已重設,請用新密碼登入', 'success');
       navigate('/login');
     } catch (err) {
       console.error('重設失敗:', err);

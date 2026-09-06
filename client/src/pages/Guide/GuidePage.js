@@ -1,5 +1,5 @@
 // src/pages/Guide/GuidePage.js
-// 📖 使用說明頁(/guide):隨時可以回來查閱的完整版手冊
+// 使用說明頁
 import React, { useState } from 'react';
 import {
   BookOpen, Layout, ShoppingCart, Save, Send,
@@ -17,7 +17,6 @@ const ICONS = {
 
 const GuidePage = () => {
   const [replayTour, setReplayTour] = useState(false);
-  // 展開中的功能區塊(預設全部收合,點標題展開)
   const [openFeature, setOpenFeature] = useState(null);
 
   return (
@@ -30,7 +29,6 @@ const GuidePage = () => {
         </button>
       </div>
 
-      {/* ══ 整體流程 7 步 ══ */}
       <h2 className="guide-section-title">整體流程</h2>
       <div className="guide-steps-list">
         {GUIDE_STEPS.map((s, i) => {
@@ -55,7 +53,7 @@ const GuidePage = () => {
         })}
       </div>
 
-      {/* ══ 網頁功能詳解(可展開/收合) ══ */}
+      {/* 網頁功能詳解(可展開/收合)*/}
       <h2 className="guide-section-title">網頁功能詳解</h2>
       <p className="guide-section-hint">點各項目可展開細節說明。</p>
 
@@ -92,7 +90,7 @@ const GuidePage = () => {
         })}
       </div>
 
-      {/* ══ 常見問題 ══ */}
+      {/* 常見問題 */}
       <div className="guide-faq">
         <h2>常見問題</h2>
 
@@ -101,10 +99,10 @@ const GuidePage = () => {
           <p>可以!只要知道編碼的人,戴上眼鏡都能看到同一個配置,很適合跟家人或室友一起討論。</p>
         </div>
 
-        <div className="guide-faq-item">
+        {/*<div className="guide-faq-item">
           <h4>改了配置之後,眼鏡會自動更新嗎?</h4>
           <p>不會,修改後請回到「我的專案」再按一次「送到 VR」,眼鏡才會拿到最新版本。</p>
-        </div>
+        </div>*/}
 
         <div className="guide-faq-item">
           <h4>為什麼網頁上不能拖拉家具位置?</h4>

@@ -1,20 +1,16 @@
 // src/components/AiAssistant/AiAssistant.js
-// 🤖 AI 空間設計小幫手:右下角圓形懸浮按鈕,點開展開聊天視窗
-// 回傳格式(已與 AI 後端定案):{ reply: "文字", recommendations: [furniture_id, ...] }
+// AI 空間設計小幫手:右下角圓形懸浮按鈕,點開展開聊天視窗
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Sparkles, Plus, Box } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { showToast, showConfirm } from '../Ui/ui';
 import './AiAssistant.css';
 
-// 🌐 AI 小幫手後端(埠號 5051,已與 AI 後端確認)
 const AI_API_BASE = 'http://163.13.202.116:5051';
-// 🌐 家具資料後端(用來把推薦的 id 轉成縮圖/名稱/價格)
 const API_BASE = 'http://163.13.202.116:5050';
 
 const MAX_QTY = 10;
 
-// 跟型錄頁同一套模型網址處理:多欄位相容 + githack 跨域代理
 const getModelUrl = (item) => {
   const rawUrl = item.download_url || item.model_url || item.glb_url || '';
   if (rawUrl.includes('raw.githubusercontent.com')) {
@@ -28,12 +24,11 @@ const AiAssistant = () => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [furnitureMap, setFurnitureMap] = useState({});
-  // 🚀 3D 預覽中的家具(null = 沒開)
   const [preview, setPreview] = useState(null);
   const [messages, setMessages] = useState([
     {
       role: 'ai',
-      text: '你好!我是空間設計小幫手 🛋️ 告訴我你的空間大小或喜歡的風格,我幫你推薦適合的家具!',
+      text: '你好!我是空間設計小幫手 告訴我你的空間大小或喜歡的風格,我幫你推薦適合的家具!',
     },
   ]);
 
@@ -81,7 +76,7 @@ const AiAssistant = () => {
       if (!res.ok) throw new Error(`伺服器回應 ${res.status}`);
       const data = await res.json();
 
-      // 🚀 只保留「真實存在於型錄」的推薦 id(容錯:AI 萬一給了不存在的 id 就濾掉)
+      // 只保留「真實存在於型錄」的推薦 id(AI 萬一給了不存在的 id 就濾掉)
       const recs = (Array.isArray(data.recommendations) ? data.recommendations : [])
         .filter(id => furnitureMap[id]);
 
@@ -100,12 +95,11 @@ const AiAssistant = () => {
     }
   };
 
-  // ── 從對話直接加入配置清單(與型錄頁同一套 localStorage 邏輯)──
+  // ── 從對話直接加入配置清單　──
   const addToCart = async (furnitureId) => {
     const product = furnitureMap[furnitureId];
     if (!product) return;
 
-    // 未登入 → 引導登入
     const isLoggedIn = !!localStorage.getItem('token') && !!localStorage.getItem('user_id');
     if (!isLoggedIn) {
       const goLogin = await showConfirm({
@@ -179,7 +173,7 @@ const AiAssistant = () => {
                   {m.text}
                 </div>
 
-                {/* 🚀 推薦家具卡片:點縮圖可開 3D 預覽 */}
+                {/* 推薦家具:點縮圖可開 3D  */}
                 {m.recs && m.recs.length > 0 && (
                   <div className="ai-rec-list">
                     {m.recs.map(id => {
@@ -249,7 +243,7 @@ const AiAssistant = () => {
         </div>
       )}
 
-      {/* ── 3D 預覽彈窗(跟型錄頁同一套 model-viewer)── */}
+      {/* ── 3D 預覽彈窗　── */}
       {preview && (
         <div className="ai-3d-overlay" onClick={() => setPreview(null)}>
           <div className="ai-3d-box" onClick={e => e.stopPropagation()}>
@@ -283,7 +277,7 @@ const AiAssistant = () => {
         </div>
       )}
 
-      {/* ── 圓形懸浮按鈕 ── */}
+      
       <button
         className={`ai-fab ${open ? 'open' : ''}`}
         onClick={() => setOpen(v => !v)}

@@ -34,7 +34,6 @@
   color: var(--color-danger);
 }
 
-/* ── 縮圖網格 ── */
 .media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -69,7 +68,6 @@
   transform: scale(1.05);
 }
 
-/* 刪除鍵:hover 時才浮現 */
 .media-delete {
   position: absolute;
   top: 6px;
@@ -91,7 +89,6 @@
 .media-item:hover .media-delete { opacity: 1; }
 .media-delete:hover { background: var(--color-danger); }
 
-/* 觸控裝置沒有 hover,刪除鍵常駐顯示 */
 @media (hover: none) {
   .media-delete { opacity: 1; }
 }
@@ -102,7 +99,6 @@
   text-align: center;
 }
 
-/* ── 大圖檢視 ── */
 .media-viewer {
   position: fixed;
   inset: 0;

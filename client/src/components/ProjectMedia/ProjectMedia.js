@@ -1,5 +1,5 @@
 // src/components/ProjectMedia/ProjectMedia.js
-// 🖼 專案 VR 實景截圖:展開後才載入清單,支援大圖檢視(可左右切換)與刪除
+// 專案 VR 實景截圖
 import React, { useState, useEffect, useCallback } from 'react';
 import { Trash2, X, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
 import { showToast, showConfirm } from '../Ui/ui';
@@ -11,10 +11,8 @@ const ProjectMedia = ({ projectId }) => {
   const [media, setMedia] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // 大圖檢視:目前看的是第幾張(null = 沒開)
   const [viewerIndex, setViewerIndex] = useState(null);
 
-  // ── 載入截圖清單(元件被展開時才會掛載,等於「展開才抓」)──
   useEffect(() => {
     let cancelled = false;
     const fetchMedia = async () => {
@@ -38,7 +36,7 @@ const ProjectMedia = ({ projectId }) => {
 
   // ── 刪除單張截圖 ──
   const deleteMedia = async (mediaId, e) => {
-    e.stopPropagation(); // 避免觸發開大圖
+    e.stopPropagation(); 
     const confirmed = await showConfirm({
       title: '刪除截圖',
       message: '確定要刪除這張截圖嗎?刪除後無法復原。',
@@ -54,7 +52,6 @@ const ProjectMedia = ({ projectId }) => {
       if (!res.ok || body.success === false) {
         throw new Error(body.message || '刪除失敗');
       }
-      // 從畫面即時移除,不重新整理
       setMedia(prev => prev.filter(m => m.id !== mediaId));
       showToast(body.message || '截圖已刪除', 'success');
     } catch (err) {
@@ -74,7 +71,6 @@ const ProjectMedia = ({ projectId }) => {
     setViewerIndex(i => (i < media.length - 1 ? i + 1 : 0));
   }, [media.length]);
 
-  // 鍵盤操作:← → 切換、Esc 關閉
   useEffect(() => {
     if (viewerIndex === null) return;
     const onKey = (e) => {

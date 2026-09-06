@@ -3,7 +3,6 @@ import { ShoppingBag, Save, Plus, Minus } from 'lucide-react';
 import './Cart.css';
 import { showToast, showConfirm } from '../../components/Ui/ui';
 
-// 🌐 學校伺服器的正式內網 IP 網址
 const API_BASE = 'http://163.13.202.116:5050';
 const MAX_QTY = 10;
 
@@ -18,20 +17,14 @@ const Cart = () => {
   const [loading, setLoading] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [projectName, setProjectName] = useState('');
-
   const currentUserId = localStorage.getItem('user_id');
-
-  // 🚀 偵測是不是要「新增家具到既有專案」，而不是建立新專案
   const [editProjectId] = useState(() => localStorage.getItem('editProjectId'));
   const [editProjectName] = useState(() => localStorage.getItem('editProjectName') || '');
-
-  // 🚀 編輯模式下：該專案原本就有的家具清單（可暫存編輯，按下儲存才真的送出），
-  // originalExistingItems 是剛載入時的快照，用來比對「有沒有變動」
   const [existingItems, setExistingItems] = useState([]);
   const [originalExistingItems, setOriginalExistingItems] = useState([]);
   const [furnitureMap, setFurnitureMap] = useState({});
 
-  // ── 編輯模式：載入該專案既有的家具 + 家具型錄對照表 ──────────
+  // 編輯模式
   useEffect(() => {
     if (!editProjectId || !currentUserId) return;
 
@@ -67,7 +60,7 @@ const Cart = () => {
     fetchExisting();
   }, [editProjectId, currentUserId]);
 
-  // ── 載入購物車 ──────────────────────────────────────────────
+  // 載入購物車 
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -113,12 +106,10 @@ const Cart = () => {
     fetchUserCart();
   }, [currentUserId]);
 
-  // ── 取得單一 furniture_id 在 existingItems 裡目前的筆數 ─────────
   const getExistingId = (item) =>
     item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
 
-  // ── 調整既有家具數量（+1 / -1，減到 0 時先確認）───────────────
-  // 🚀 這裡只改「畫面上暫存的資料」，不會立刻打後端，要等按下「儲存變更」才會真的送出
+  // 調整既有家具數量（減到 0 時先確認）
   const changeExistingQty = async (furnitureId, delta) => {
     const currentCount = existingItems.filter(
       it => getExistingId(it) === furnitureId
@@ -132,14 +123,12 @@ const Cart = () => {
 
     if (newCount <= 0) {
       const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
-      if (!confirmed) return; // 取消：維持在 1，不做任何變動
+      if (!confirmed) return; 
     }
 
     if (delta > 0) {
       setExistingItems(prev => [...prev, { furniture_id: furnitureId, x: 0, y: 0, z: 0 }]);
     } else {
-      // 🚀 修正：removedOne 移到 updater 函式「裡面」，確保 StrictMode 底下
-      // 每次呼叫（包含開發模式會多打的那一次）都會各自重新計算，不會共用同一份狀態
       setExistingItems(prev => {
         let removedOne = false;
         return prev.filter(it => {
@@ -153,7 +142,7 @@ const Cart = () => {
     }
   };
 
-  // ── 調整購物車項目數量（+1 / -1，減到 0 時先確認再真的移除）──────
+  // 調整購物車項目數量
   const changeQty = async (cartItemId, delta) => {
     const target = cartItems.find(item => item.id === cartItemId);
     if (!target) return;
@@ -167,7 +156,7 @@ const Cart = () => {
 
     if (newQty <= 0) {
       const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
-      if (!confirmed) return; // 取消：維持在 1，不做任何變動
+      if (!confirmed) return; 
 
       const updatedCart = cartItems.filter(item => item.id !== cartItemId);
       setCartItems(updatedCart);
@@ -186,18 +175,17 @@ const Cart = () => {
     localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
-  // ── 儲存變更 → 合併「暫存的既有家具異動」+「這次新選的家具」→ PUT 更新 → 清購物車 → 跳轉 /projects ──
+  // 儲存變更
   const handleAddToExistingProject = async () => {
     if (!currentUserId || !editProjectId) return;
-    // 沒有任何變動（既沒改既有家具、也沒選新家具）就不用送出
+    // 沒有任何變動就不用送出
     const hasExistingChanges =
       JSON.stringify(existingItems) !== JSON.stringify(originalExistingItems);
     if (cartItems.length === 0 && !hasExistingChanges) return;
 
     try {
       setLoading(true);
-
-      // 1. 把這次新選的家具轉成跟建立專案時一樣的格式（依 quantity 展開成多筆）
+      
       const newItems = cartItems.flatMap(item => {
         const qty = item.quantity || 1;
         return Array.from({ length: qty }, () => ({
@@ -208,7 +196,6 @@ const Cart = () => {
         }));
       });
 
-      // 2. 合併「畫面上暫存、含使用者調整的既有家具」+ 新選的家具，一起送出
       const mergedItems = [...existingItems, ...newItems];
 
       const res = await fetch(`${API_BASE}/api/projects/${editProjectId}`, {
@@ -222,10 +209,10 @@ const Cart = () => {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || '新增家具到專案失敗');
+        throw new Error(text || '新增失敗');
       }
 
-      // 4. 資料庫確認收到後，清掉伺服器端購物車項目
+      // 4. 資料庫確認收到後，清掉伺服器端購物車
       const deleteResults = await Promise.allSettled(
         cartItems.map(item =>
           fetch(`${API_BASE}/api/cart/${item.id}`, {
@@ -255,14 +242,13 @@ const Cart = () => {
     }
   };
 
-  // ── 取消編輯既有專案模式（不影響購物車內容，只是清掉編輯目標） ──
+  // 取消編輯
   const cancelEditMode = () => {
     localStorage.removeItem('editProjectId');
     localStorage.removeItem('editProjectName');
     window.location.href = '/projects';
   };
 
-  // ── 儲存為專案 → 清購物車 → 跳轉 /projects ─────────────────
   const handleSaveAsProject = async () => {
     if (cartItems.length === 0 || !currentUserId) return;
     if (!projectName.trim()) {
@@ -300,8 +286,6 @@ const Cart = () => {
         throw new Error(text || '建立專案失敗');
       }
 
-      // 🚀 資料庫已確認收到清單（POST /api/projects 成功）後，
-      // 再逐筆把伺服器端的購物車項目刪掉，確保「清空」不只是清瀏覽器快取
       const deleteResults = await Promise.allSettled(
         cartItems.map(item =>
           fetch(`${API_BASE}/api/cart/${item.id}`, {
@@ -335,7 +319,6 @@ const Cart = () => {
     (sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0
   );
   const totalQty = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
-  // 🚀 既有家具是否有未儲存的變動（跟剛載入時的快照比對）
   const hasExistingChanges =
     JSON.stringify(existingItems) !== JSON.stringify(originalExistingItems);
 
@@ -353,9 +336,8 @@ const Cart = () => {
       {currentUserId && (cartItems.length > 0 || (editProjectId && existingItems.length > 0)) ? (
         <div className="cart-content">
           <div className="cart-list">
-            {/* 🚀 既有家具（依 furniture_id 分組計數）：數量被調整過的會變底色 */}
+            {/* 數量被調整過的會變底色 */}
             {editProjectId && (() => {
-              // 目前數量 與 剛載入時的原始數量,兩張對照表
               const countMap = existingItems.reduce((acc, it) => {
                 const fid = getExistingId(it);
                 acc[fid] = (acc[fid] || 0) + 1;
@@ -408,7 +390,7 @@ const Cart = () => {
               });
             })()}
 
-            {/* 這次新選的家具：底色標示，讓使用者清楚看到「這次改了什麼」 */}
+            {/* 新家具：底色標示 */}
             {cartItems.map(item => (
               <div
                 key={item.id}
@@ -460,7 +442,7 @@ const Cart = () => {
               {editProjectId ? (
                 <>
                   <p className="project-name-label">
-                    🔧 正在為專案「{editProjectName || editProjectId}」新增家具
+                    正在為專案「{editProjectName || editProjectId}」新增家具
                   </p>
                   <button
                     className="save-btn"

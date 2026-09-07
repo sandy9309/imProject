@@ -43,6 +43,7 @@ public class ModelLoader : MonoBehaviour
     private bool _serverSupportsCoordinateSpace;
     private bool _screenshotYHeld;
     private int _screenshotStatusVersion;
+    private Meta.XR.PassthroughCameraAccess _screenshotPassthroughCamera;
 
     private string BuildProjectApiUrl(string projectId, string resource)
     {
@@ -130,6 +131,21 @@ public class ModelLoader : MonoBehaviour
         UpdateDisplay();
         if (_projectCanvas != null)
             _projectCanvas.gameObject.SetActive(SceneAutoScanner.StartupFlowComplete);
+
+        ConfigureScreenshotPassthroughCamera();
+    }
+
+    private void ConfigureScreenshotPassthroughCamera()
+    {
+        _screenshotPassthroughCamera = FindObjectOfType<Meta.XR.PassthroughCameraAccess>();
+        if (_screenshotPassthroughCamera != null) return;
+
+        // Quest 的現實畫面屬於系統合成層，普通 Unity Camera 無法擷取；
+        // 使用左側彩色相機提供可寫入截圖的現實環境影像。
+        _screenshotPassthroughCamera = gameObject.AddComponent<Meta.XR.PassthroughCameraAccess>();
+        _screenshotPassthroughCamera.CameraPosition =
+            Meta.XR.PassthroughCameraAccess.CameraPositionType.Left;
+        _screenshotPassthroughCamera.RequestedResolution = new Vector2Int(1280, 960);
     }
 
     private void OnEnable()
@@ -1283,6 +1299,18 @@ public class ModelLoader : MonoBehaviour
         // 確保當前幀的畫面已經完全渲染完畢
         yield return new WaitForEndOfFrame();
 
+        // 相機權限核准後仍需等待第一張現實畫面。逾時就取消，不能再上傳藍色背景假裝成功。
+        float cameraDeadline = Time.realtimeSinceStartup + 3f;
+        while ((_screenshotPassthroughCamera == null || !_screenshotPassthroughCamera.IsPlaying) &&
+               Time.realtimeSinceStartup < cameraDeadline)
+            yield return null;
+        if (_screenshotPassthroughCamera == null || !_screenshotPassthroughCamera.IsPlaying)
+        {
+            Debug.LogError("[Screenshot] Passthrough camera is unavailable or permission was denied.");
+            isTakingScreenshot = false;
+            yield break;
+        }
+
         // 場景的 CenterEyeAnchor 不一定有 MainCamera 標籤；優先使用 Inspector 已綁定的頭部相機。
         Camera mainCam = headCamera != null ? headCamera.GetComponent<Camera>() : null;
         if (mainCam == null) mainCam = Camera.main;
@@ -1297,34 +1325,55 @@ public class ModelLoader : MonoBehaviour
         GameObject camObj = new GameObject("ScreenshotCamera");
         Camera snapCam = camObj.AddComponent<Camera>();
         snapCam.CopyFrom(mainCam);
-        
-        // 🌟 藍圖模式：將背景換成深藍色設計圖風格
+
+        Texture passthroughTexture = _screenshotPassthroughCamera.GetTexture();
+        Vector2Int cameraResolution = _screenshotPassthroughCamera.CurrentResolution;
+        int captureWidth = Mathf.Max(1, cameraResolution.x);
+        int captureHeight = Mathf.Max(1, cameraResolution.y);
+        RenderTexture virtualRt = new RenderTexture(captureWidth, captureHeight, 24,
+            RenderTextureFormat.ARGB32);
+        RenderTexture finalRt = new RenderTexture(captureWidth, captureHeight, 0,
+            RenderTextureFormat.ARGB32);
+
+        // 使用實體左相機拍攝當下的姿態與內部參數，使虛擬家具疊在現實影像的正確位置。
+        Pose cameraPose = _screenshotPassthroughCamera.GetCameraPose();
+        snapCam.transform.SetPositionAndRotation(cameraPose.position, cameraPose.rotation);
+        ApplyPassthroughProjection(snapCam, _screenshotPassthroughCamera);
+        // 虛擬內容獨立畫在透明背景，避免 URP 清除相機時覆蓋現實影像。
         snapCam.clearFlags = CameraClearFlags.SolidColor;
-        snapCam.backgroundColor = new Color(0.04f, 0.15f, 0.28f, 1f); // 深色藍圖藍
+        snapCam.backgroundColor = new Color(0f, 0f, 0f, 0f);
+        snapCam.targetTexture = virtualRt;
 
-        // 🌟 藍圖模式：為真實房間的牆壁與障礙物產生藍色方塊
-        EnableBlueprintMode();
-
-        // 建立一張 1920x1080 的高畫質渲染畫布
-        RenderTexture rt = new RenderTexture(1920, 1080, 24);
-        snapCam.targetTexture = rt;
-
-        // 命令相機拍下這一瞬間的畫面
+        // Unity 相機只畫家具與 UI，之後再與現實相機畫面合成。
         snapCam.Render();
 
-        // 拍完立刻清理藍圖方塊
-        DisableBlueprintMode();
+        Shader compositeShader = Resources.Load<Shader>("PassthroughScreenshotComposite");
+        if (compositeShader == null)
+        {
+            Debug.LogError("[Screenshot] Composite shader is missing.");
+            snapCam.targetTexture = null;
+            Destroy(virtualRt);
+            Destroy(finalRt);
+            Destroy(camObj);
+            isTakingScreenshot = false;
+            yield break;
+        }
+        Material compositeMaterial = new Material(compositeShader);
+        compositeMaterial.SetTexture("_BackgroundTex", passthroughTexture);
+        Graphics.Blit(virtualRt, finalRt, compositeMaterial);
 
         // 將畫布轉換為可處理的 2D 圖片
-        RenderTexture.active = rt;
-        Texture2D screenShot = new Texture2D(1920, 1080, TextureFormat.RGB24, false);
-        screenShot.ReadPixels(new Rect(0, 0, 1920, 1080), 0, 0);
+        RenderTexture.active = finalRt;
+        Texture2D screenShot = new Texture2D(captureWidth, captureHeight, TextureFormat.RGB24, false);
+        screenShot.ReadPixels(new Rect(0, 0, captureWidth, captureHeight), 0, 0);
         screenShot.Apply();
 
         // 卸載並清除記憶體
         snapCam.targetTexture = null;
         RenderTexture.active = null;
-        Destroy(rt);
+        Destroy(virtualRt);
+        Destroy(finalRt);
+        Destroy(compositeMaterial);
         Destroy(camObj);
 
         // 將圖片編碼為 JPG 格式 (85% 品質，在畫質與上傳速度間取得平衡)
@@ -1333,6 +1382,29 @@ public class ModelLoader : MonoBehaviour
 
         Debug.Log("[Screenshot] Uploading...");
         UploadScreenshotAndReset(imageBytes);
+    }
+
+    private static void ApplyPassthroughProjection(
+        Camera camera,
+        Meta.XR.PassthroughCameraAccess cameraAccess)
+    {
+        Meta.XR.PassthroughCameraAccess.CameraIntrinsics intrinsics = cameraAccess.Intrinsics;
+        Vector2 sensor = intrinsics.SensorResolution;
+        Vector2 output = cameraAccess.CurrentResolution;
+        Vector2 scale = new Vector2(output.x / sensor.x, output.y / sensor.y);
+        float cropScale = Mathf.Max(scale.x, scale.y);
+        Vector2 cropSize = output / cropScale;
+        Vector2 cropMin = (sensor - cropSize) * 0.5f;
+
+        float near = camera.nearClipPlane;
+        float left = (cropMin.x - intrinsics.PrincipalPoint.x) / intrinsics.FocalLength.x * near;
+        float right = (cropMin.x + cropSize.x - intrinsics.PrincipalPoint.x) /
+            intrinsics.FocalLength.x * near;
+        float bottom = (cropMin.y - intrinsics.PrincipalPoint.y) /
+            intrinsics.FocalLength.y * near;
+        float top = (cropMin.y + cropSize.y - intrinsics.PrincipalPoint.y) /
+            intrinsics.FocalLength.y * near;
+        camera.projectionMatrix = Matrix4x4.Frustum(left, right, bottom, top, near, camera.farClipPlane);
     }
 
     private async void UploadScreenshotAndReset(byte[] imageBytes)

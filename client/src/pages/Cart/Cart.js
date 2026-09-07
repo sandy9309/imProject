@@ -24,7 +24,7 @@ const Cart = () => {
   const [originalExistingItems, setOriginalExistingItems] = useState([]);
   const [furnitureMap, setFurnitureMap] = useState({});
 
-  // 編輯
+  // 編輯模式
   useEffect(() => {
     if (!editProjectId || !currentUserId) return;
 
@@ -60,6 +60,7 @@ const Cart = () => {
     fetchExisting();
   }, [editProjectId, currentUserId]);
 
+  // 載入購物車（純前端 localStorage）
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -73,44 +74,127 @@ const Cart = () => {
     setCartItems(savedCart);
   }, [currentUserId]);
 
-  const getExistingId = (item) => {
-    const raw = item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId;
-    return raw === undefined || raw === null ? 'unknown' : String(raw);
+  const keyOf = (raw) =>
+    (raw === undefined || raw === null) ? 'unknown' : String(raw);
+  const getExistingId = (item) =>
+    keyOf(item.furniture_id ?? item.id ?? item.product_id ?? item.furnitureId);
+  const getCartId = (item) =>
+    keyOf(item.product_id ?? item.id);
+
+  const buildMergedGroups = () => {
+    const groups = {}; // key -> { info, existingCount, cartCount, originalCount, sampleName, samplePrice }
+
+    // 1. 既有家具計數
+    existingItems.forEach(it => {
+      const k = getExistingId(it);
+      if (!groups[k]) groups[k] = { key: k, existingCount: 0, cartCount: 0, originalCount: 0 };
+      groups[k].existingCount += 1;
+    });
+
+    // 2. 原始既有數量（判斷有無變動）
+    originalExistingItems.forEach(it => {
+      const k = getExistingId(it);
+      if (!groups[k]) groups[k] = { key: k, existingCount: 0, cartCount: 0, originalCount: 0 };
+      groups[k].originalCount += 1;
+    });
+
+    cartItems.forEach(it => {
+      const k = getCartId(it);
+      if (!groups[k]) groups[k] = { key: k, existingCount: 0, cartCount: 0, originalCount: 0 };
+      groups[k].cartCount += (it.quantity || 1);
+      groups[k].cartSample = it;
+    });
+
+    return Object.values(groups).map(g => {
+      const fid = isNaN(Number(g.key)) ? g.key : Number(g.key);
+      const info = furnitureMap[fid];
+      const total = g.existingCount + g.cartCount;
+      const isModified = total !== g.originalCount; 
+      return { ...g, fid, info, total, isModified };
+    }).filter(g => g.total > 0); 
   };
 
-  const changeExistingQty = async (furnitureId, delta) => {
-    const currentCount = existingItems.filter(
-      it => getExistingId(it) === String(furnitureId)
-    ).length;
-    const newCount = currentCount + delta;
+  const changeMergedQty = async (group, delta) => {
+    const { key, fid, existingCount, cartCount, total } = group;
 
-    if (delta > 0 && currentCount >= MAX_QTY) {
-      showToast(`已達單款上限（${MAX_QTY} 個），無法再增加囉！`, 'error');
+    // 增加
+    if (delta > 0) {
+      if (total >= MAX_QTY) {
+        showToast(`已達單款上限（${MAX_QTY} 個），無法再增加囉！`, 'error');
+        return;
+      }
+      // 加到購物車那批（新增）
+      addOneToCart(fid, group);
       return;
     }
 
-    if (newCount <= 0) {
+    if (total <= 1) {
       const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
       if (!confirmed) return;
     }
 
-    if (delta > 0) {
-      setExistingItems(prev => [...prev, { furniture_id: furnitureId, x: 0, y: 0, z: 0 }]);
-    } else {
-      setExistingItems(prev => {
-        let removedOne = false;
-        return prev.filter(it => {
-          if (!removedOne && getExistingId(it) === String(furnitureId)) {
-            removedOne = true;
-            return false;
-          }
-          return true;
-        });
-      });
+    if (cartCount > 0) {
+      removeOneFromCart(key);
+    } else if (existingCount > 0) {
+      removeOneFromExisting(key);
     }
   };
 
-  // 調整購物車項目數量
+  const addOneToCart = (fid, group) => {
+    const info = group.info || group.cartSample || {};
+    setCartItems(prev => {
+      const idx = prev.findIndex(it => getCartId(it) === String(fid));
+      let next;
+      if (idx > -1) {
+        next = [...prev];
+        next[idx] = { ...next[idx], quantity: (next[idx].quantity || 1) + 1 };
+      } else {
+        next = [...prev, {
+          id: fid,
+          product_id: fid,
+          name: info.name || '家具',
+          price: Number(info.price || 0),
+          image_url: info.image_url || '',
+          length_cm: info.length_cm,
+          width: info.width,
+          height: info.height,
+          quantity: 1,
+        }];
+      }
+      localStorage.setItem('cart', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removeOneFromCart = (key) => {
+    setCartItems(prev => {
+      const idx = prev.findIndex(it => getCartId(it) === key);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      const q = next[idx].quantity || 1;
+      if (q <= 1) {
+        next.splice(idx, 1);
+      } else {
+        next[idx] = { ...next[idx], quantity: q - 1 };
+      }
+      localStorage.setItem('cart', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removeOneFromExisting = (key) => {
+    setExistingItems(prev => {
+      let removed = false;
+      return prev.filter(it => {
+        if (!removed && getExistingId(it) === key) {
+          removed = true;
+          return false;
+        }
+        return true;
+      });
+    });
+  };
+
   const changeQty = async (cartItemId, delta) => {
     const target = cartItems.find(item => item.id === cartItemId);
     if (!target) return;
@@ -125,7 +209,6 @@ const Cart = () => {
     if (newQty <= 0) {
       const confirmed = await showConfirm({ message: '確定要刪除嗎？', danger: true });
       if (!confirmed) return;
-
       const updatedCart = cartItems.filter(item => item.id !== cartItemId);
       setCartItems(updatedCart);
       localStorage.setItem('cart', JSON.stringify(updatedCart));
@@ -139,12 +222,13 @@ const Cart = () => {
     localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
-  // 儲存變更 → 合併家具
+  // 儲存變更 → 合併既有 + 新加 
   const handleAddToExistingProject = async () => {
     if (!currentUserId || !editProjectId) return;
     const hasChanges =
-      JSON.stringify(existingItems) !== JSON.stringify(originalExistingItems);
-    if (cartItems.length === 0 && !hasChanges) return;
+      JSON.stringify(existingItems) !== JSON.stringify(originalExistingItems) ||
+      cartItems.length > 0;
+    if (!hasChanges) return;
 
     try {
       setLoading(true);
@@ -153,9 +237,7 @@ const Cart = () => {
         const qty = item.quantity || 1;
         return Array.from({ length: qty }, () => ({
           furniture_id: item.product_id || item.id,
-          x: 0,
-          y: 0,
-          z: 0,
+          x: 0, y: 0, z: 0,
         }));
       });
 
@@ -189,7 +271,6 @@ const Cart = () => {
     }
   };
 
-  // 取消編輯
   const cancelEditMode = () => {
     localStorage.removeItem('editProjectId');
     localStorage.removeItem('editProjectName');
@@ -210,9 +291,7 @@ const Cart = () => {
         const qty = item.quantity || 1;
         return Array.from({ length: qty }, () => ({
           furniture_id: item.product_id || item.id,
-          x: 0,
-          y: 0,
-          z: 0,
+          x: 0, y: 0, z: 0,
         }));
       });
 
@@ -245,12 +324,20 @@ const Cart = () => {
     }
   };
 
-  const totalPrice = cartItems.reduce(
-    (sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0
-  );
-  const totalQty = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
-  const hasExistingChanges =
-    JSON.stringify(existingItems) !== JSON.stringify(originalExistingItems);
+  const mergedGroups = editProjectId ? buildMergedGroups() : [];
+
+  const totalPrice = editProjectId
+    ? mergedGroups.reduce((sum, g) => sum + Number(g.info?.price || g.cartSample?.price || 0) * g.total, 0)
+    : cartItems.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+  const totalQty = editProjectId
+    ? mergedGroups.reduce((sum, g) => sum + g.total, 0)
+    : cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+  const hasAnyChange =
+    JSON.stringify(existingItems) !== JSON.stringify(originalExistingItems) ||
+    cartItems.length > 0;
+
+  const showList = editProjectId ? mergedGroups.length > 0 : cartItems.length > 0;
 
   return (
     <div className="cart-container">
@@ -263,68 +350,52 @@ const Cart = () => {
         )}
       </div>
 
-      {currentUserId && (cartItems.length > 0 || (editProjectId && existingItems.length > 0)) ? (
+      {currentUserId && showList ? (
         <div className="cart-content">
           <div className="cart-list">
-            {editProjectId && (() => {
-              const countMap = existingItems.reduce((acc, it) => {
-                const fid = getExistingId(it);
-                acc[fid] = (acc[fid] || 0) + 1;
-                return acc;
-              }, {});
-              const originalCountMap = originalExistingItems.reduce((acc, it) => {
-                const fid = getExistingId(it);
-                acc[fid] = (acc[fid] || 0) + 1;
-                return acc;
-              }, {});
-              return Object.entries(countMap).map(([fidKey, count]) => {
-                const furnitureId = isNaN(Number(fidKey)) ? fidKey : Number(fidKey);
-                const info = furnitureMap[furnitureId];
-                const originalCount = originalCountMap[fidKey] || 0;
-                const isModified = count !== originalCount;
-                return (
-                  <div
-                    key={`existing-${fidKey}`}
-                    className={`cart-item ${isModified ? 'cart-item-changed' : ''}`}
-                  >
-                    <img
-                      src={info?.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'}
-                      alt={info?.name || '家具'}
-                    />
-                    <div className="item-info">
-                      <h3>{info?.name || '未知家具'}</h3>
-                      <p>尺寸：{info?.length_cm || '-'} x {info?.width || '-'} x {info?.height || '-'} cm</p>
-                      <p className="item-price">NT$ {Number(info?.price || 0).toLocaleString()}</p>
-                    </div>
-                    <div className="qty-stepper">
-                      <button
-                        className="qty-btn"
-                        onClick={() => changeExistingQty(furnitureId, -1)}
-                        aria-label="減少數量"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="qty-value">{count}</span>
-                      <button
-                        className="qty-btn"
-                        onClick={() => changeExistingQty(furnitureId, 1)}
-                        aria-label="增加數量"
-                        disabled={count >= MAX_QTY}
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
+            {/* ═══ 編輯模式：合併後的家具卡片（同款一張，有變動才變色）═══ */}
+            {editProjectId && mergedGroups.map(g => {
+              const info = g.info || g.cartSample || {};
+              const unitPrice = Number(info.price || 0);
+              return (
+                <div
+                  key={`grp-${g.key}`}
+                  className={`cart-item ${g.isModified ? 'cart-item-changed' : ''}`}
+                >
+                  <img
+                    src={info.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'}
+                    alt={info.name || '家具'}
+                  />
+                  <div className="item-info">
+                    <h3>{info.name || '未知家具'}</h3>
+                    <p>尺寸：{info.length_cm || '-'} x {info.width || '-'} x {info.height || '-'} cm</p>
+                    <p className="item-price">NT$ {unitPrice.toLocaleString()}</p>
                   </div>
-                );
-              });
-            })()}
+                  <div className="qty-stepper">
+                    <button
+                      className="qty-btn"
+                      onClick={() => changeMergedQty(g, -1)}
+                      aria-label="減少數量"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <span className="qty-value">{g.total}</span>
+                    <button
+                      className="qty-btn"
+                      onClick={() => changeMergedQty(g, 1)}
+                      aria-label="增加數量"
+                      disabled={g.total >= MAX_QTY}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
 
-            {/* 新家具：底色標示 */}
-            {cartItems.map(item => (
-              <div
-                key={item.id}
-                className={`cart-item ${editProjectId ? 'cart-item-changed' : ''}`}
-              >
+            {/* ═══ 非編輯模式（建立新專案）：純購物車 ═══ */}
+            {!editProjectId && cartItems.map(item => (
+              <div key={item.id} className="cart-item">
                 <img
                   src={item.image_url || 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500'}
                   alt={item.name}
@@ -335,11 +406,7 @@ const Cart = () => {
                   <p className="item-price">NT$ {(item.price || 0).toLocaleString()}</p>
                 </div>
                 <div className="qty-stepper">
-                  <button
-                    className="qty-btn"
-                    onClick={() => changeQty(item.id, -1)}
-                    aria-label="減少數量"
-                  >
+                  <button className="qty-btn" onClick={() => changeQty(item.id, -1)} aria-label="減少數量">
                     <Minus size={16} />
                   </button>
                   <span className="qty-value">{item.quantity || 1}</span>
@@ -371,17 +438,17 @@ const Cart = () => {
               {editProjectId ? (
                 <>
                   <p className="project-name-label">
-                    正在為專案「{editProjectName || editProjectId}」新增家具
+                    正在編輯專案「{editProjectName || editProjectId}」
                   </p>
                   <button
                     className="save-btn"
                     onClick={handleAddToExistingProject}
-                    disabled={loading || (cartItems.length === 0 && !hasExistingChanges)}
+                    disabled={loading || !hasAnyChange}
                   >
                     <Save size={18} />
                     {loading
                       ? '⏳ 正在儲存...'
-                      : (cartItems.length === 0 && !hasExistingChanges)
+                      : !hasAnyChange
                         ? '尚未有任何變動'
                         : '儲存變更'}
                   </button>

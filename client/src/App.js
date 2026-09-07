@@ -17,11 +17,13 @@ import ResetPassword from './pages/ResetPassword/ResetPassword';
 import GuideTour from './components/Guide/GuideTour';
 import GuidePage from './pages/Guide/GuidePage';
 import ScrollToTop from './components/ScrollToTop/ScrollToTop';
+import AutoLogout from './components/AutoLogout/AutoLogout';
 
 function App() {
   return (
     <Router>
       <ScrollToTop />
+      <AutoLogout />
       <Navbar /> 
       <UiRoot /> 
       <GuideTour />   

@@ -141,23 +141,37 @@ public static class ProjectEndpoints
                 using var conn = db.GetConnection();
                 conn.Open();
                 string itemsJson = NormalizeItems(data.itemsRaw).ToString(Newtonsoft.Json.Formatting.None);
-                string sql = @"INSERT INTO projects (user_id, name, l, w, items, status, revision)
-                               VALUES (@user_id, @name, @l, @w, @items, 'draft', 1)";
+                // 產生不重複的 5 位隨機數字碼
+            string syncCode;
+            var random = new Random();
+            while (true)
+            {
+                syncCode = random.Next(10000, 99999).ToString();
+                var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM projects WHERE sync_code = @code", conn);
+                checkCmd.Parameters.AddWithValue("@code", syncCode);
+                long count = (long)checkCmd.ExecuteScalar()!;
+                if (count == 0) break;
+            }
 
-                using var cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@user_id", data.user_id);
-                cmd.Parameters.AddWithValue("@name", data.name);
-                cmd.Parameters.AddWithValue("@l", data.l ?? 0);
-                cmd.Parameters.AddWithValue("@w", data.w ?? 0);
-                cmd.Parameters.AddWithValue("@items", itemsJson);
-                cmd.ExecuteNonQuery();
+            string sql = @"INSERT INTO projects (user_id, name, l, w, items, status, revision, sync_code)
+                        VALUES (@user_id, @name, @l, @w, @items, 'draft', 1, @sync_code)";
 
-                return Results.Ok(new {
-                    success = true,
-                    message = "待定清單建立成功",
-                    project_id = cmd.LastInsertedId,
-                    revision = 1
-                });
+            using var cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@user_id", data.user_id);
+            cmd.Parameters.AddWithValue("@name", data.name);
+            cmd.Parameters.AddWithValue("@l", data.l ?? 0);
+            cmd.Parameters.AddWithValue("@w", data.w ?? 0);
+            cmd.Parameters.AddWithValue("@items", itemsJson);
+            cmd.Parameters.AddWithValue("@sync_code", syncCode);
+            cmd.ExecuteNonQuery();
+
+            return Results.Ok(new {
+                success = true,
+                message = "待定清單建立成功",
+                project_id = cmd.LastInsertedId,
+                sync_code = syncCode,
+                revision = 1
+            });
             }
             catch (Exception ex)
             {
@@ -562,10 +576,84 @@ public static class ProjectEndpoints
             }
         });
 
+        
+        // ── 給 眼鏡端 用：用 sync_code 查詢家具清單 ─────────────────
+// GET /api/projects/by-code/{code}/models
+group.MapGet("/by-code/{code}/models", (string code, DbService db) =>
+{
+    try
+    {
+        using var conn = db.GetConnection();
+        conn.Open();
+
+        var projCmd = new MySqlCommand(
+            "SELECT id, items FROM projects WHERE sync_code = @code", conn);
+        projCmd.Parameters.AddWithValue("@code", code);
+
+        using var projReader = projCmd.ExecuteReader();
+        if (!projReader.Read())
+            return Results.NotFound(new { message = "找不到此專案，請確認代碼是否正確" });
+
+        int projectId = Convert.ToInt32(projReader["id"]);
+        var rawItems = projReader["items"]?.ToString();
+        projReader.Close();
+
+        if (string.IsNullOrEmpty(rawItems))
+            return Results.Ok(new { furnitures = Array.Empty<object>() });
+
+        var items = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(rawItems)
+                    ?? new List<Dictionary<string, object>>();
+
+        if (items.Count == 0)
+            return Results.Ok(new { furnitures = Array.Empty<object>() });
+
+        var furnitureIds = items
+            .Select(i => i.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0)
+            .Where(fid => fid > 0)
+            .ToList();
+
+        if (furnitureIds.Count == 0)
+            return Results.Ok(new { furnitures = Array.Empty<object>() });
+
+        var paramNames = furnitureIds.Select((_, i) => $"@fid{i}").ToList();
+        var furnitureCmd = new MySqlCommand(
+            $"SELECT id, model_url FROM furnitures WHERE id IN ({string.Join(", ", paramNames)})", conn);
+        for (int i = 0; i < furnitureIds.Count; i++)
+            furnitureCmd.Parameters.AddWithValue($"@fid{i}", furnitureIds[i]);
+
+        var urlMap = new Dictionary<int, string>();
+        using var reader = furnitureCmd.ExecuteReader();
+        while (reader.Read())
+        {
+            int fid = Convert.ToInt32(reader["id"]);
+            string url = reader["model_url"]?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(url))
+                urlMap[fid] = url;
+        }
+
+        var result = new List<object>();
+        for (int i = 0; i < items.Count; i++)
+        {
+            var it = items[i];
+            int fid = it.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0;
+            if (fid <= 0 || !urlMap.ContainsKey(fid)) continue;
+            double GetNum(string key) =>
+                it.TryGetValue(key, out var val) && val != null ? Convert.ToDouble(val.ToString()) : 0;
+            result.Add(new {
+                index = i, url = urlMap[fid],
+                x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry")
+            });
+        }
+
+        return Results.Ok(new { furnitures = result });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
         // ── 11.【新增】給眼鏡端輪詢用：只回傳版本號 ─────────────────
         // GET /api/projects/{id}/revision
-        // 回應：{ "projectId": 29, "revision": 15, "updatedAt": "..." }
-        // 這支只讀一列、回傳幾十 bytes，眼鏡端每 5 秒呼叫一次不會有負擔。
         // revision 跟上次不同 → 再去呼叫 GET /{id}/models 拿完整清單。
         group.MapGet("/{id}/revision", (int id, DbService db) =>
         {

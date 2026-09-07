@@ -28,8 +28,8 @@ public static class ProjectEndpoints
         using var conn = db.GetConnection();
         conn.Open();
 
-        // 【異動】多撈 revision
-        string sql = "SELECT id, name, l, w, items, status, revision, updated_at FROM projects WHERE user_id = @userId";
+        // 【異動】多撈 revision 與 sync_code
+        string sql = "SELECT id, name, l, w, items, status, revision, sync_code, updated_at FROM projects WHERE user_id = @userId";
         using var cmd = new MySqlCommand();
         cmd.Connection = conn;
         cmd.Parameters.AddWithValue("@userId", int.Parse(userIdStr));
@@ -42,7 +42,7 @@ public static class ProjectEndpoints
         sql += " ORDER BY id DESC";
         cmd.CommandText = sql;
 
-        var rows = new List<(int id, string name, object l, object w, string status, int revision, string createdAt, List<System.Text.Json.JsonElement> items)>();
+        var rows = new List<(int id, string name, object l, object w, string status, int revision, string syncCode, string createdAt, List<System.Text.Json.JsonElement> items)>();
         using (var reader = cmd.ExecuteReader())
         {
             while (reader.Read())
@@ -66,6 +66,7 @@ public static class ProjectEndpoints
                     reader["w"],
                     reader["status"]?.ToString() ?? "draft",
                     reader["revision"] == DBNull.Value ? 1 : Convert.ToInt32(reader["revision"]),
+                    reader["sync_code"]?.ToString() ?? "",
                     reader["updated_at"]?.ToString() ?? "",
                     parsedItems
                 ));
@@ -107,6 +108,7 @@ public static class ProjectEndpoints
             w          = r.w,
             status     = r.status,
             revision   = r.revision,     // 【新增】
+            sync_code  = r.syncCode,     // 【新增】眼鏡端輸入的 5 位數代碼
             created_at = r.createdAt,
             items      = r.items.Select(it =>
             {
@@ -141,37 +143,38 @@ public static class ProjectEndpoints
                 using var conn = db.GetConnection();
                 conn.Open();
                 string itemsJson = NormalizeItems(data.itemsRaw).ToString(Newtonsoft.Json.Formatting.None);
+
                 // 產生不重複的 5 位隨機數字碼
-            string syncCode;
-            var random = new Random();
-            while (true)
-            {
-                syncCode = random.Next(10000, 99999).ToString();
-                var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM projects WHERE sync_code = @code", conn);
-                checkCmd.Parameters.AddWithValue("@code", syncCode);
-                long count = (long)checkCmd.ExecuteScalar()!;
-                if (count == 0) break;
-            }
+                string syncCode;
+                var random = new Random();
+                while (true)
+                {
+                    syncCode = random.Next(10000, 99999).ToString();
+                    var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM projects WHERE sync_code = @code", conn);
+                    checkCmd.Parameters.AddWithValue("@code", syncCode);
+                    long count = (long)checkCmd.ExecuteScalar()!;
+                    if (count == 0) break;
+                }
 
-            string sql = @"INSERT INTO projects (user_id, name, l, w, items, status, revision, sync_code)
-                        VALUES (@user_id, @name, @l, @w, @items, 'draft', 1, @sync_code)";
+                string sql = @"INSERT INTO projects (user_id, name, l, w, items, status, revision, sync_code)
+                            VALUES (@user_id, @name, @l, @w, @items, 'draft', 1, @sync_code)";
 
-            using var cmd = new MySqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@user_id", data.user_id);
-            cmd.Parameters.AddWithValue("@name", data.name);
-            cmd.Parameters.AddWithValue("@l", data.l ?? 0);
-            cmd.Parameters.AddWithValue("@w", data.w ?? 0);
-            cmd.Parameters.AddWithValue("@items", itemsJson);
-            cmd.Parameters.AddWithValue("@sync_code", syncCode);
-            cmd.ExecuteNonQuery();
+                using var cmd = new MySqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@user_id", data.user_id);
+                cmd.Parameters.AddWithValue("@name", data.name);
+                cmd.Parameters.AddWithValue("@l", data.l ?? 0);
+                cmd.Parameters.AddWithValue("@w", data.w ?? 0);
+                cmd.Parameters.AddWithValue("@items", itemsJson);
+                cmd.Parameters.AddWithValue("@sync_code", syncCode);
+                cmd.ExecuteNonQuery();
 
-            return Results.Ok(new {
-                success = true,
-                message = "待定清單建立成功",
-                project_id = cmd.LastInsertedId,
-                sync_code = syncCode,
-                revision = 1
-            });
+                return Results.Ok(new {
+                    success = true,
+                    message = "待定清單建立成功",
+                    project_id = cmd.LastInsertedId,
+                    sync_code = syncCode,
+                    revision = 1
+                });
             }
             catch (Exception ex)
             {
@@ -287,13 +290,13 @@ public static class ProjectEndpoints
                 using var conn = db.GetConnection();
                 conn.Open();
 
-                // 1. 查 items 欄位（連同 revision 一起讀，避免先讀清單後讀版本產生時間差）
+                // items 與 revision 一起讀，避免先讀清單後讀版本產生時間差
                 var projCmd = new MySqlCommand(
                     "SELECT items, revision FROM projects WHERE id = @id", conn);
                 projCmd.Parameters.AddWithValue("@id", id);
 
-                string? rawItems = null;
-                int revision = 1;
+                string? rawItems;
+                int revision;
                 using (var projReader = projCmd.ExecuteReader())
                 {
                     if (!projReader.Read())
@@ -301,63 +304,9 @@ public static class ProjectEndpoints
                     rawItems = projReader["items"]?.ToString();
                     revision = projReader["revision"] == DBNull.Value ? 1 : Convert.ToInt32(projReader["revision"]);
                 }
-                if (rawItems == null)
-                    return Results.NotFound(new { message = "找不到此專案" });
 
-                // 2. 解析 items，取出 furniture_id 清單
-                var items = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(rawItems)
-                            ?? new List<Dictionary<string, object>>();
-
-                if (items.Count == 0)
-                    return Results.Ok(new { revision, furnitures = Array.Empty<object>() });
-
-                var furnitureIds = items
-                    .Select(i => i.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0)
-                    .Where(fid => fid > 0)
-                    .ToList();
-
-                if (furnitureIds.Count == 0)
-                    return Results.Ok(new { revision, furnitures = Array.Empty<object>() });
-
-                // 3. 用 IN 查詢 furnitures 的 model_url
-                var paramNames = furnitureIds.Select((_, i) => $"@fid{i}").ToList();
-                var furnitureCmd = new MySqlCommand(
-                    $"SELECT id, model_url FROM furnitures WHERE id IN ({string.Join(", ", paramNames)})", conn);
-                for (int i = 0; i < furnitureIds.Count; i++)
-                    furnitureCmd.Parameters.AddWithValue($"@fid{i}", furnitureIds[i]);
-
-                var urlMap = new Dictionary<int, string>();
-                using (var reader = furnitureCmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        int fid = Convert.ToInt32(reader["id"]);
-                        string url = reader["model_url"]?.ToString() ?? "";
-                        if (!string.IsNullOrEmpty(url))
-                            urlMap[fid] = url;
-                    }
-                }
-
-                // 4. 讀取 items 裡已儲存的座標（缺欄位當 0）
-                var result = new List<object>();
-                for (int i = 0; i < items.Count; i++)
-                {
-                    var it = items[i];
-                    int fid = it.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0;
-                    if (fid <= 0 || !urlMap.ContainsKey(fid)) continue;
-                    int iid = it.TryGetValue("item_id", out var idv) && idv != null ? Convert.ToInt32(idv) : 0;
-                    double GetNum(string key) =>
-                        it.TryGetValue(key, out var val) && val != null ? Convert.ToDouble(val.ToString()) : 0;
-                    result.Add(new {
-                        item_id = iid,          // 【新增】眼鏡端請用這個當唯一識別
-                        furniture_id = fid,     // 【新增】哪一款家具（同款可能有多件）
-                        index = i,              // 舊欄位保留，僅供相容，勿再用來存座標
-                        url = urlMap[fid],
-                        x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry")
-                    });
-                }
-
-                return Results.Ok(new { revision, furnitures = result });
+                var furnitures = BuildFurnitureList(conn, rawItems);
+                return Results.Ok(new { projectId = id, revision, furnitures });
             }
             catch (Exception ex)
             {
@@ -576,83 +525,44 @@ public static class ProjectEndpoints
             }
         });
 
-        
-        // ── 給 眼鏡端 用：用 sync_code 查詢家具清單 ─────────────────
-// GET /api/projects/by-code/{code}/models
-group.MapGet("/by-code/{code}/models", (string code, DbService db) =>
-{
-    try
-    {
-        using var conn = db.GetConnection();
-        conn.Open();
-
-        var projCmd = new MySqlCommand(
-            "SELECT id, items FROM projects WHERE sync_code = @code", conn);
-        projCmd.Parameters.AddWithValue("@code", code);
-
-        using var projReader = projCmd.ExecuteReader();
-        if (!projReader.Read())
-            return Results.NotFound(new { message = "找不到此專案，請確認代碼是否正確" });
-
-        int projectId = Convert.ToInt32(projReader["id"]);
-        var rawItems = projReader["items"]?.ToString();
-        projReader.Close();
-
-        if (string.IsNullOrEmpty(rawItems))
-            return Results.Ok(new { furnitures = Array.Empty<object>() });
-
-        var items = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(rawItems)
-                    ?? new List<Dictionary<string, object>>();
-
-        if (items.Count == 0)
-            return Results.Ok(new { furnitures = Array.Empty<object>() });
-
-        var furnitureIds = items
-            .Select(i => i.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0)
-            .Where(fid => fid > 0)
-            .ToList();
-
-        if (furnitureIds.Count == 0)
-            return Results.Ok(new { furnitures = Array.Empty<object>() });
-
-        var paramNames = furnitureIds.Select((_, i) => $"@fid{i}").ToList();
-        var furnitureCmd = new MySqlCommand(
-            $"SELECT id, model_url FROM furnitures WHERE id IN ({string.Join(", ", paramNames)})", conn);
-        for (int i = 0; i < furnitureIds.Count; i++)
-            furnitureCmd.Parameters.AddWithValue($"@fid{i}", furnitureIds[i]);
-
-        var urlMap = new Dictionary<int, string>();
-        using var reader = furnitureCmd.ExecuteReader();
-        while (reader.Read())
+        // ── 11. 給眼鏡端用：用 sync_code 查詢家具清單 ────────────────
+        // GET /api/projects/by-code/{code}/models
+        // 【修正】回應與 /{id}/models 完全一致（含 item_id、revision），
+        //        並多回傳 projectId —— 眼鏡端拿到後就能用它呼叫
+        //        /{id}/revision 輪詢、/{id}/positions 回寫座標。
+        group.MapGet("/by-code/{code}/models", (string code, DbService db) =>
         {
-            int fid = Convert.ToInt32(reader["id"]);
-            string url = reader["model_url"]?.ToString() ?? "";
-            if (!string.IsNullOrEmpty(url))
-                urlMap[fid] = url;
-        }
+            try
+            {
+                using var conn = db.GetConnection();
+                conn.Open();
 
-        var result = new List<object>();
-        for (int i = 0; i < items.Count; i++)
-        {
-            var it = items[i];
-            int fid = it.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0;
-            if (fid <= 0 || !urlMap.ContainsKey(fid)) continue;
-            double GetNum(string key) =>
-                it.TryGetValue(key, out var val) && val != null ? Convert.ToDouble(val.ToString()) : 0;
-            result.Add(new {
-                index = i, url = urlMap[fid],
-                x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry")
-            });
-        }
+                var projCmd = new MySqlCommand(
+                    "SELECT id, items, revision FROM projects WHERE sync_code = @code", conn);
+                projCmd.Parameters.AddWithValue("@code", code);
 
-        return Results.Ok(new { furnitures = result });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem(ex.Message);
-    }
-});
-        // ── 11.【新增】給眼鏡端輪詢用：只回傳版本號 ─────────────────
+                int projectId;
+                string? rawItems;
+                int revision;
+                using (var projReader = projCmd.ExecuteReader())
+                {
+                    if (!projReader.Read())
+                        return Results.NotFound(new { message = "找不到此專案，請確認代碼是否正確" });
+                    projectId = Convert.ToInt32(projReader["id"]);
+                    rawItems  = projReader["items"]?.ToString();
+                    revision  = projReader["revision"] == DBNull.Value ? 1 : Convert.ToInt32(projReader["revision"]);
+                }
+
+                var furnitures = BuildFurnitureList(conn, rawItems);
+                return Results.Ok(new { projectId, revision, furnitures });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        });
+
+        // ── 12. 給眼鏡端輪詢用：只回傳版本號 ────────────────────────
         // GET /api/projects/{id}/revision
         // revision 跟上次不同 → 再去呼叫 GET /{id}/models 拿完整清單。
         group.MapGet("/{id}/revision", (int id, DbService db) =>
@@ -691,6 +601,62 @@ group.MapGet("/by-code/{code}/models", (string code, DbService db) =>
         cmd.Parameters.AddWithValue("@id", id);
         var v = cmd.ExecuteScalar();
         return v == null || v == DBNull.Value ? 1 : Convert.ToInt32(v);
+    }
+
+    // 把 items JSON 轉成眼鏡端要的家具清單。
+    // /{id}/models 和 /by-code/{code}/models 共用這一份，
+    // 以後只要改這裡，兩支 API 的回應就一定一致。
+    private static List<object> BuildFurnitureList(MySqlConnection conn, string? rawItems)
+    {
+        var result = new List<object>();
+        if (string.IsNullOrWhiteSpace(rawItems)) return result;
+
+        var items = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(rawItems)
+                    ?? new List<Dictionary<string, object>>();
+        if (items.Count == 0) return result;
+
+        var furnitureIds = items
+            .Select(i => i.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0)
+            .Where(fid => fid > 0)
+            .Distinct()
+            .ToList();
+        if (furnitureIds.Count == 0) return result;
+
+        var paramNames = furnitureIds.Select((_, i) => $"@fid{i}").ToList();
+        using var furnitureCmd = new MySqlCommand(
+            $"SELECT id, model_url FROM furnitures WHERE id IN ({string.Join(", ", paramNames)})", conn);
+        for (int i = 0; i < furnitureIds.Count; i++)
+            furnitureCmd.Parameters.AddWithValue($"@fid{i}", furnitureIds[i]);
+
+        var urlMap = new Dictionary<int, string>();
+        using (var reader = furnitureCmd.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                int fid = Convert.ToInt32(reader["id"]);
+                string url = reader["model_url"]?.ToString() ?? "";
+                if (!string.IsNullOrEmpty(url))
+                    urlMap[fid] = url;
+            }
+        }
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            var it = items[i];
+            int fid = it.TryGetValue("furniture_id", out var v) ? Convert.ToInt32(v) : 0;
+            if (fid <= 0 || !urlMap.ContainsKey(fid)) continue;
+            int iid = it.TryGetValue("item_id", out var idv) && idv != null ? Convert.ToInt32(idv) : 0;
+            double GetNum(string key) =>
+                it.TryGetValue(key, out var val) && val != null ? Convert.ToDouble(val.ToString()) : 0;
+            result.Add(new {
+                item_id = iid,          // 眼鏡端請用這個當唯一識別
+                furniture_id = fid,     // 哪一款家具（同款可能有多件）
+                index = i,              // 舊欄位保留，僅供相容，勿再用來存座標
+                url = urlMap[fid],
+                x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry")
+            });
+        }
+        return result;
     }
 
     // 統一 items 格式：item_id + furniture_id + 座標
@@ -761,7 +727,7 @@ group.MapGet("/by-code/{code}/models", (string code, DbService db) =>
 
             int itemId = old?.Value<int?>("item_id") ?? 0;
             if (itemId <= 0) itemId = nextId++;
-            
+
             // 規則 = 這次送來的座標「全部是 0 或根本沒帶」→ 沿用舊座標；
             //        有任何一個非 0 → 視為刻意指定，以這次送來的為準。
             // （原本的寫法只要前端有帶 x 欄位就會整組覆蓋，前端若送 0 會把

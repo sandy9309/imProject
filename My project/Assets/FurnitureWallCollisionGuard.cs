@@ -3,14 +3,13 @@ using UnityEngine;
 using Meta.XR.MRUtilityKit;
 using Box = FurniturePlacementGeometry.Box;
 
-/// <summary>Constrains furniture against scanned walls and other virtual furniture.</summary>
+/// <summary>限制家具不可穿過掃描牆面與其他虛擬家具。</summary>
 [DefaultExecutionOrder(10000)]
 [DisallowMultipleComponent]
 public sealed class FurnitureWallCollisionGuard : MonoBehaviour
 {
     [SerializeField, Min(0.001f)] private float wallClearance = 0.01f;
     [SerializeField, Min(0.001f)] private float furnitureClearance = 0.005f;
-    [SerializeField, Range(0.1f, 1f)] private float overlapOpacity = 0.35f;
     private static readonly HashSet<FurnitureWallCollisionGuard> instances = new HashSet<FurnitureWallCollisionGuard>();
     private readonly List<Box> blockers = new List<Box>();
     private readonly List<Box> realFurniture = new List<Box>();
@@ -22,7 +21,6 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
     private Bounds visualBounds;
 
 
-    private FurnitureOverlapAppearance appearance;
     private Vector3 safePosition;
     private Quaternion safeRotation;
     private bool hasSafePose;
@@ -102,14 +100,12 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         hasSafePose = true;
         observedGeometryVersion = SceneAutoScanner.PlacementGeometryVersion;
 
-        appearance = GetComponent<FurnitureOverlapAppearance>();
-        if (appearance == null) appearance = gameObject.AddComponent<FurnitureOverlapAppearance>();
-        appearance.Configure(visual, overlapOpacity);
+        // 家具全程沿用 GLB 匯入的原始材質，不再因碰到掃描家具而切換成
+        // 藍白半透明替代材質，確保擺放與截圖時都維持模型原本的真實外觀。
         var controller = GetComponent<FurniturePlacementController>();
         if (controller == null) controller = gameObject.AddComponent<FurniturePlacementController>();
         controller.Configure(visual, this, new Pose(safePosition, safeRotation));
         RefreshPhysicsContacts();
-        UpdateAppearance();
         return true;
     }
 
@@ -118,7 +114,6 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
     {
         instances.Remove(this);
         nextRoomRefresh = 0f;
-        if (appearance != null) appearance.SetOverlapping(false);
     }
 
 
@@ -363,7 +358,6 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
             safeRotation = pose.rotation;
             hasSafePose = true;
         }
-        UpdateAppearance();
     }
     private void RefreshRoom()
     {
@@ -388,15 +382,6 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
                     new Vector3(plane.center.x, plane.center.y, 0), new Vector3(plane.width, plane.height, 0.02f)), anchor.transform));
             }
         }
-    }
-    private void UpdateAppearance()
-    {
-        if (appearance == null) return;
-        Box box = BoxAt(visual.position, visual.rotation);
-        bool overlaps = false;
-        foreach (Box real in realFurniture)
-            if (FurniturePlacementGeometry.Overlaps(box, real)) { overlaps = true; break; }
-        appearance.SetOverlapping(overlaps);
     }
 }
 

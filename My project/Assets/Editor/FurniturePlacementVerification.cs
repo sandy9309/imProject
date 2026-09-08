@@ -149,7 +149,7 @@ public static class FurniturePlacementVerification
         FurniturePlacementController guard = Furniture(Vector3.zero, Vector3.one, out Transform visual);
         Renderer renderer = visual.GetComponent<Renderer>();
         Material original = renderer.sharedMaterial;
-        // Use the same boxes that RefreshRoom derives from MRUK furniture anchors.
+        // 模擬 MRUK 掃描到的現實家具，確認重疊時仍能移動且不會改掉原始材質。
         var field = typeof(FurnitureWallCollisionGuard).GetField("realFurniture", BindingFlags.NonPublic | BindingFlags.Instance);
         var real = (List<Box>)field.GetValue(guard.GetComponent<FurnitureWallCollisionGuard>());
         real.Add(new Box(new Vector3(2, 0, 0), Vector3.one, Quaternion.identity));
@@ -157,12 +157,11 @@ public static class FurniturePlacementVerification
         guard.RequestPose(new Pose(new Vector3(2, 0, 0), visual.rotation));
         guard.ProcessFrame(1f / 90f);
         Check(Mathf.Abs(visual.position.x - 2) < 0.01f, "Scanned furniture incorrectly blocked movement.");
-        Check(renderer.sharedMaterial != original, "Overlap did not change the material.");
-        Check(renderer.sharedMaterial.GetColor("_BaseColor").a < 0.5f, "Overlap is not translucent.");
-        Check(!ShaderUtil.ShaderHasError(renderer.sharedMaterial.shader), "Fade shader has compilation errors.");
+        Check(renderer.sharedMaterial == original, "Furniture did not keep its original material while overlapping.");
         guard.RequestPose(new Pose(Vector3.zero, visual.rotation));
         guard.ProcessFrame(1f / 90f);
-        Check(renderer.sharedMaterial == original, "Original material did not return after leaving overlap.");
+        // 離開重疊範圍後也必須維持同一份原始材質。
+        Check(renderer.sharedMaterial == original, "Furniture material changed after leaving overlap.");
     }
     private static void Cleanup()
     {

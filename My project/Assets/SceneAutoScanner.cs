@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Meta.XR.MRUtilityKit;
 using TMPro;
@@ -24,7 +25,7 @@ public class SceneAutoScanner : MonoBehaviour
 
     [Header("Wall collision")]
     [Tooltip("Thickness of the invisible wall colliders, in metres.")]
-    [Min(0.01f)] public float wallColliderThickness = 0.08f;
+    [Min(0.01f)] public float wallColliderThickness = 0.05f;
     [Tooltip("Layer used by generated MRUK wall colliders.")]
     [Range(0, 31)] public int wallColliderLayer = 8;
     [Tooltip("Height of manually created walls, in metres.")]
@@ -66,13 +67,43 @@ public class SceneAutoScanner : MonoBehaviour
     private LineRenderer _manualOutlineLine;
     private Material _manualPreviewMaterial;
 
+    private const int ManualWallDataVersion = 2;
+    private const string ManualWallFileName = "manual-walls.json";
+
+    [Serializable]
+    private sealed class ManualWallData
+    {
+        public int version = ManualWallDataVersion;
+        public float wallHeight;
+        public float wallThickness;
+        // 房間座標在 MRUK 舊房間成功載入時最穩定，重開 App 後優先使用。
+        public List<Vector3> roomLocalPoints = new List<Vector3>();
+        // 追蹤空間座標作為 MRUK 暫時載入失敗時的備援。
+        public List<Vector3> trackingLocalPoints = new List<Vector3>();
+        // 舊版資料欄位，用來讀取眼鏡裡尚未升級的 manual-walls.json。
+        public List<Vector3> points = new List<Vector3>();
+    }
+
+    private string ManualWallFilePath => Path.Combine(Application.persistentDataPath, ManualWallFileName);
+
     private void Awake()
     {
+        ConfigureMixedRealityLighting();
         IsWaitingForChoice = false;
         StartupFlowComplete = false;
         ActivePlacementSpace = PlacementSpaceKind.None;
         ActiveManualBoundary.Clear();
         _hasPlacementReference = false;
+    }
+
+    private static void ConfigureMixedRealityLighting()
+    {
+        // Quest 的透視影像不會把現實房間的光線自動轉成 Unity 光源。
+        // 使用均勻的柔和環境補光，避免家具背向場景主光時整件變成黑色，
+        // 同時保留 Directional Light 所提供的形狀與方向感。
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.5f, 0.5f, 0.5f, 1f);
+        RenderSettings.ambientIntensity = 1f;
     }
 
     public static bool IsPointInsideActiveBoundary(Vector3 worldPoint)
@@ -159,6 +190,9 @@ public class SceneAutoScanner : MonoBehaviour
     private IEnumerator Start()
     {
         Debug.Log("[Scanner] Loading the saved room from this headset...");
+        // 啟動時先告知正在讀取 Quest 內的房間資料，避免等待期間看起來像沒有反應。
+        EnablePassthroughView();
+        ShowStartupStatus("<b>CHECKING SAVED ROOM...</b>");
         yield return new WaitForSeconds(initialLoadWaitSeconds);
 
         // MRUK is configured for manual loading in this scene. Wait for its
@@ -170,21 +204,36 @@ public class SceneAutoScanner : MonoBehaviour
         MRUK.LoadDeviceResult loadResult = MRUK.LoadDeviceResult.NotInitialized;
         if (MRUK.Instance != null)
         {
-            // Do not let MRUK start Space Setup here. This startup pass only
-            // checks for an already-saved room; TriggerNewScan owns setup.
-            Task<MRUK.LoadDeviceResult> loadTask =
-                MRUK.Instance.LoadSceneFromDevice(requestSceneCaptureIfNoDataFound: false);
-            while (!loadTask.IsCompleted)
-                yield return null;
-
-            if (loadTask.IsCanceled)
-                Debug.LogWarning("[Scanner] Saved-room loading was cancelled.");
-            else if (loadTask.IsFaulted)
-                Debug.LogError("[Scanner] Failed to load the saved room: " + loadTask.Exception);
-            else
+            // Quest 剛切回 App 時空間服務可能仍在恢復；第一次查詢暫時失敗不能直接
+            // 當成沒有舊房間，否則 A 選項會消失。最多重試三次再做最後判定。
+            for (int attempt = 1; attempt <= 3; attempt++)
             {
-                loadResult = loadTask.Result;
-                Debug.Log("[Scanner] Saved-room load result: " + loadResult);
+                if (_choiceText != null)
+                    _choiceText.text = $"<b>CHECKING SAVED ROOM...</b>\nAttempt {attempt} / 3";
+
+                // 此處禁止自動開啟 Space Setup；只有使用者按 B 才能進入重新掃描。
+                Task<MRUK.LoadDeviceResult> loadTask =
+                    MRUK.Instance.LoadSceneFromDevice(requestSceneCaptureIfNoDataFound: false);
+                while (!loadTask.IsCompleted)
+                    yield return null;
+
+                if (loadTask.IsCanceled)
+                    Debug.LogWarning($"[Scanner] Saved-room load attempt {attempt} was cancelled.");
+                else if (loadTask.IsFaulted)
+                    Debug.LogError($"[Scanner] Saved-room load attempt {attempt} failed: {loadTask.Exception}");
+                else
+                {
+                    loadResult = loadTask.Result;
+                    Debug.Log($"[Scanner] Saved-room load attempt {attempt}: {loadResult}");
+                    if (loadResult == MRUK.LoadDeviceResult.Success)
+                        break;
+                }
+
+                if (attempt < 3)
+                {
+                    MRUK.Instance.ClearScene();
+                    yield return new WaitForSecondsRealtime(1f);
+                }
             }
         }
         else
@@ -194,13 +243,50 @@ public class SceneAutoScanner : MonoBehaviour
         if (loadResult == MRUK.LoadDeviceResult.Success &&
             MRUK.Instance != null && MRUK.Instance.GetCurrentRoom() != null)
         {
-            RebuildWallColliders();
+            // LoadSceneFromDevice 完成時，房間物件可能已存在，但牆面錨點仍在逐幀建立。
+            // 等到實體牆出現後才建立碰撞牆，避免重開 App 時誤判成「沒有舊牆壁」。
+            float geometryDeadline = Time.realtimeSinceStartup + 10f;
+            while (!HasLoadedPhysicalWall() && Time.realtimeSinceStartup < geometryDeadline)
+                yield return null;
+            if (TryLoadManualWalls())
+                _roomLoadStatus += " / saved manual walls";
+            else
+                RebuildWallColliders();
         }
         else
         {
-            Debug.LogWarning("[Scanner] MRUK room unavailable. Manual walls must be created for this app session.");
+            Debug.LogWarning("[Scanner] MRUK room unavailable. Checking saved manual walls.");
+            if (TryLoadManualWalls())
+                _roomLoadStatus += " / saved manual walls";
         }
+        // 即使已找到舊房間，仍讓使用者按 A 確認使用；按 B 才會重新掃描。
         yield return AskWhetherToRescan();
+    }
+
+    private static bool HasLoadedPhysicalWall()
+    {
+        MRUKRoom room = MRUK.Instance != null ? MRUK.Instance.GetCurrentRoom() : null;
+        if (room == null) return false;
+        foreach (MRUKAnchor anchor in room.Anchors)
+            if (IsPhysicalWallLabel(anchor.Label) && anchor.PlaneRect.HasValue)
+                return true;
+        return false;
+    }
+
+    private void ShowStartupStatus(string message)
+    {
+        if (Camera.main == null) return;
+        FinishChoice();
+        var prompt = new GameObject("RoomStartupStatus");
+        prompt.transform.SetParent(Camera.main.transform, false);
+        prompt.transform.localPosition = new Vector3(0f, 0.12f, 1.2f);
+        prompt.transform.localRotation = Quaternion.identity;
+        prompt.transform.localScale = Vector3.one * 0.005f;
+        _choiceText = prompt.AddComponent<TextMeshPro>();
+        _choiceText.alignment = TextAlignmentOptions.Center;
+        _choiceText.fontSize = 36f;
+        _choiceText.rectTransform.sizeDelta = new Vector2(700f, 180f);
+        _choiceText.text = message;
     }
 
     private IEnumerator AskWhetherToRescan()
@@ -311,6 +397,7 @@ public class SceneAutoScanner : MonoBehaviour
             {
                 _resetConfirmationActive = false;
                 FinishChoice();
+                DeleteManualWallFile();
                 BeginManualWallSetup("confirmed manual reset");
             }
             else if (OVRInput.GetDown(OVRInput.RawButton.B, OVRInput.Controller.RTouch))
@@ -370,7 +457,7 @@ public class SceneAutoScanner : MonoBehaviour
     {
         return "<b>ROOM SETUP</b>\n" + $"Load: {status}\nSpatial permission: {permission}\n" +
             $"WALL: {walls}\n\n" +
-            (hasSaved ? "<color=#62E6A5>A: Use this room</color>\n" : "No usable saved walls loaded\n") +
+            (hasSaved ? "<color=#62E6A5>A: Use saved room</color>\n" : "No usable saved walls loaded\n") +
             "<color=#FFB45E>B: Scan / scan again</color>\nX: Manual wall setup";
     }
 
@@ -705,14 +792,103 @@ public class SceneAutoScanner : MonoBehaviour
             return;
         }
 
-        // 手動牆只保留在本次 App 執行期間。離開 App 後不寫入磁碟，避免
-        // 下次啟動時因 Quest tracking origin 改變而載入錯位牆面。
+        if (!SaveManualWalls())
+        {
+            ClearWallColliders();
+            UpdateManualSetupPrompt("Could not save walls. Please try again.");
+            return;
+        }
+
+        // 儲存成功後才離開設定畫面，確保下次重開 App 時能顯示 A 並載入相同牆面。
         _manualSetupActive = false;
         _isWaitingForChoice = false;
         IsWaitingForChoice = false;
         ClearManualSetupVisuals();
-        Debug.Log($"[ManualWalls] Built {ActiveWallColliderCount} session-only walls.");
+        Debug.Log($"[ManualWalls] Saved and built {ActiveWallColliderCount} walls.");
         SignalStartupFlowComplete();
+    }
+
+    private bool SaveManualWalls()
+    {
+        try
+        {
+            Transform trackingSpace = TrackingSpace;
+            MRUKRoom room = MRUK.Instance != null ? MRUK.Instance.GetCurrentRoom() : null;
+            var data = new ManualWallData
+            {
+                wallHeight = manualWallHeight,
+                wallThickness = wallColliderThickness
+            };
+
+            foreach (Vector3 worldPoint in _manualWallPoints)
+            {
+                // 同時保存兩種相對座標；有 MRUK 房間時優先用房間座標還原。
+                if (room != null) data.roomLocalPoints.Add(room.transform.InverseTransformPoint(worldPoint));
+                data.trackingLocalPoints.Add(trackingSpace != null
+                    ? trackingSpace.InverseTransformPoint(worldPoint) : worldPoint);
+            }
+
+            File.WriteAllText(ManualWallFilePath, JsonUtility.ToJson(data, true));
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("[ManualWalls] Save failed: " + exception.Message);
+            return false;
+        }
+    }
+
+    private bool TryLoadManualWalls()
+    {
+        if (!File.Exists(ManualWallFilePath)) return false;
+        try
+        {
+            ManualWallData data = JsonUtility.FromJson<ManualWallData>(File.ReadAllText(ManualWallFilePath));
+            if (data == null) return false;
+
+            manualWallHeight = Mathf.Max(0.5f, data.wallHeight);
+            // 舊版曾保存 8 公分牆厚；載入時統一改用 5 公分，避免牆的內側
+            // 吃掉過多可擺放空間。碰撞防穿透仍由家具的連續位置檢查負責。
+            wallColliderThickness = 0.05f;
+            Transform trackingSpace = TrackingSpace;
+            MRUKRoom room = MRUK.Instance != null ? MRUK.Instance.GetCurrentRoom() : null;
+            var worldPoints = new List<Vector3>();
+
+            if (data.version >= 2 && room != null && data.roomLocalPoints != null && data.roomLocalPoints.Count >= 3)
+                foreach (Vector3 point in data.roomLocalPoints)
+                    worldPoints.Add(room.transform.TransformPoint(point));
+            else
+            {
+                // v1 的 points 與 v2 的 trackingLocalPoints 都以 TrackingSpace 為基準。
+                List<Vector3> localPoints = data.version >= 2 ? data.trackingLocalPoints : data.points;
+                if (localPoints == null || localPoints.Count < 3) return false;
+                foreach (Vector3 point in localPoints)
+                    worldPoints.Add(trackingSpace != null ? trackingSpace.TransformPoint(point) : point);
+            }
+
+            bool built = BuildManualWallColliders(worldPoints);
+            Debug.Log(built
+                ? $"[ManualWalls] Loaded {ActiveWallColliderCount} saved walls."
+                : "[ManualWalls] Saved wall data was invalid.");
+            return built;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("[ManualWalls] Load failed: " + exception.Message);
+            return false;
+        }
+    }
+
+    private void DeleteManualWallFile()
+    {
+        try
+        {
+            if (File.Exists(ManualWallFilePath)) File.Delete(ManualWallFilePath);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("[ManualWalls] Delete failed: " + exception.Message);
+        }
     }
 
     private bool BuildManualWallColliders(IReadOnlyList<Vector3> points)

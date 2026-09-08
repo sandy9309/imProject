@@ -31,7 +31,7 @@ public class ModelLoader : MonoBehaviour
     private bool _revisionCheckInFlight;
     private bool _lastRefreshSucceeded;
     private bool _offlineTestMode;
-    private const string OfflineProjectId = "00000";
+    private const string OfflineProjectId = "99999";
     private Canvas _projectCanvas;
     private UnityEngine.UI.Button[] _projectButtons;
     private int _joystickDigitIndex = 4;
@@ -71,22 +71,32 @@ public class ModelLoader : MonoBehaviour
     [System.Serializable]
     public class FurnitureData
     {
-        public int index; // 新增：資料庫的流水編號
-        public string name; // 如果 API 有給 name 就讀得出來
+        public int item_id;
+        public int furniture_id;
+        public int index; // 原有的陣列索引
+        public string name; 
         public string url;
         public float x;
         public float y;
         public float z;
-        public float ry; // 新增：Y 軸旋轉
-        public bool isPlaced; // 是否已由使用者儲存過位置；不再用 (0,0,0) 猜測
+        public float ry; 
+        public bool isPlaced; 
         public string coordinateSpace;
     }
 
     [System.Serializable]
-    public class ServerResponseA { public FurnitureData[] furnitures; }
+    public class ServerResponseA { 
+        public string projectId;
+        public string revision;
+        public FurnitureData[] furnitures; 
+    }
     
     [System.Serializable]
-    public class ServerResponseB { public FurnitureData[] models; }
+    public class ServerResponseB { 
+        public string projectId;
+        public string revision;
+        public FurnitureData[] models; 
+    }
 
     [System.Serializable]
     private class RevisionResponse { public string revision = ""; }
@@ -154,10 +164,13 @@ public class ModelLoader : MonoBehaviour
         SceneAutoScanner.StartupFlowReset += HideProjectCanvas;
     }
 
+    private float _canvasEnableTime;
+
     private void ShowProjectCanvas()
     {
         if (_projectCanvas == null) return;
         _projectCanvas.gameObject.SetActive(true);
+        _canvasEnableTime = Time.time;
         UpdateDisplay();
     }
 
@@ -233,7 +246,7 @@ public class ModelLoader : MonoBehaviour
         if (FurniturePlacementController.HasActiveGrab || !SceneAutoScanner.StartupFlowComplete ||
             SceneAutoScanner.IsWaitingForChoice) return;
         // SceneAutoScanner owns A/B only while its startup choice is visible.
-        if (!SceneAutoScanner.IsWaitingForChoice)
+        if (!SceneAutoScanner.IsWaitingForChoice && Time.time - _canvasEnableTime > 0.5f)
         {
             bool confirmPressed =
                 OVRInput.GetDown(OVRInput.RawButton.A, OVRInput.Controller.RTouch) ||
@@ -534,6 +547,7 @@ public class ModelLoader : MonoBehaviour
         }
     }
 
+
     // 確認送出並開始請求 API
     async void ConfirmAndFetchAPI()
     {
@@ -551,23 +565,21 @@ public class ModelLoader : MonoBehaviour
         _knownFurnitureIndices.Clear();
         _isFirstFetchOfProject = true;
 
-        // Match the working lin branch: 0033 is project 33, not a literal "0033" ID.
-        string userId = int.TryParse(_uiInputProjectID, out int numericProjectId)
-            ? numericProjectId.ToString()
-            : _uiInputProjectID;
-        _activeProjectId = userId;
+        // The user entered code
+        string code = _uiInputProjectID;
         _lastProjectRevision = "";
 
-        _offlineTestMode = userId == OfflineProjectId;
+        _offlineTestMode = code == OfflineProjectId;
         if (_offlineTestMode)
         {
+            _activeProjectId = OfflineProjectId;
             _projectLoadInProgress = false;
             LoadOfflineTestProject();
             return;
         }
 
-        string finalApiUrl = BuildProjectApiUrl(userId, "models");
-        Log($"🌐 Fetching API for ID {userId}: {finalApiUrl}");
+        string finalApiUrl = BuildProjectApiUrl($"by-code/{code}", "models");
+        Log($"🌐 Fetching API by code {code}: {finalApiUrl}");
         
         await FetchApiAndLoadModels(finalApiUrl, requestVersion);
         await CheckProjectRevision(true);
@@ -787,18 +799,38 @@ public class ModelLoader : MonoBehaviour
                         "\"coordinateSpace\"", System.StringComparison.Ordinal) >= 0;
                     
                     FurnitureData[] targetArray = null;
+                    string parsedProjectId = null;
+                    string parsedRevision = null;
                     
                     ServerResponseA dataA = JsonUtility.FromJson<ServerResponseA>(jsonString);
-                    if (dataA != null && dataA.furnitures != null) targetArray = dataA.furnitures;
+                    if (dataA != null && dataA.furnitures != null) 
+                    {
+                        targetArray = dataA.furnitures;
+                        parsedProjectId = dataA.projectId;
+                        parsedRevision = dataA.revision;
+                    }
                     
                     if (targetArray == null)
                     {
                         ServerResponseB dataB = JsonUtility.FromJson<ServerResponseB>(jsonString);
-                        if (dataB != null && dataB.models != null && dataB.models.Length > 0) targetArray = dataB.models;
+                        if (dataB != null && dataB.models != null && dataB.models.Length > 0) 
+                        {
+                            targetArray = dataB.models;
+                            parsedProjectId = dataB.projectId;
+                            parsedRevision = dataB.revision;
+                        }
                     }
 
                     if (targetArray != null)
                     {
+                        if (!string.IsNullOrEmpty(parsedProjectId))
+                        {
+                            _activeProjectId = parsedProjectId;
+                        }
+                        if (!string.IsNullOrEmpty(parsedRevision) && _isFirstFetchOfProject)
+                        {
+                            _lastProjectRevision = parsedRevision;
+                        }
                         // 舊 API 沒有 isPlaced。舊資料只要任一位置或角度不是 0，就代表曾在
                         // VR 中擺放過；重新進入專案時應自動還原，而不是只留在家具清單。
                         if (!hasPlacementFlag)
@@ -831,17 +863,8 @@ public class ModelLoader : MonoBehaviour
                             _projectMenuState = ProjectMenuState.Furniture;
                         UpdateDisplay();
 
-                        // A placed item belongs to the saved project layout. Restore
-                        // it automatically when the project is opened; unplaced items
-                        // remain available in the selection list for manual spawning.
-                        if (firstFetch)
-                        {
-                            foreach (FurnitureData furniture in targetArray)
-                            {
-                                if (!furniture.isPlaced || requestVersion != _projectRequestVersion) continue;
-                                await LoadModelFromNetwork(furniture);
-                            }
-                        }
+                        // 根據最新的需求：不論家具有沒有座標，都不要自動生成實體。
+                        // 讓它們全部保持在選單中隱藏，直到玩家手動按下 A 鍵選擇後才生成。
                     } 
                     else 
                     {
@@ -1228,7 +1251,7 @@ public class ModelLoader : MonoBehaviour
     [System.Serializable]
     public class PosItem
     {
-        public int index;
+        public int item_id;
         public float x;
         public float y;
         public float z;
@@ -1240,6 +1263,14 @@ public class ModelLoader : MonoBehaviour
     public class PosBody
     {
         public System.Collections.Generic.List<PosItem> positions;
+    }
+
+    [System.Serializable]
+    public class PutPositionsResponse
+    {
+        public bool success;
+        public string message;
+        public int revision;
     }
 
     public void TriggerAutoSave()
@@ -1581,11 +1612,12 @@ public class ModelLoader : MonoBehaviour
                 }
 
                 // 🌟 同步更新記憶體裡的暫存資料，這樣刪除後重新叫出才會是最新的位置！
-                // 這裡改用 index + url 雙重嚴謹比對，絕對不會把 A 桌子的座標存到 B 椅子身上！
+                int currentItemId = 0;
                 for (int i = 0; i < _fetchedFurnitures.Length; i++)
                 {
                     if (_fetchedFurnitures[i].index == tag.index)
                     {
+                        currentItemId = _fetchedFurnitures[i].item_id;
                         _fetchedFurnitures[i].x = savedPosition.x;
                         _fetchedFurnitures[i].y = savedPosition.y;
                         _fetchedFurnitures[i].z = savedPosition.z;
@@ -1597,7 +1629,7 @@ public class ModelLoader : MonoBehaviour
                 }
 
                 list.Add(new PosItem {
-                    index = tag.index,
+                    item_id = currentItemId,
                     x = savedPosition.x,
                     y = savedPosition.y,
                     z = savedPosition.z,
@@ -1625,6 +1657,11 @@ public class ModelLoader : MonoBehaviour
                 if (req.result == UnityWebRequest.Result.Success)
                 {
                     Log("✅ Furniture position saved.");
+                    PutPositionsResponse res = JsonUtility.FromJson<PutPositionsResponse>(req.downloadHandler.text);
+                    if (res != null && res.revision > 0)
+                    {
+                        _lastProjectRevision = res.revision.ToString();
+                    }
                 }
                 else
                 {

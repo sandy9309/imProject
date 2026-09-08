@@ -5,8 +5,8 @@ import { Link } from 'react-router-dom';
 import { showToast, showConfirm } from '../Ui/ui';
 import './AiAssistant.css';
 
-const AI_API_BASE = 'http://163.13.202.116:5051';
-const API_BASE = 'http://163.13.202.116:5050';
+const AI_API_BASE = process.env.REACT_APP_AI_API_BASE || 'http://163.13.202.116:5051';
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://163.13.202.116:5050';
 
 const MAX_QTY = 10;
 

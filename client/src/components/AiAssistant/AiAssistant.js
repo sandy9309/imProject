@@ -1,7 +1,6 @@
 // src/components/AiAssistant/AiAssistant.js
-// AI 空間設計小幫手:右下角圓形懸浮按鈕,點開展開聊天視窗
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles, Plus, Box } from 'lucide-react';
+import { MessageCircle, X, Send, Sparkles, Plus, Box, Ruler } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { showToast, showConfirm } from '../Ui/ui';
 import './AiAssistant.css';
@@ -35,12 +34,10 @@ const AiAssistant = () => {
 
   const bottomRef = useRef(null);
 
-  // 每次有新訊息,自動捲到最底
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
-  // 第一次打開聊天視窗時,載入家具對照表(id → 縮圖/名稱/價格/3D模型)
   useEffect(() => {
     if (!open || Object.keys(furnitureMap).length > 0) return;
     const fetchFurnitures = async () => {
@@ -77,7 +74,6 @@ const AiAssistant = () => {
       if (!res.ok) throw new Error(`伺服器回應 ${res.status}`);
       const data = await res.json();
 
-      // 只保留「真實存在於型錄」的推薦 id(AI 萬一給了不存在的 id 就濾掉)
       const recs = (Array.isArray(data.recommendations) ? data.recommendations : [])
         .filter(id => furnitureMap[id]);
 
@@ -96,7 +92,6 @@ const AiAssistant = () => {
     }
   };
 
-  // ── 對話直接加入配置清單　──
   const addToCart = async (furnitureId) => {
     const product = furnitureMap[furnitureId];
     if (!product) return;
@@ -168,7 +163,6 @@ const AiAssistant = () => {
 
   return (
     <>
-      {/* ── 聊天視窗 ── */}
       {open && (
         <div className="ai-chat-window">
           <div className="ai-chat-header">
@@ -187,7 +181,6 @@ const AiAssistant = () => {
                   {m.text}
                 </div>
 
-                {/* 推薦家具:點縮圖可開 3D  */}
                 {m.recs && m.recs.length > 0 && (
                   <div className="ai-rec-list">
                     <div className="ai-rec-sort-row">
@@ -271,7 +264,7 @@ const AiAssistant = () => {
         </div>
       )}
 
-      {/* ── 3D 預覽彈窗　── */}
+      {/* ── 3D 預覽　── */}
       {preview && (
         <div className="ai-3d-overlay" onClick={() => setPreview(null)}>
           <div className="ai-3d-box" onClick={e => e.stopPropagation()}>
@@ -279,6 +272,10 @@ const AiAssistant = () => {
               <X size={20} />
             </button>
             <h3 className="ai-3d-title">{preview.name} - 3D 預覽</h3>
+            <p className="ai-3d-dimensions">
+              <Ruler size={14} />
+              尺寸：{preview.length_cm || '-'} × {preview.width || '-'} × {preview.height || '-'} cm
+            </p>
             <div className="ai-3d-model">
               <model-viewer
                 src={getModelUrl(preview)}

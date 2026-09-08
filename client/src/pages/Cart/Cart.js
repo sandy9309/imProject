@@ -60,7 +60,7 @@ const Cart = () => {
     fetchExisting();
   }, [editProjectId, currentUserId]);
 
-  // 載入購物車（純前端 localStorage）
+  // 載入購物車（localStorage）
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -82,16 +82,14 @@ const Cart = () => {
     keyOf(item.product_id ?? item.id);
 
   const buildMergedGroups = () => {
-    const groups = {}; // key -> { info, existingCount, cartCount, originalCount, sampleName, samplePrice }
+    const groups = {};
 
-    // 1. 既有家具計數
     existingItems.forEach(it => {
       const k = getExistingId(it);
       if (!groups[k]) groups[k] = { key: k, existingCount: 0, cartCount: 0, originalCount: 0 };
       groups[k].existingCount += 1;
     });
 
-    // 2. 原始既有數量（判斷有無變動）
     originalExistingItems.forEach(it => {
       const k = getExistingId(it);
       if (!groups[k]) groups[k] = { key: k, existingCount: 0, cartCount: 0, originalCount: 0 };
@@ -117,13 +115,11 @@ const Cart = () => {
   const changeMergedQty = async (group, delta) => {
     const { key, fid, existingCount, cartCount, total } = group;
 
-    // 增加
     if (delta > 0) {
       if (total >= MAX_QTY) {
         showToast(`已達單款上限（${MAX_QTY} 個），無法再增加囉！`, 'error');
         return;
       }
-      // 加到購物車那批（新增）
       addOneToCart(fid, group);
       return;
     }
@@ -222,7 +218,7 @@ const Cart = () => {
     localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
-  // 儲存變更 → 合併既有 + 新加 
+  // 儲存變更 → 合併既有 + 新加
   const handleAddToExistingProject = async () => {
     if (!currentUserId || !editProjectId) return;
     const hasChanges =
@@ -233,7 +229,17 @@ const Cart = () => {
     try {
       setLoading(true);
 
-      const newItems = cartItems.flatMap(item => {
+      const existingPayload = existingItems.map(it => {
+        const out = { furniture_id: it.furniture_id ?? it.id ?? it.product_id };
+        if (it.item_id !== undefined && it.item_id !== null) out.item_id = it.item_id;
+        if (it.x !== undefined) out.x = it.x;
+        if (it.y !== undefined) out.y = it.y;
+        if (it.z !== undefined) out.z = it.z;
+        if (it.ry !== undefined) out.ry = it.ry;
+        return out;
+      });
+
+      const newPayload = cartItems.flatMap(item => {
         const qty = item.quantity || 1;
         return Array.from({ length: qty }, () => ({
           furniture_id: item.product_id || item.id,
@@ -241,14 +247,15 @@ const Cart = () => {
         }));
       });
 
-      const mergedItems = [...existingItems, ...newItems];
+      const mergedItems = [...existingPayload, ...newPayload];
 
       const res = await fetch(`${API_BASE}/api/projects/${editProjectId}`, {
         method: 'PUT',
         headers: mutateHeaders,
         body: JSON.stringify({
           name: editProjectName,
-          itemsRaw: JSON.stringify(mergedItems),
+          items: mergedItems,              
+          itemsRaw: JSON.stringify(mergedItems), 
         }),
       });
 
@@ -303,7 +310,8 @@ const Cart = () => {
           name: projectName.trim(),
           l: null,
           w: null,
-          itemsRaw: JSON.stringify(items),
+          items,                             
+          itemsRaw: JSON.stringify(items),   
         }),
       });
 
@@ -353,7 +361,6 @@ const Cart = () => {
       {currentUserId && showList ? (
         <div className="cart-content">
           <div className="cart-list">
-            {/* ═══ 編輯模式：合併後的家具卡片（同款一張，有變動才變色）═══ */}
             {editProjectId && mergedGroups.map(g => {
               const info = g.info || g.cartSample || {};
               const unitPrice = Number(info.price || 0);
@@ -393,7 +400,6 @@ const Cart = () => {
               );
             })}
 
-            {/* ═══ 非編輯模式（建立新專案）：純購物車 ═══ */}
             {!editProjectId && cartItems.map(item => (
               <div key={item.id} className="cart-item">
                 <img

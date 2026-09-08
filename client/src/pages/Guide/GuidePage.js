@@ -25,7 +25,7 @@ const GuidePage = () => {
         <h1><BookOpen size={26} /> 使用說明</h1>
         <p>從挑家具到戴上眼鏡看見成果,只要幾個步驟。</p>
         <button className="guide-replay-btn" onClick={() => setReplayTour(true)}>
-          <PlayCircle size={16} /> 重新播放新手導覽
+          <PlayCircle size={16} /> 播放新手導覽
         </button>
       </div>
 

@@ -13,6 +13,9 @@ const mutateHeaders = {
   'Content-Type': 'application/json',
 };
 
+const getSyncCode = (project) =>
+  project?.sync_code || String(project?.id ?? '').padStart(5, '0');
+
 const Projects = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -152,13 +155,29 @@ const Projects = () => {
         method: 'PATCH',
         headers: mutateHeaders,
       });
-      if (res.ok) {
-        setVrModalProject(project);
-        fetchProjects();
-      } else {
+      if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `伺服器回應 ${res.status}`);
       }
+
+      let latest = project;
+      try {
+        const listRes = await fetch(
+          `${API_BASE}/api/projects?userId=${currentUserId}`,
+          { headers: getHeaders }
+        );
+        if (listRes.ok) {
+          const body = await listRes.json();
+          const list = body.data || [];
+          setProjects(list);
+          const found = list.find(p => String(p.id) === String(project.id));
+          if (found) latest = found;
+        }
+      } catch (e) {
+        console.error('重新載入專案以取得 sync_code 失敗:', e);
+      }
+
+      setVrModalProject(latest);
     } catch (err) {
       console.error('送到 VR 失敗:', err);
       showToast(`傳送至 VR 失敗：${err.message}`, 'error');
@@ -181,11 +200,11 @@ const Projects = () => {
     const keyword = searchTerm.trim().toLowerCase();
     if (!keyword) return true;
     const name = (project.name || '').toLowerCase();
-    const idPadded = String(project.id).padStart(5, '0');
+    const code = getSyncCode(project);
     return (
       name.includes(keyword) ||
       String(project.id).includes(keyword) ||
-      idPadded.includes(keyword)
+      code.includes(keyword)
     );
   });
 
@@ -269,7 +288,7 @@ const Projects = () => {
                 <div className="project-card-header-row">
                   <div className="project-card-title">
                     <span className="project-id">
-                      #{String(project.id).padStart(5, '0')}
+                      #{getSyncCode(project)}
                     </span>
                     {renaming?.id === project.id ? (
                       <input
@@ -424,9 +443,9 @@ const Projects = () => {
               「{vrModalProject.name}」的最新配置已送出
             </p>
 
-            <p className="vr-modal-label">請在 VR 眼鏡輸入以下編碼查看</p>
+            <p className="vr-modal-label">請在 VR 眼鏡輸入以下同步代碼查看</p>
             <div className="vr-modal-code">
-              {String(vrModalProject.id).padStart(5, '0')}
+              {getSyncCode(vrModalProject)}
             </div>
 
             <div className="vr-modal-actions">

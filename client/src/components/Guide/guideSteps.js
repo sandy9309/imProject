@@ -20,7 +20,7 @@ export const GUIDE_STEPS = [
     icon: 'Save',
     title: '儲存成專案,取得編碼',
     subtitle: '每個專案有專屬的 5 位數編碼',
-    desc: '為這次的配置命名(例如「客廳第一版」)並儲存,系統會給一組 5 位數編碼。這組編碼固定不變,之後修改配置也是同一組。',
+    desc: '為這次的配置命名(例如「客廳第一版」)並儲存,系統會給一組 5 位數編碼。',
     tip: '編碼可以分享給別人!只要知道編碼,也能戴上眼鏡看同一個配置。',
   },
   {
@@ -53,5 +53,4 @@ export const GUIDE_STEPS = [
   },
 ];
 
-// 首頁精簡版
 export const GUIDE_STEPS_SHORT = [0, 2, 4, 6].map(i => GUIDE_STEPS[i]);

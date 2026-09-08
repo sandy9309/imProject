@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import './Login.css';
 import { showToast, showConfirm } from '../../components/Ui/ui';
+import { clearUserScopedStorage } from '../../components/Navbar/Navbar';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -76,6 +77,9 @@ const Login = () => {
       if (response.ok) {
         showToast("登入成功！歡迎回來", 'success');
 
+        
+        clearUserScopedStorage();
+
         localStorage.setItem('token', data.token || '');
 
         const realUserId = data.user_id || data.userId || data.id;
@@ -94,9 +98,6 @@ const Login = () => {
           user_id: realUserId || '',
           joinDate: realJoinDate,
         }));
-
-        localStorage.removeItem('cart');
-        localStorage.removeItem('cart_user_id');
 
         navigate('/catalog');
         window.location.reload();

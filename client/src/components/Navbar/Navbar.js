@@ -5,16 +5,30 @@ import { Home, Layout, Folder, LogIn, UserPlus, ShoppingCart, User, LogOut, Chev
 import './Navbar.css';
 import { showToast, showConfirm } from '../../components/Ui/ui';
 
+const USER_SCOPED_KEYS = [
+  'token',
+  'user',
+  'user_id',
+  'username',
+  'cart',
+  'cart_user_id',
+  'editProjectId',
+  'editProjectName',
+  'last_activity',
+];
+
+export const clearUserScopedStorage = () => {
+  USER_SCOPED_KEYS.forEach(k => localStorage.removeItem(k));
+};
+
 const Navbar = () => {
   const navigate = useNavigate();
   
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token')); 
-  // 使用者姓名（預設為訪客，等登入成功會改掉）
   const [userName, setUserName] = useState('訪客');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef(null);
 
-  // 自動關閉下拉選單
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -50,8 +64,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     showToast("已登出系統", 'success');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearUserScopedStorage();
     
     setIsLoggedIn(false);
     setShowUserMenu(false);
@@ -67,9 +80,7 @@ const Navbar = () => {
         <Link to="/catalog" className="nav-item"><Layout size={18} /> 家具型錄</Link>
 
         {isLoggedIn ? (
-          // --- 已登入狀態 ---
           <>
-            {/* 我的專案（登入後才會顯示） */}
             <Link to="/projects" className="nav-item">
               <Folder size={18} /> 我的專案
             </Link>
@@ -108,7 +119,6 @@ const Navbar = () => {
             </div>
           </>
         ) : (
-          // --- 未登入狀態 ---
           <>
             <Link to="/guide" className="nav-item"><BookOpen size={18} /> 使用說明</Link>
             <Link to="/login" className="nav-item"><LogIn size={18} /> 登入</Link>

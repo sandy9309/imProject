@@ -42,8 +42,6 @@ const Catalog = () => {
         }
 
         const data = await response.json();
-        console.log("後端成功撈到的原始家具資料：", data);
-        
         setItems(data || []);
       } catch (err) {
         console.error("家具 API 連線失敗:", err);
@@ -52,7 +50,6 @@ const Catalog = () => {
         setLoading(false);
       }
     };
-    // 動態抓取分類清單前端不寫死
     const fetchCategories = async () => {
       try {
         const response = await fetch(`${API_BASE}/api/furnitures/categories`, {
@@ -319,7 +316,6 @@ const Catalog = () => {
           </p>
         </div>
       ) : (
-        /* 家具展示 */
         <div className="catalog-grid" key={`grid-${cartVersion}`}>
           {displayedItems.map(item => {
             return (
@@ -365,6 +361,10 @@ const Catalog = () => {
             </button>
             
             <h2>{selectedItem.name} - 3D 預覽</h2>
+            <p className="modal-dimensions">
+              <Ruler size={15} />
+              尺寸：{selectedItem.length_cm || '-'} × {selectedItem.width || '-'} × {selectedItem.height || '-'} cm
+            </p>
             
             <div className="model-container">
               <model-viewer 

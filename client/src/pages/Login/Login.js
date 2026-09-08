@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom'; 
 import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import './Login.css';
-import { showToast, showConfirm } from '../../components/Ui/ui';
+import { showToast } from '../../components/Ui/ui';
 import { clearUserScopedStorage } from '../../components/Navbar/Navbar';
 
 const Login = () => {

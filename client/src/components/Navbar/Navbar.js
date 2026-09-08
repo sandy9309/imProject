@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import { Home, Layout, Folder, LogIn, UserPlus, ShoppingCart, User, LogOut, ChevronDown, BookOpen } from 'lucide-react'; 
 import './Navbar.css';
-import { showToast, showConfirm } from '../../components/Ui/ui';
+import { showToast } from '../../components/Ui/ui';
 
 const USER_SCOPED_KEYS = [
   'token',

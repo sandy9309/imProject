@@ -2,11 +2,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');//讀取.env敏感金鑰
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI, Type } = require('@google/genai');
 
 dotenv.config();//環境變數初始化
 const app = express();
 const port = process.env.PORT || 5051;
+const catalogApiBase = process.env.CATALOG_API_BASE || 'http://163.13.202.116:5050';
 
 app.use(cors());//允許其他埠號請求，跨網域存取
 app.use(express.json());
@@ -26,7 +27,7 @@ app.post('/api/chat', async (req, res) => {
         }
 
         //  API 撈取所有真實家具資料(axios:發送請求/await:執行完才能繼續下一行)
-        const catalogResponse = await axios.get('http://163.13.202.116:5050/api/furnitures');
+        const catalogResponse = await axios.get(`${catalogApiBase}/api/furnitures`);
         const dbfurnitureList = catalogResponse.data; // 家具陣列
 
         // 餵給 AI 的資料(map:把陣列每一筆資料拿來改成新的陣列)
@@ -59,6 +60,18 @@ app.post('/api/chat', async (req, res) => {
             config: {
                 systemInstruction: systemInstruction,
                 temperature: 0.3, // 降低創意度，讓 AI 緊扣資料庫內容
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        reply: { type: Type.STRING },
+                        recommendations: {
+                            type: Type.ARRAY,
+                            items: { type: Type.INTEGER }
+                        }
+                    },
+                    required: ['reply', 'recommendations']
+                }
             }
         });
 
@@ -68,17 +81,24 @@ app.post('/api/chat', async (req, res) => {
             aiResult = JSON.parse(aiResponse.text.trim());
         } catch (e) {
             console.error("AI 回傳的不是合法 JSON:", aiResponse.text.trim());
-            // 防呆機制：如果 AI 沒給 JSON，做一個預設結構
+            // 不把原始模型輸出送到前端，避免 JSON 或 Markdown 直接顯示給使用者
             aiResult = {
-                reply: aiResponse.text.trim(),
+                reply: '抱歉，這次的推薦資料格式異常，請再試一次。',
                 recommendations: []
             };
         }
 
+        const reply = typeof aiResult.reply === 'string'
+            ? aiResult.reply
+            : '抱歉，這次沒有取得有效的推薦說明。';
+        const recommendations = Array.isArray(aiResult.recommendations)
+            ? aiResult.recommendations.filter(Number.isInteger)
+            : [];
+
         //  回傳前端
         res.json({
-            reply: aiResult.reply,
-            recommendations: aiResult.recommendations
+            reply,
+            recommendations
         });
 
     } catch (error) {
@@ -89,5 +109,5 @@ app.post('/api/chat', async (req, res) => {
 
 
 app.listen(port, () => {
-    console.log(` AI 模擬伺服器已啟動：http://localhost:${port}`);
+    console.log(` AI 模擬伺服器已啟動，port：${port}`);
 });

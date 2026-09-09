@@ -36,6 +36,7 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         return other != null && !other.isTrigger &&
             (SceneAutoScanner.PlacementFloors.Contains(other) ||
              (other is BoxCollider wall && SceneAutoScanner.PlacementWalls.Contains(wall)) ||
+             (other is BoxCollider obs && SceneAutoScanner.PlacementObstacles.Contains(obs)) ||
              other.GetComponentInParent<FurnitureWallCollisionGuard>() != null);
     }
     private void FixedUpdate() => RefreshPhysicsContacts();
@@ -56,6 +57,8 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         }
         foreach (BoxCollider wall in SceneAutoScanner.PlacementWalls)
             if (wall != null) wall.gameObject.layer = geometryLayer;
+        foreach (BoxCollider obs in SceneAutoScanner.PlacementObstacles)
+            if (obs != null) obs.gameObject.layer = geometryLayer;
         foreach (Collider floor in SceneAutoScanner.PlacementFloors)
             if (floor != null) floor.gameObject.layer = geometryLayer;
     }
@@ -274,6 +277,16 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
                     new Vector3(physicalWall.Radius(tangent) + wallClearance, 10000f,
                         physicalWall.Radius(normal) + wallClearance), Quaternion.LookRotation(normal, Vector3.up)));
             }
+
+        foreach (BoxCollider obs in SceneAutoScanner.PlacementObstacles)
+        {
+            if (obs != null && obs.enabled && obs.gameObject.activeInHierarchy)
+            {
+                Box physicalBox = FurniturePlacementGeometry.FromBounds(new Bounds(obs.center, obs.size), obs.transform);
+                blockers.Add(physicalBox.Expanded(wallClearance));
+            }
+        }
+
         // 地板只交給 RaiseAboveFloor 校正高度。若把掃描地板的完整方盒當成
         // 水平障礙，稍微傾斜或重複的地板錨點就會在空地形成透明牆。
         

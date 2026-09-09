@@ -11,6 +11,7 @@ public class SceneAutoScanner : MonoBehaviour
 {
     public enum PlacementSpaceKind { None, ScannedRoom, ManualWalls }
     public static readonly HashSet<BoxCollider> PlacementWalls = new HashSet<BoxCollider>();
+    public static readonly HashSet<BoxCollider> PlacementObstacles = new HashSet<BoxCollider>();
     public static readonly HashSet<Collider> PlacementFloors = new HashSet<Collider>();
     public static int ActiveWallColliderCount { get; private set; }
     public static PlacementSpaceKind ActivePlacementSpace { get; private set; }
@@ -38,6 +39,16 @@ public class SceneAutoScanner : MonoBehaviour
     private bool _isScanning;
     private bool _isWaitingForChoice;
     private bool _manualSetupActive;
+    private bool _manualObstacleSetupActive;
+    private int _obstacleDrawPhase = 0;
+    private Vector3 _obsCorner1;
+    private Vector3 _obsCorner2;
+    private Vector3 _obsCorner3;
+    private Vector3 _obsCorner4;
+    private GameObject _obsPreviewBox;
+    private List<GameObject> _manualObstacleObjects = new List<GameObject>();
+    private List<BoxData> _manualObstacleDataList = new List<BoxData>();
+
     private bool _resetConfirmationActive;
     private float _resetHoldStartedAt = -1f;
     private TextMeshPro _choiceText;
@@ -69,6 +80,26 @@ public class SceneAutoScanner : MonoBehaviour
 
     private const int ManualWallDataVersion = 2;
     private const string ManualWallFileName = "manual-walls.json";
+    private const string ManualObstacleFileName = "manual-obstacles.json";
+
+    [Serializable]
+    public class BoxData
+    {
+        public Vector3 center;
+        public Vector3 size;
+        public Quaternion rotation;
+        public Vector3 trackingLocalCenter;
+        public Quaternion trackingLocalRotation;
+        public Vector3 roomLocalCenter;
+        public Quaternion roomLocalRotation;
+    }
+
+    [Serializable]
+    private sealed class ManualObstacleData
+    {
+        public int version = 1;
+        public List<BoxData> obstacles = new List<BoxData>();
+    }
 
     [Serializable]
     private sealed class ManualWallData
@@ -85,6 +116,7 @@ public class SceneAutoScanner : MonoBehaviour
     }
 
     private string ManualWallFilePath => Path.Combine(Application.persistentDataPath, ManualWallFileName);
+    private string ManualObstacleFilePath => Path.Combine(Application.persistentDataPath, ManualObstacleFileName);
 
     private void Awake()
     {
@@ -388,6 +420,12 @@ public class SceneAutoScanner : MonoBehaviour
         if (_manualSetupActive)
         {
             UpdateManualWallSetup();
+            return;
+        }
+
+        if (_manualObstacleSetupActive)
+        {
+            UpdateManualObstacleSetup();
             return;
         }
 
@@ -799,13 +837,11 @@ public class SceneAutoScanner : MonoBehaviour
             return;
         }
 
-        // 儲存成功後才離開設定畫面，確保下次重開 App 時能顯示 A 並載入相同牆面。
+        // 儲存成功後進入畫家具(障礙物)模式
         _manualSetupActive = false;
-        _isWaitingForChoice = false;
-        IsWaitingForChoice = false;
         ClearManualSetupVisuals();
-        Debug.Log($"[ManualWalls] Saved and built {ActiveWallColliderCount} walls.");
-        SignalStartupFlowComplete();
+        Debug.Log($"[ManualWalls] Saved and built {ActiveWallColliderCount} walls. Starting obstacle setup.");
+        BeginManualObstacleSetup();
     }
 
     private bool SaveManualWalls()
@@ -1169,7 +1205,22 @@ public class SceneAutoScanner : MonoBehaviour
             }
         }
         _wallColliderObjects.Clear();
+        
+        foreach (GameObject obsObject in _manualObstacleObjects)
+        {
+            if (obsObject != null)
+            {
+                PlacementObstacles.Remove(obsObject.GetComponent<BoxCollider>());
+                foreach (var col in obsObject.GetComponentsInChildren<Collider>())
+                    PlacementFloors.Remove(col);
+                Destroy(obsObject);
+            }
+        }
+        _manualObstacleObjects.Clear();
+        _manualObstacleDataList.Clear();
+
         PlacementWalls.RemoveWhere(wall => wall == null);
+        PlacementObstacles.RemoveWhere(obs => obs == null);
         ActiveWallColliderCount = 0;
         ActiveManualBoundary.Clear();
         ActivePlacementSpace = PlacementSpaceKind.None;
@@ -1181,9 +1232,298 @@ public class SceneAutoScanner : MonoBehaviour
     {
         StopAllCoroutines();
         _manualSetupActive = false;
+        _manualObstacleSetupActive = false;
         _resetConfirmationActive = false;
         FinishChoice();
         ClearManualSetupVisuals();
         ClearWallColliders();
+    }
+
+    // ==========================================
+    // Manual Obstacle Setup
+    // ==========================================
+    private void BeginManualObstacleSetup()
+    {
+        if (_manualObstacleSetupActive) return;
+        _manualObstacleSetupActive = true;
+        _obstacleDrawPhase = 0;
+        
+        CreateManualPreviewLine();
+
+        if (Camera.main != null)
+        {
+            var prompt = new GameObject("ObstacleSetupPrompt");
+            prompt.transform.SetParent(Camera.main.transform, false);
+            prompt.transform.localPosition = new Vector3(0f, 0.1f, 1.2f);
+            prompt.transform.localRotation = Quaternion.identity;
+            prompt.transform.localScale = Vector3.one * 0.005f;
+            _choiceText = prompt.AddComponent<TextMeshPro>();
+            _choiceText.alignment = TextAlignmentOptions.Center;
+            _choiceText.fontSize = 32f;
+            _choiceText.rectTransform.sizeDelta = new Vector2(800f, 400f);
+            UpdateObstacleSetupPrompt();
+        }
+    }
+
+    private void UpdateObstacleSetupPrompt()
+    {
+        if (_choiceText == null) return;
+        string text = "<b>DRAW FURNITURE (OBSTACLES)</b>\n\n";
+        if (_obstacleDrawPhase == 0)
+            text += "Point to the floor and press <color=#62E6A5>Right Trigger</color> to start drawing.\nPress <color=#62E6A5>A</color> to finish and proceed.";
+        else if (_obstacleDrawPhase == 1)
+            text += "Drag along the floor to set the <color=#62E6A5>Width</color> and press Right Trigger.";
+        else if (_obstacleDrawPhase == 2)
+            text += "Drag to set the <color=#62E6A5>Depth</color> and press Right Trigger.";
+        else if (_obstacleDrawPhase == 3)
+            text += "Move controller UP to set the <color=#62E6A5>Height</color> and press Right Trigger.";
+        
+        if (_obstacleDrawPhase > 0)
+            text += "\n\nPress B to cancel current obstacle.";
+            
+        _choiceText.text = text;
+    }
+
+    private void UpdateManualObstacleSetup()
+    {
+        bool hasFloorPoint = TryGetManualFloorPoint(out Vector3 rayOrigin, out Vector3 floorPoint);
+        
+        if (!hasFloorPoint)
+        {
+            UpdateManualPreviewLine(rayOrigin, rayOrigin + GetRightControllerForward() * manualSetupRayDistance, false);
+        }
+        else
+        {
+            UpdateManualPreviewLine(rayOrigin, floorPoint, true);
+        }
+        
+        if (_obstacleDrawPhase > 0)
+        {
+            if (_obsPreviewBox == null)
+            {
+                _obsPreviewBox = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Destroy(_obsPreviewBox.GetComponent<Collider>());
+                var renderer = _obsPreviewBox.GetComponent<Renderer>();
+                if (_manualPreviewMaterial != null) renderer.material = _manualPreviewMaterial;
+                else renderer.material.color = new Color(0.2f, 0.8f, 0.2f, 0.4f);
+            }
+            
+            Vector3 center = Vector3.zero;
+            Vector3 size = Vector3.zero;
+            Quaternion rot = Quaternion.identity;
+
+            if (_obstacleDrawPhase == 1)
+            {
+                Vector3 widthVec = hasFloorPoint ? floorPoint - _obsCorner1 : Vector3.forward * 0.1f;
+                widthVec.y = 0;
+                float w = widthVec.magnitude;
+                if (w < 0.01f) { widthVec = Vector3.forward * 0.01f; w = 0.01f; }
+                rot = Quaternion.LookRotation(widthVec, Vector3.up);
+                size = new Vector3(0.01f, 0.01f, w);
+                center = _obsCorner1 + widthVec * 0.5f;
+            }
+            else if (_obstacleDrawPhase == 2)
+            {
+                Vector3 zAxis = (_obsCorner2 - _obsCorner1).normalized;
+                Vector3 xAxis = Vector3.Cross(Vector3.up, zAxis).normalized;
+                Vector3 vecToFloor = floorPoint - _obsCorner1;
+                float depth = Vector3.Dot(vecToFloor, xAxis);
+                float width = Vector3.Distance(_obsCorner1, _obsCorner2);
+                size = new Vector3(Mathf.Abs(depth), 0.01f, width);
+                center = _obsCorner1 + zAxis * (width * 0.5f) + xAxis * (depth * 0.5f);
+                rot = Quaternion.LookRotation(zAxis, Vector3.up);
+            }
+            else if (_obstacleDrawPhase == 3)
+            {
+                Vector3 zAxis = (_obsCorner2 - _obsCorner1).normalized;
+                Vector3 xAxis = Vector3.Cross(Vector3.up, zAxis).normalized;
+                Vector3 vecToFloor = _obsCorner3 - _obsCorner1;
+                float depth = Vector3.Dot(vecToFloor, xAxis);
+                float width = Vector3.Distance(_obsCorner1, _obsCorner2);
+                
+                // Calculate height using ray intersection with a vertical plane facing the user
+                float height = 0.5f; // default
+                Vector3 camPos = Camera.main != null ? Camera.main.transform.position : rayOrigin;
+                Vector3 planeNormal = Vector3.ProjectOnPlane(camPos - _obsCorner1, Vector3.up).normalized;
+                if (planeNormal.sqrMagnitude < 0.1f) planeNormal = Vector3.forward;
+                Plane verticalPlane = new Plane(planeNormal, _obsCorner1);
+                
+                Vector3 rayDir = GetRightControllerForward();
+                if (verticalPlane.Raycast(new Ray(rayOrigin, rayDir), out float distance))
+                {
+                    Vector3 hitPoint = rayOrigin + rayDir * distance;
+                    height = Mathf.Max(0.1f, hitPoint.y - _obsCorner1.y);
+                }
+                else
+                {
+                    // Fallback to controller height if ray misses (e.g. looking away)
+                    height = Mathf.Max(0.1f, rayOrigin.y - _obsCorner1.y);
+                }
+
+                size = new Vector3(Mathf.Abs(depth), height, width);
+                center = _obsCorner1 + zAxis * (width * 0.5f) + xAxis * (depth * 0.5f) + Vector3.up * (height * 0.5f);
+                rot = Quaternion.LookRotation(zAxis, Vector3.up);
+            }
+
+            _obsPreviewBox.transform.position = center;
+            _obsPreviewBox.transform.rotation = rot;
+            _obsPreviewBox.transform.localScale = size;
+        }
+
+        if (OVRInput.GetDown(OVRInput.RawButton.RIndexTrigger, OVRInput.Controller.RTouch))
+        {
+            if (_obstacleDrawPhase == 0 && hasFloorPoint)
+            {
+                _obsCorner1 = floorPoint;
+                _obstacleDrawPhase = 1;
+            }
+            else if (_obstacleDrawPhase == 1 && hasFloorPoint)
+            {
+                _obsCorner2 = floorPoint;
+                if (Vector3.Distance(_obsCorner1, _obsCorner2) > 0.1f)
+                    _obstacleDrawPhase = 2;
+            }
+            else if (_obstacleDrawPhase == 2 && hasFloorPoint)
+            {
+                _obsCorner3 = floorPoint;
+                _obstacleDrawPhase = 3;
+            }
+            else if (_obstacleDrawPhase == 3)
+            {
+                _obstacleDrawPhase = 0;
+                if (_obsPreviewBox != null)
+                {
+                    SaveSingleManualObstacle(_obsPreviewBox.transform.position, _obsPreviewBox.transform.localScale, _obsPreviewBox.transform.rotation);
+                    Destroy(_obsPreviewBox);
+                    _obsPreviewBox = null;
+                }
+            }
+            UpdateObstacleSetupPrompt();
+        }
+        else if (OVRInput.GetDown(OVRInput.RawButton.B, OVRInput.Controller.RTouch))
+        {
+            if (_obstacleDrawPhase > 0)
+            {
+                _obstacleDrawPhase = 0;
+                if (_obsPreviewBox != null) Destroy(_obsPreviewBox);
+                UpdateObstacleSetupPrompt();
+            }
+            else if (_manualObstacleDataList.Count > 0)
+            {
+                _manualObstacleDataList.RemoveAt(_manualObstacleDataList.Count - 1);
+                var obj = _manualObstacleObjects[_manualObstacleObjects.Count - 1];
+                PlacementObstacles.Remove(obj.GetComponent<BoxCollider>());
+                foreach (var col in obj.GetComponentsInChildren<Collider>()) PlacementFloors.Remove(col);
+                Destroy(obj);
+                _manualObstacleObjects.RemoveAt(_manualObstacleObjects.Count - 1);
+                SaveManualObstaclesToFile();
+            }
+        }
+        else if (OVRInput.GetDown(OVRInput.RawButton.A, OVRInput.Controller.RTouch))
+        {
+            if (_obstacleDrawPhase == 0)
+            {
+                FinishManualObstacles();
+            }
+        }
+    }
+
+    private void SaveSingleManualObstacle(Vector3 center, Vector3 size, Quaternion rotation)
+    {
+        var boxData = new BoxData
+        {
+            center = center,
+            size = size,
+            rotation = rotation
+        };
+        
+        Transform trackingSpace = TrackingSpace;
+        MRUKRoom room = MRUK.Instance != null ? MRUK.Instance.GetCurrentRoom() : null;
+        
+        boxData.trackingLocalCenter = trackingSpace != null ? trackingSpace.InverseTransformPoint(center) : center;
+        boxData.trackingLocalRotation = trackingSpace != null ? Quaternion.Inverse(trackingSpace.rotation) * rotation : rotation;
+        
+        if (room != null)
+        {
+            boxData.roomLocalCenter = room.transform.InverseTransformPoint(center);
+            boxData.roomLocalRotation = Quaternion.Inverse(room.transform.rotation) * rotation;
+        }
+        
+        _manualObstacleDataList.Add(boxData);
+        BuildSingleObstacleCollider(boxData);
+        SaveManualObstaclesToFile();
+    }
+
+    private void BuildSingleObstacleCollider(BoxData boxData)
+    {
+        var obj = new GameObject("ManualObstacle");
+        obj.transform.SetPositionAndRotation(boxData.center, boxData.rotation);
+        
+        var col = obj.AddComponent<BoxCollider>();
+        col.size = boxData.size;
+        PlacementObstacles.Add(col);
+
+        // Add top surface as floor
+        var floorObj = new GameObject("ObstacleFloor");
+        floorObj.transform.SetParent(obj.transform);
+        floorObj.transform.localPosition = new Vector3(0, boxData.size.y / 2f, 0); // top surface
+        var floorCol = floorObj.AddComponent<BoxCollider>();
+        floorCol.size = new Vector3(boxData.size.x, 0.01f, boxData.size.z);
+        PlacementFloors.Add(floorCol);
+        
+        _manualObstacleObjects.Add(obj);
+    }
+
+    private void SaveManualObstaclesToFile()
+    {
+        var data = new ManualObstacleData { obstacles = _manualObstacleDataList };
+        File.WriteAllText(ManualObstacleFilePath, JsonUtility.ToJson(data, true));
+    }
+
+    private bool TryLoadManualObstacles()
+    {
+        if (!File.Exists(ManualObstacleFilePath)) return false;
+        try
+        {
+            var data = JsonUtility.FromJson<ManualObstacleData>(File.ReadAllText(ManualObstacleFilePath));
+            if (data == null || data.obstacles == null) return false;
+
+            Transform trackingSpace = TrackingSpace;
+            MRUKRoom room = MRUK.Instance != null ? MRUK.Instance.GetCurrentRoom() : null;
+
+            foreach (var box in data.obstacles)
+            {
+                if (room != null && box.roomLocalCenter != Vector3.zero)
+                {
+                    box.center = room.transform.TransformPoint(box.roomLocalCenter);
+                    box.rotation = room.transform.rotation * box.roomLocalRotation;
+                }
+                else if (trackingSpace != null)
+                {
+                    box.center = trackingSpace.TransformPoint(box.trackingLocalCenter);
+                    box.rotation = trackingSpace.rotation * box.trackingLocalRotation;
+                }
+                
+                _manualObstacleDataList.Add(box);
+                BuildSingleObstacleCollider(box);
+            }
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("[ManualObstacles] Load failed: " + e.Message);
+            return false;
+        }
+    }
+
+    private void FinishManualObstacles()
+    {
+        _manualObstacleSetupActive = false;
+        if (_choiceText != null) Destroy(_choiceText.gameObject);
+        _isWaitingForChoice = false;
+        IsWaitingForChoice = false;
+        ClearManualSetupVisuals();
+        Debug.Log($"[ManualObstacles] Saved {_manualObstacleDataList.Count} obstacles.");
+        SignalStartupFlowComplete();
     }
 }

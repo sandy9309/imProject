@@ -23,7 +23,7 @@ public static class FurnitureEndpoints
 
                 var sql = @"
                     SELECT id, name, price, image_url, thumb_path,
-                           model_url, category, width, length_cm, height, description
+                           model_url, category, width, length_cm, height, description, color, material
                     FROM furnitures
                     WHERE 1=1";
 
@@ -59,6 +59,8 @@ public static class FurnitureEndpoints
                         name      = reader["name"]?.ToString() ?? "",
                         price     = reader["price"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["price"]),
                         category  = reader["category"]?.ToString() ?? "",
+                        color     = reader["color"]?.ToString() ?? "",       
+                        material  = reader["material"]?.ToString() ?? "",     
                         thumbnail = reader["thumb_path"]?.ToString() ?? "",
                         modelPath = reader["model_url"]?.ToString() ?? "",
                         dimensions = new {
@@ -95,7 +97,7 @@ public static class FurnitureEndpoints
 
                 var sql = @"
                     SELECT id, name, category, width, length_cm, height,
-                           price, description, image_url, thumb_path, model_url
+                           price, description, image_url, thumb_path, model_url, color, material
                     FROM furnitures
                     WHERE 1=1";
 
@@ -140,6 +142,8 @@ public static class FurnitureEndpoints
                         height      = reader["height"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["height"]),
                         price       = reader["price"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["price"]),
                         description = reader["description"]?.ToString() ?? "",
+                        color       = reader["color"]?.ToString() ?? "",      
+                        material    = reader["material"]?.ToString() ?? "",    
                         image_url   = reader["image_url"]?.ToString() ?? "",
                         thumb_path  = reader["thumb_path"]?.ToString() ?? "",
                         download_url = reader["model_url"]?.ToString() ?? ""
@@ -188,7 +192,7 @@ public static class FurnitureEndpoints
                 conn.Open();
                 var cmd = new MySqlCommand(@"
                     SELECT id, name, category, width, length_cm, height,
-                           price, description, image_url, thumb_path, model_url
+                           price, description, image_url, thumb_path, model_url, color, material
                     FROM furnitures
                     WHERE id = @id", conn);
                 cmd.Parameters.AddWithValue("@id", id);
@@ -206,6 +210,8 @@ public static class FurnitureEndpoints
                     height      = Convert.ToDecimal(reader["height"]),
                     price       = Convert.ToDecimal(reader["price"]),
                     description = reader["description"]?.ToString() ?? "",
+                    color       = reader["color"]?.ToString() ?? "",      
+                    material    = reader["material"]?.ToString() ?? "",    
                     image_url   = reader["image_url"]?.ToString() ?? "",
                     thumb_path  = reader["thumb_path"]?.ToString() ?? "",
                     download_url = reader["model_url"]?.ToString() ?? ""

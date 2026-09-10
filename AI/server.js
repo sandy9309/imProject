@@ -264,10 +264,11 @@ app.post('/api/chat', async (req, res) => {
 7. reply 要說明沿用了哪些條件；若沒有符合項目，指出可以放寬的條件。
 8. 只回傳指定 JSON 結構。`;
 
-        console.time('Gemini 回應');
+        // 每個請求各自記錄開始時間，避免多人同時詢問時共用 console.time 標籤而互相衝突。
+        const geminiStartedAt = Date.now();
         const aiResponse = await ai.models.generateContent({
             // Flash-Lite 適合高頻、低延遲的分類與結構化資料擷取。
-            model: 'gemini-2.5-flash-lite',
+            model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
             contents: message,
             config: {
                 systemInstruction,
@@ -295,7 +296,7 @@ app.post('/api/chat', async (req, res) => {
                 }
             }
         });
-        console.timeEnd('Gemini 回應');
+        console.log(`Gemini 回應: ${((Date.now() - geminiStartedAt) / 1000).toFixed(3)}s`);
 
         let aiResult;
         try {

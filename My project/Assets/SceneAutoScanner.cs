@@ -281,7 +281,10 @@ public class SceneAutoScanner : MonoBehaviour
             while (!HasLoadedPhysicalWall() && Time.realtimeSinceStartup < geometryDeadline)
                 yield return null;
             if (TryLoadManualWalls())
+            {
                 _roomLoadStatus += " / saved manual walls";
+                TryLoadManualObstacles();
+            }
             else
                 RebuildWallColliders();
         }
@@ -289,7 +292,10 @@ public class SceneAutoScanner : MonoBehaviour
         {
             Debug.LogWarning("[Scanner] MRUK room unavailable. Checking saved manual walls.");
             if (TryLoadManualWalls())
+            {
                 _roomLoadStatus += " / saved manual walls";
+                TryLoadManualObstacles();
+            }
         }
         // 即使已找到舊房間，仍讓使用者按 A 確認使用；按 B 才會重新掃描。
         yield return AskWhetherToRescan();

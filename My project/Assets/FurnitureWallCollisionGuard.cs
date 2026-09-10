@@ -283,7 +283,8 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
             if (obs != null && obs.enabled && obs.gameObject.activeInHierarchy)
             {
                 Box physicalBox = FurniturePlacementGeometry.FromBounds(new Bounds(obs.center, obs.size), obs.transform);
-                blockers.Add(physicalBox.Expanded(wallClearance));
+                // 使用極小的安全距離，確保碰撞體大小幾乎等於玩家繪製的大小
+                blockers.Add(physicalBox.Expanded(0.001f));
             }
         }
 
@@ -302,6 +303,13 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         }
     }
 
+    private bool HorizontalOverlap(Box a, Box b)
+    {
+        Box flatA = new Box(new Vector3(a.center.x, 0, a.center.z), new Vector3(a.half.x, 10000f, a.half.z), Quaternion.Euler(0, a.rotation.eulerAngles.y, 0));
+        Box flatB = new Box(new Vector3(b.center.x, 0, b.center.z), new Vector3(b.half.x, 10000f, b.half.z), Quaternion.Euler(0, b.rotation.eulerAngles.y, 0));
+        return FurniturePlacementGeometry.Overlaps(flatA, flatB);
+    }
+
     private void RaiseAboveFloor(ref Vector3 position, Quaternion rotation)
     {
         Box box = BoxAt(position, rotation);
@@ -309,11 +317,17 @@ public sealed class FurnitureWallCollisionGuard : MonoBehaviour
         {
             if (!(floor is BoxCollider plane) || !floor.enabled || !floor.gameObject.activeInHierarchy) continue;
             Box ground = FurniturePlacementGeometry.FromBounds(new Bounds(plane.center, plane.size), plane.transform);
-            if (Mathf.Abs(box.center.x - ground.center.x) > box.Radius(Vector3.right) + ground.Radius(Vector3.right) ||
-                Mathf.Abs(box.center.z - ground.center.z) > box.Radius(Vector3.forward) + ground.Radius(Vector3.forward)) continue;
+            
+            if (!HorizontalOverlap(box, ground)) continue;
+
             float lift = ground.center.y + ground.Radius(Vector3.up) + 0.002f
                 - (box.center.y - box.Radius(Vector3.up));
             if (lift <= 0f) continue;
+
+            // 若為自訂桌子/床的頂面，且虛擬家具距離桌面超過 3 公分 (代表原本放在地上)，
+            // 則不要像磁鐵一樣把它吸到桌面上，讓它能正常撞擊桌子邊緣。
+            if (floor.gameObject.name == "ObstacleFloor" && lift > 0.03f) continue;
+
             position.y += lift;
             box.center.y += lift;
         }

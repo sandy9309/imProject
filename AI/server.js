@@ -153,8 +153,27 @@ function findMentionedOption(message, options, aliases) {
     return '';
 }
 
+// 將口語同義詞換成資料庫與規則較容易辨識的說法，不要求使用者輸入完全相同的字。
+function normalizeSearchTerms(message) {
+    const replacements = [
+        [/座椅|凳子/g, '椅子'],
+        [/木頭|木質/g, '木'],
+        [/真皮|皮製/g, '皮革'],
+        [/布製|布質/g, '布料'],
+        [/鐵製|鋼製/g, '金屬'],
+        [/暗色系|深色系/g, '黑色'],
+        [/亮色系|淺色系/g, '白色'],
+        [/物色|挑一個|挑一款|看一下/g, '幫我找']
+    ];
+    return replacements.reduce(
+        (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
+        message
+    );
+}
+
 // 先用可確定的條件更新上一輪狀態，避免把 295 筆家具全部交給 Gemini。
 function derivePreliminaryFilters(previousFilters, message) {
+    message = normalizeSearchTerms(message);
     if (/(重新開始|清除條件|全部不限|沒有條件)/.test(message)) {
         return normalizeFilters();
     }
@@ -215,6 +234,53 @@ function selectCandidates(catalog, filters, message, history) {
         .map(entry => entry.item);
 }
 
+// 先用快速規則判斷；回傳 null 代表語意不明確，需要交給 AI 做短分類。
+function detectSearchModeByRules(message, previousFilters) {
+    const normalizedMessage = normalizeSearchTerms(message);
+    const shoppingWords = /(幫我找|找一個|找一下|推薦|挑選|選購|有沒有|我想要|我要|需要|預算|價格|以下|以內|便宜|貴一點|換成|改成|尺寸|幾坪|適合放|符合|購買|買一個)/;
+    const constraintWords = /(沙發|椅|桌|床|櫃|燈|架|家具|黑|白|灰|紅|藍|綠|黃|棕|木色|實木|木製|金屬|布料|皮革|玻璃|塑膠)/;
+    const followUpWords = /(便宜一點|貴一點|大一點|小一點|換一個|其他|還有嗎|再看看|不要這個|材質不限|顏色不限|價格不限)/;
+    const chatWords = /^(你好|嗨|哈囉|謝謝|感謝|再見|你是誰|你可以做什麼)[！!。.]?$|怎麼保養|如何清潔|是什麼|為什麼/;
+    const hasActiveFilters = Object.entries(previousFilters)
+        .some(([key, value]) => key !== 'style' && (typeof value === 'number' ? value > 0 : Boolean(value)));
+
+    if (shoppingWords.test(normalizedMessage)
+        || (constraintWords.test(normalizedMessage) && /(想要|需要|找|買|推薦|適合)/.test(normalizedMessage))
+        || (hasActiveFilters && followUpWords.test(normalizedMessage))) return true;
+    if (chatWords.test(normalizedMessage)) return false;
+    return null;
+}
+
+// 規則無法確定時才呼叫輕量模型分類，避免一般明確訊息產生額外等待。
+async function shouldSearchFurniture(message, history, previousFilters) {
+    const ruleResult = detectSearchModeByRules(message, previousFilters);
+    if (ruleResult !== null) return ruleResult;
+
+    const recentContext = history.slice(-4).map(item => `${item.role}：${item.text}`).join('\n');
+    try {
+        const result = await ai.models.generateContent({
+            model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+            contents: `最近對話：\n${recentContext || '無'}\n最新訊息：${message}`,
+            config: {
+                systemInstruction: '判斷使用者是否要搜尋、篩選或推薦資料庫中的家具。純聊天、問候、知識問答或保養問題不是搜尋。只回傳指定 JSON。',
+                temperature: 0,
+                thinkingConfig: { thinkingLevel: 'MINIMAL' },
+                maxOutputTokens: 50,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: { search: { type: Type.BOOLEAN } },
+                    required: ['search']
+                }
+            }
+        });
+        return JSON.parse(result.text.trim()).search === true;
+    } catch (error) {
+        console.warn('對話模式判斷失敗，本輪改用一般聊天:', error.message);
+        return false;
+    }
+}
+
 const formatOptions = values => values.length ? values.join('、') : '目前沒有資料';
 
 app.post('/api/chat', async (req, res) => {
@@ -229,10 +295,17 @@ app.post('/api/chat', async (req, res) => {
 
         const previousFilters = normalizeFilters(req.body?.filters);
         const history = sanitizeHistory(req.body?.history);
-        // 先在記憶體做硬條件與文字相關度篩選，只將少量候選家具交給 Gemini。
-        const preliminaryFilters = derivePreliminaryFilters(previousFilters, message);
-        const candidates = selectCandidates(catalog, preliminaryFilters, message, history);
-        console.log(`候選家具：${candidates.length}/${catalog.length} 筆`);
+        const searchMode = await shouldSearchFurniture(message, history, previousFilters);
+        // 搜尋模式才更新條件及挑選候選商品；一般聊天沿用條件，但不傳送家具清單。
+        const preliminaryFilters = searchMode
+            ? derivePreliminaryFilters(previousFilters, message)
+            : previousFilters;
+        const candidates = searchMode
+            ? selectCandidates(catalog, preliminaryFilters, message, history)
+            : [];
+        console.log(searchMode
+            ? `對話模式：家具搜尋；候選家具：${candidates.length}/${catalog.length} 筆`
+            : '對話模式：一般聊天；本輪不搜尋家具');
         const historyText = history.length
             ? history.map(item => `${item.role}：${item.text}`).join('\n')
             : '無先前對話';
@@ -245,7 +318,8 @@ app.post('/api/chat', async (req, res) => {
         )).join('\n');
 
         const systemInstruction = `
-你是專業的室內設計助理，必須延續多輪對話中的選購條件。
+你是親切、自然的室內設計與家具 AI 助理，必須延續最近的對話內容。
+本輪模式：${searchMode ? '家具搜尋' : '一般聊天'}
 資料庫允許的類別：${formatOptions(furnitureOptions.categories)}
 資料庫允許的顏色：${formatOptions(furnitureOptions.colors)}
 資料庫允許的材質：${formatOptions(furnitureOptions.materials)}
@@ -255,14 +329,16 @@ app.post('/api/chat', async (req, res) => {
 真實家具清單：\n${aiKnowledgeBase}
 
 規則：
-1. 根據最新訊息更新 filters；沒有改動的條件必須沿用上一輪。
+1. 家具搜尋模式才根據最新訊息更新 filters；沒有改動的條件必須沿用上一輪。
 2. 使用者說不限、取消或都可以時，對應文字欄位回傳空字串，數字欄位回傳 0。
 3. category、color、material 優先使用資料庫實際值；無法確認時用空字串。
 4. category、color、material、maxPrice 是硬條件，推薦項目必須全部符合。
 5. roomAreaPing、style 是軟偏好，用於尺寸與風格排序，不是絕對排除條件。
 6. recommendations 只能包含真實整數 ID，最多 8 筆；沒有符合項目時回傳空陣列。
-7. reply 要說明沿用了哪些條件；若沒有符合項目，指出可以放寬的條件。
-8. 只回傳指定 JSON 結構。`;
+7. 家具搜尋模式的 reply 要說明沿用了哪些條件；若沒有符合項目，指出可以放寬的條件。
+8. 一般聊天模式要像自然對話一樣回答，可以回應問候、空間規劃及家具知識；recommendations 必須是空陣列，而且 filters 必須原樣保留。
+9. 若問題完全偏離室內設計、居家生活與家具，可以簡短回答後自然引導回你的專長。
+10. 只回傳指定 JSON 結構。`;
 
         // 每個請求各自記錄開始時間，避免多人同時詢問時共用 console.time 標籤而互相衝突。
         const geminiStartedAt = Date.now();
@@ -273,8 +349,8 @@ app.post('/api/chat', async (req, res) => {
             config: {
                 systemInstruction,
                 temperature: 0.2,
-                // 保留少量思考額度理解多輪條件，同時避免動態思考造成過長等待。
-                thinkingConfig: { thinkingBudget: 512 },
+                // 使用低思考層級理解多輪條件，同時避免預設思考造成過長等待。
+                thinkingConfig: { thinkingLevel: 'LOW' },
                 maxOutputTokens: 500,
                 responseMimeType: 'application/json',
                 responseSchema: {
@@ -306,10 +382,11 @@ app.post('/api/chat', async (req, res) => {
             return res.status(502).json({ error: 'AI 回應格式異常，請再試一次。' });
         }
 
-        const filters = normalizeFilters(aiResult.filters);
+        // 一般聊天不得意外改動使用者累積的搜尋條件。
+        const filters = searchMode ? normalizeFilters(aiResult.filters) : previousFilters;
         const catalogById = new Map(catalog.map(item => [Number(item.id), item]));
         const recommendations = [...new Set(
-            (Array.isArray(aiResult.recommendations) ? aiResult.recommendations : [])
+            (searchMode && Array.isArray(aiResult.recommendations) ? aiResult.recommendations : [])
                 .map(Number)
                 .filter(Number.isInteger)
                 .filter(id => {
@@ -321,7 +398,8 @@ app.post('/api/chat', async (req, res) => {
         res.json({
             reply: cleanText(aiResult.reply) || '這次沒有取得有效的推薦說明。',
             recommendations,
-            filters
+            filters,
+            mode: searchMode ? 'search' : 'chat'
         });
     } catch (error) {
         console.error('AI 或網路處理出錯:', error);

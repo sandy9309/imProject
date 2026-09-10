@@ -24,7 +24,7 @@
   background: var(--color-primary-hover);
 }
 
-/* ── 聊天視窗 ── */
+/* 聊天視窗 */
 .ai-chat-window {
   position: fixed;
   right: 22px;
@@ -78,7 +78,7 @@
 
 .ai-chat-close:hover { background: rgba(255, 255, 255, 0.15); }
 
-/* ── 訊息區 ── */
+/* 訊息區 */
 .ai-chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -182,7 +182,7 @@
   cursor: not-allowed;
 }
 
-/* ── RWD　── */
+/* RWD */
 @media (max-width: 480px) {
   .ai-chat-window {
     right: 16px;
@@ -449,4 +449,10 @@
 
 @media (max-width: 480px) {
   .ai-3d-model { height: 240px; }
+}
+
+.ai-chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }

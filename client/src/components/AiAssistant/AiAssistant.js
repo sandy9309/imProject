@@ -1,6 +1,6 @@
 // src/components/AiAssistant/AiAssistant.js
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles, Plus, Box, Ruler } from 'lucide-react';
+import { MessageCircle, X, Send, Sparkles, Plus, Box, Ruler, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { showToast, showConfirm } from '../Ui/ui';
 import './AiAssistant.css';
@@ -9,6 +9,42 @@ const AI_API_BASE = process.env.REACT_APP_AI_API_BASE || 'http://163.13.202.116:
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://163.13.202.116:5050';
 
 const MAX_QTY = 10;
+const CHAT_STORAGE_KEY = 'ai_chat_messages';
+const FILTER_STORAGE_KEY = 'ai_search_filters';
+const INITIAL_MESSAGE = {
+  role: 'ai',
+  text: '你好!我是空間設計小幫手 告訴我你的空間大小或喜歡的風格,我幫你推薦適合的家具!',
+};
+const EMPTY_FILTERS = {
+  category: '', color: '', material: '', maxPrice: 0, roomAreaPing: 0, style: '',
+};
+
+let furnitureCatalogPromise = null;
+
+const loadFurnitureCatalog = () => {
+  if (!furnitureCatalogPromise) {
+    furnitureCatalogPromise = fetch(`${API_BASE}/api/furnitures`)
+      .then(res => {
+        if (!res.ok) throw new Error(`伺服器回應 ${res.status}`);
+        return res.json();
+      })
+      .then(data => Array.isArray(data) ? data : (data.data || []))
+      .catch(err => {
+        furnitureCatalogPromise = null;
+        throw err;
+      });
+  }
+  return furnitureCatalogPromise;
+};
+
+const readStoredValue = (key, fallback) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 const getModelUrl = (item) => {
   const rawUrl = item.download_url || item.model_url || item.glb_url || '';
@@ -23,14 +59,17 @@ const AiAssistant = () => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [furnitureMap, setFurnitureMap] = useState({});
+  const [catalogReady, setCatalogReady] = useState(false);
   const [recommendationSort, setRecommendationSort] = useState('recommended');
   const [preview, setPreview] = useState(null);
-  const [messages, setMessages] = useState([
-    {
-      role: 'ai',
-      text: '你好!我是空間設計小幫手 告訴我你的空間大小或喜歡的風格,我幫你推薦適合的家具!',
-    },
-  ]);
+  const [messages, setMessages] = useState(() => {
+    const stored = readStoredValue(CHAT_STORAGE_KEY, [INITIAL_MESSAGE]);
+    return Array.isArray(stored) && stored.length ? stored : [INITIAL_MESSAGE];
+  });
+  const [filters, setFilters] = useState(() => ({
+    ...EMPTY_FILTERS,
+    ...readStoredValue(FILTER_STORAGE_KEY, EMPTY_FILTERS),
+  }));
 
   const bottomRef = useRef(null);
 
@@ -39,23 +78,31 @@ const AiAssistant = () => {
   }, [messages, open]);
 
   useEffect(() => {
-    if (!open || Object.keys(furnitureMap).length > 0) return;
-    const fetchFurnitures = async () => {
+    let cancelled = false;
+    const preloadFurnitures = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/furnitures`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.data || []);
+        const list = await loadFurnitureCatalog();
+        if (cancelled) return;
         const map = {};
         list.forEach(f => { map[f.id] = f; });
         setFurnitureMap(map);
       } catch (err) {
-        console.error('AI 小幫手載入家具對照表失敗:', err);
+        console.error('AI 小幫手預先載入家具失敗:', err);
+      } finally {
+        if (!cancelled) setCatalogReady(true);
       }
     };
-    fetchFurnitures();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    preloadFurnitures();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+  }, [filters]);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -69,9 +116,19 @@ const AiAssistant = () => {
       const res = await fetch(`${AI_API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message: text,
+          history: messages.slice(-10).map(item => ({
+            role: item.role === 'ai' ? 'model' : 'user',
+            text: item.text,
+          })),
+          filters,
+        }),
       });
-      if (!res.ok) throw new Error(`伺服器回應 ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `伺服器回應 ${res.status}`);
+      }
       const data = await res.json();
 
       const recs = (Array.isArray(data.recommendations) ? data.recommendations : [])
@@ -81,15 +138,24 @@ const AiAssistant = () => {
         ...prev,
         { role: 'ai', text: data.reply || '(沒有收到回覆)', recs },
       ]);
+      if (data.filters && typeof data.filters === 'object') {
+        setFilters({ ...EMPTY_FILTERS, ...data.filters });
+      }
     } catch (err) {
       console.error('AI 小幫手連線失敗:', err);
       setMessages(prev => [
         ...prev,
-        { role: 'ai', text: '⚠️ 連線失敗,請確認 AI 伺服器有開啟,稍後再試一次。' },
+        { role: 'ai', text: '連線失敗,請確認 AI 伺服器有開啟,稍後再試一次。' },
       ]);
     } finally {
       setSending(false);
     }
+  };
+
+  const clearConversation = () => {
+    setMessages([INITIAL_MESSAGE]);
+    setFilters({ ...EMPTY_FILTERS });
+    setRecommendationSort('recommended');
   };
 
   const addToCart = async (furnitureId) => {
@@ -137,7 +203,7 @@ const AiAssistant = () => {
         quantity: 1,
       };
       localStorage.setItem('cart', JSON.stringify([...currentCart, formattedProduct]));
-      showToast(`🎉 ${product.name} 已加入配置清單!`, 'success');
+      showToast(`${product.name} 已加入配置清單!`, 'success');
     }
   };
 
@@ -169,9 +235,19 @@ const AiAssistant = () => {
             <span className="ai-chat-title">
               <Sparkles size={16} /> AI 空間設計小幫手
             </span>
-            <button className="ai-chat-close" onClick={() => setOpen(false)} aria-label="關閉">
-              <X size={18} />
-            </button>
+            <div className="ai-chat-header-actions">
+              <button
+                className="ai-chat-close"
+                onClick={clearConversation}
+                aria-label="清除對話"
+                title="清除對話與篩選條件"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button className="ai-chat-close" onClick={() => setOpen(false)} aria-label="關閉">
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="ai-chat-messages">
@@ -247,7 +323,7 @@ const AiAssistant = () => {
             <textarea
               className="ai-chat-input"
               rows={1}
-              placeholder="描述你的空間或風格..."
+              placeholder={catalogReady ? '描述你的空間或風格...' : '正在載入家具資料...'}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={onKeyDown}
@@ -255,7 +331,7 @@ const AiAssistant = () => {
             <button
               className="ai-chat-send"
               onClick={sendMessage}
-              disabled={sending || !input.trim()}
+              disabled={sending || !input.trim() || !catalogReady}
               aria-label="送出"
             >
               <Send size={16} />
@@ -264,7 +340,7 @@ const AiAssistant = () => {
         </div>
       )}
 
-      {/* ── 3D 預覽　── */}
+      {/* 3D 預覽 */}
       {preview && (
         <div className="ai-3d-overlay" onClick={() => setPreview(null)}>
           <div className="ai-3d-box" onClick={e => e.stopPropagation()}>
@@ -285,7 +361,7 @@ const AiAssistant = () => {
                 style={{ width: '100%', height: '100%' }}
               >
                 <div slot="poster" className="ai-3d-poster">
-                  ⏳ 3D 互動模型讀取中,請稍候...
+                  3D 互動模型讀取中,請稍候...
                 </div>
               </model-viewer>
             </div>

@@ -31,6 +31,10 @@ public class SceneAutoScanner : MonoBehaviour
     [Range(0, 31)] public int wallColliderLayer = 8;
     [Tooltip("Height of manually created walls, in metres.")]
     [Min(0.5f)] public float manualWallHeight = 2.6f;
+    [Tooltip("If checked, uses raycast to find physical floor; if false or no hit, falls back to height heuristic.")]
+    public bool useFloorRaycast = true;
+    [Tooltip("Assign the OcclusionMaterial from MRTemplateAssets to enable spatial occlusion for manual obstacles.")]
+    public Material OcclusionMaterial;
     [Tooltip("Maximum distance of the controller ray used for manual wall setup.")]
     [Min(1f)] public float manualSetupRayDistance = 8f;
     [Tooltip("Hold Y for this many seconds to rebuild the current session's manual walls.")]
@@ -1469,7 +1473,31 @@ public class SceneAutoScanner : MonoBehaviour
         col.size = boxData.size;
         PlacementObstacles.Add(col);
 
-        // Add top surface as floor
+        // Add occlusion rendering
+        var temp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        var filter = obj.AddComponent<MeshFilter>();
+        filter.sharedMesh = temp.GetComponent<MeshFilter>().sharedMesh;
+        var renderer = obj.AddComponent<MeshRenderer>();
+        
+        Shader occlusionShader = Shader.Find("AR/Occlusion");
+        if (OcclusionMaterial != null)
+        {
+            renderer.material = OcclusionMaterial;
+        }
+        else if (occlusionShader != null)
+        {
+            renderer.material = new Material(occlusionShader);
+        }
+        else
+        {
+            Debug.LogWarning("[Scanner] AR/Occlusion shader not found. Occlusion will not work.");
+            Destroy(renderer);
+            Destroy(filter);
+        }
+        Destroy(temp);
+
+        obj.transform.localScale = boxData.size;
+        col.size = Vector3.one; // because local scale covers it
         var floorObj = new GameObject("ObstacleFloor");
         floorObj.transform.SetParent(obj.transform);
         floorObj.transform.localPosition = new Vector3(0, boxData.size.y / 2f, 0); // top surface

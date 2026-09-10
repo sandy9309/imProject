@@ -18017,6 +18017,9 @@ MonoBehaviour:
   pushPullSpeed: 1
   rotationSpeed: 90
   wallBuffer: 0.1
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &1880989858
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18989,6 +18992,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99a93a388e70d7e44b37846d317d7acd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  initialLoadWaitSeconds: 2
+  autoScanWhenNoSavedScene: 1
+  wallColliderThickness: 0.05
+  wallColliderLayer: 8
+  manualWallHeight: 2.6
+  useFloorRaycast: 1
+  OcclusionMaterial: {fileID: 2100000, guid: a7af99ddb809a8f44bdb6fcc909b46f5, type: 2}
+  manualSetupRayDistance: 8
+  resetManualWallsHoldSeconds: 2
 --- !u!114 &1953137551
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20594,6 +20606,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   apiBaseUrl: http://163.13.202.116:5050/api/projects/
+  requestTimeoutSeconds: 10
+  projectSyncIntervalSeconds: 5
   headCamera: {fileID: 60330921}
   idDisplay: {fileID: 280878343}
   debugText: {fileID: 879263027}
@@ -21996,6 +22010,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99a93a388e70d7e44b37846d317d7acd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  initialLoadWaitSeconds: 2
+  autoScanWhenNoSavedScene: 1
+  wallColliderThickness: 0.05
+  wallColliderLayer: 8
+  manualWallHeight: 2.6
+  useFloorRaycast: 1
+  OcclusionMaterial: {fileID: 0}
+  manualSetupRayDistance: 8
+  resetManualWallsHoldSeconds: 2
 --- !u!114 &3001774293689589086
 MonoBehaviour:
   m_ObjectHideFlags: 0

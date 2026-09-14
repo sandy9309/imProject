@@ -1,0 +1,180 @@
+.cart-container { padding: 40px 8%; min-height: 80vh; }
+.cart-header { margin-bottom: 30px; }
+.cart-header h1 { display: flex; align-items: center; gap: 10px; color: var(--color-text); }
+
+.cart-content { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+
+.cart-item {
+  display: flex; align-items: center; background: var(--color-surface);
+  padding: 20px; border-radius: 15px; margin-bottom: 15px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.cart-item img { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; }
+.item-info { flex: 1; margin-left: 20px; }
+.item-info h3 { margin: 0 0 5px 0; color: var(--color-text-strong); }
+.item-price { color: var(--color-primary); font-weight: bold; }
+
+.remove-btn { background: none; border: none; color: var(--color-danger); cursor: pointer; transition: 0.3s; }
+.remove-btn:hover { transform: scale(1.1); }
+
+.cart-summary {
+  background: var(--color-surface); padding: 30px; border-radius: 20px;
+  height: fit-content; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; color: var(--color-text-muted); }
+.summary-row.total { border-top: 1px solid var(--color-border); padding-top: 15px; font-weight: bold; color: var(--color-text); font-size: 1.2rem; }
+
+.checkout-btn {
+  width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-surface);
+  border: none; border-radius: 10px; font-weight: bold; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.checkout-btn:hover {
+  background-color: var(--color-primary-hover); 
+}
+
+
+.cart-action-area {
+  margin-top: 20px;
+}
+
+.save-btn {
+  width: 100%;
+  padding: 15px;            
+  background-color: var(--color-success); 
+  color: var(--color-surface);
+  border: none;             
+  border-radius: 10px;       
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.save-btn:hover {
+  background-color: var(--color-success-hover); 
+}
+
+.save-btn:disabled {
+  background-color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+
+.cancel-edit-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-edit-btn:hover {
+  background: var(--color-bg-muted);
+}
+/* 既有家具 vs 新增家具 的視覺區分 */
+
+.cart-list-section-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin: 12px 0 6px;
+}
+
+/* 數量 +/- 調整按鈕 */
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: var(--color-border);
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qty-value {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.empty-cart {
+  text-align: center;
+  padding: 80px 0;
+  color: var(--color-text-muted);
+}
+
+.empty-cart p {
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.empty-cart-btn {
+  padding: 12px 28px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.95rem;
+  transition: background 0.2s;
+}
+
+.empty-cart-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.cart-item-changed {
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-border);
+}
+
+/* ── RWD ── */
+@media (max-width: 768px) {
+  .cart-content {
+    grid-template-columns: 1fr; 
+  }
+  .cart-item {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .cart-item img {
+    width: 72px;
+    height: 72px;
+  }
+  .qty-stepper {
+    margin-left: auto;
+  }
+}

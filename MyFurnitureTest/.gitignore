@@ -1,0 +1,32 @@
+# 機密設定（API key、DB 密碼）絕對不進 git
+appsettings.json
+appsettings.*.json
+
+# 編譯產物
+bin/
+obj/
+
+# 系統雜物
+.DS_Store
+.vscode/
+
+# 工具
+ngrok
+
+# 使用者上傳的截圖檔案
+wwwroot/uploads/
+wwwroot/models/
+
+# ── 機密設定 ────────────────────────────
+appsettings.json
+appsettings.Development.json
+
+# ── 資料庫備份（含使用者資料）──────────────
+backup_*.sql
+*dump*.sql
+
+# ── 手動備份的程式碼 ──────────────────────
+*.bak
+*_old.cs
+
+

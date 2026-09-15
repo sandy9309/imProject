@@ -10,10 +10,7 @@ public static class ProjectEndpoints
     {
         var group = app.MapGroup("/api/projects");
 
-        // ── 1. 取得專案列表（可依 status 篩選）──────────────────────
-        // GET /api/projects?userId=5              → 全部
-        // GET /api/projects?userId=5&status=draft → 只看待定中
-        // GET /api/projects?userId=5&status=confirmed → 只看已確認
+        // ── 1. 取得專案列表 ──────────────────────
         group.MapGet("/", (HttpContext http, DbService db) =>
 {
     var q = http.Request.Query;
@@ -28,7 +25,7 @@ public static class ProjectEndpoints
         using var conn = db.GetConnection();
         conn.Open();
 
-        // 【異動】多撈 revision 與 sync_code
+        // 多撈 revision 與 sync_code
         string sql = "SELECT id, name, l, w, items, status, revision, sync_code, updated_at FROM projects WHERE user_id = @userId";
         using var cmd = new MySqlCommand();
         cmd.Connection = conn;
@@ -107,13 +104,13 @@ public static class ProjectEndpoints
             l          = r.l,
             w          = r.w,
             status     = r.status,
-            revision   = r.revision,     // 【新增】
-            sync_code  = r.syncCode,     // 【新增】眼鏡端輸入的 5 位數代碼
+            revision   = r.revision,     
+            sync_code  = r.syncCode,     
             created_at = r.createdAt,
             items      = r.items.Select(it =>
             {
                 int fid = it.TryGetProperty("furniture_id", out var fidEl) ? fidEl.GetInt32() : 0;
-                // 【新增】把 item_id 一起回傳，前端修改專案時原封不動送回來即可精準對應
+                // 把 item_id 一起回傳，前端修改專案時原封不動送回來就可以對應
                 int iid = it.TryGetProperty("item_id", out var iidEl) ? iidEl.GetInt32() : 0;
                 var (fname, imageUrl) = furnitureMap.TryGetValue(fid, out var info) ? info : ("", "");
                 return (object)new {
@@ -186,7 +183,7 @@ public static class ProjectEndpoints
         // PUT /api/projects/1
         // 設計：不論專案目前是 draft 或 confirmed，都允許修改 items，
         // id 保持不變；改完後前端可再呼叫一次 PATCH /confirm 重新送 MR。
-        // 【異動】每次成功修改 revision +1，並把新的 revision 回傳給呼叫端
+        // 每次成功修改 revision +1，並把新的 revision 回傳給呼叫端
         group.MapPut("/{id}", (int id, ProjectUpdateData data, DbService db) =>
         {
             try
@@ -220,13 +217,13 @@ public static class ProjectEndpoints
                 return Results.Ok(new
                 {
                     message = "專案更新成功",
-                    revision = newRevision,   // 【新增】呼叫端把它記起來，就不會被自己的修改觸發重載
+                    revision = newRevision,   
                     data = new
                     {
                         _id = id,
                         name = data.name,
-                        items = data.itemsRaw,        // 維持原樣：回傳前端送來的原始內容，前端不用改
-                        items_saved = newItems        // 【新增】實際存進資料庫的內容（含 item_id），前端要用再用
+                        items = data.itemsRaw,        
+                        items_saved = newItems        // 實際存進資料庫的內容（含 item_id），前端要用再用
                     }
                 });
             }
@@ -282,7 +279,7 @@ public static class ProjectEndpoints
 
         // ── 6. 給 Unity 用：取得專案內所有家具的 model_url ──────────
         // GET /api/projects/{id}/models
-        // 【異動】每一件多回傳 item_id 與 furniture_id；整包多回傳 revision
+        // 每一件多回傳 item_id 與 furniture_id；整包多回傳 revision
         group.MapGet("/{id}/models", (int id, DbService db) =>
         {
             try
@@ -317,7 +314,7 @@ public static class ProjectEndpoints
         // ── 7. 給 MR 眼鏡用：擺放完回傳家具座標 ──────────────────────
         // PUT /api/projects/{id}/positions
         // Body: { "positions": [ { "item_id": 3, "x": 1.5, "y": 0, "z": 2.3, "ry": 90 } ] }
-        // 【異動】優先用 item_id 比對；沒帶 item_id 才退回用 index（相容舊版 Unity）
+        // 優先用 item_id 比對；沒帶 item_id 才退回用 index（相容舊版 Unity）
         group.MapPut("/{id}/positions", (int id, PositionUpdateData data, DbService db) =>
         {
             try
@@ -342,8 +339,8 @@ public static class ProjectEndpoints
 
                     if (reqId > 0)
                     {
-                        // 有帶 item_id：只認 item_id。找不到代表這件已被網頁刪掉，直接略過，
-                        // 絕對不可以退回用 index，否則會把座標寫到別件家具身上。
+                        // 有帶 item_id：只認 item_id。找不到代表這件已被網頁刪掉 直接略過
+                        // 絕對不可以退回用 index，否則會把座標寫到別件家具身上
                         target = items.OfType<JObject>()
                                       .FirstOrDefault(o => (o.Value<int?>("item_id") ?? 0) == reqId);
                         if (target == null)
@@ -379,7 +376,7 @@ public static class ProjectEndpoints
                     message  = "座標已儲存",
                     applied,                        // 成功寫入幾件
                     skipped,                        // 哪幾件沒寫入、原因
-                    revision = ReadRevision(conn, id)  // 眼鏡端請更新 lastRevision，避免被自己的存檔觸發重載
+                    revision = ReadRevision(conn, id)  // 眼鏡端要更新 lastRevision，避免被自己的存檔觸發重載
                 });
             }
             catch (Exception ex)
@@ -594,7 +591,7 @@ public static class ProjectEndpoints
         });
     }
 
-    // 讀取專案目前的 revision（寫入後回傳給呼叫端用）
+    // 讀取專案目前的 revision（寫入後回傳用）
     private static int ReadRevision(MySqlConnection conn, int id)
     {
         using var cmd = new MySqlCommand("SELECT revision FROM projects WHERE id = @id", conn);
@@ -605,7 +602,6 @@ public static class ProjectEndpoints
 
     // 把 items JSON 轉成眼鏡端要的家具清單。
     // /{id}/models 和 /by-code/{code}/models 共用這一份，
-    // 以後只要改這裡，兩支 API 的回應就一定一致。
     private static List<object> BuildFurnitureList(MySqlConnection conn, string? rawItems)
     {
         var result = new List<object>();
@@ -651,7 +647,7 @@ public static class ProjectEndpoints
             result.Add(new {
                 item_id = iid,          // 眼鏡端請用這個當唯一識別
                 furniture_id = fid,     // 哪一款家具（同款可能有多件）
-                index = i,              // 舊欄位保留，僅供相容，勿再用來存座標
+                index = i,              // 舊欄位保留，僅供相容，但不拿來存座標
                 url = urlMap[fid],
                 x = GetNum("x"), y = GetNum("y"), z = GetNum("z"), ry = GetNum("ry")
             });
@@ -662,7 +658,7 @@ public static class ProjectEndpoints
     // 統一 items 格式：item_id + furniture_id + 座標
     //
     // item_id 的規則：
-    //   1. 前端有送 item_id 且該筆舊資料存在 → 沿用（最精準）
+    //   1. 前端有送 item_id 且該筆舊資料存在 → 沿用
     //   2. 前端沒送 item_id → 依 furniture_id 排隊，接回還沒被認領的舊資料（相容現在的前端）
     //   3. 都對不上 → 視為新加入的家具，給一個這個專案內沒用過的新編號
     // 編號只在同一個專案內唯一，且不會因為別件被刪掉而改變。

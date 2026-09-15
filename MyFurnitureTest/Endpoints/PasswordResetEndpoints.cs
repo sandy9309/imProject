@@ -6,10 +6,10 @@ using Newtonsoft.Json;
 
 public static class PasswordResetEndpoints
 {
-    // 共用一個 HttpClient（官方建議不要每次 new）
+    // 共用一個 HttpClient（建議不要每次 new）
     private static readonly HttpClient _http = new HttpClient();
 
-    // 前端網址預設值，正式環境請在 appsettings.json 用 Frontend:BaseUrl 覆蓋
+    // 前端網址預設值，正式環境再在 appsettings.json 用 Frontend:BaseUrl 覆蓋
     private const string DefaultFrontendBaseUrl = "http://localhost:3000";
 
     // token 有效時間（分鐘）
@@ -57,13 +57,13 @@ public static class PasswordResetEndpoints
                     string frontendBaseUrl = config["Frontend:BaseUrl"] ?? DefaultFrontendBaseUrl;
                     string resetLink = $"{frontendBaseUrl}/reset-password?token={token}";
 
-                    // 開發用：不論有沒有接寄信，都在 console 印一份方便測試
+                    // 開發用：不論有沒有接寄信，都會在 console 印一份方便測試
                     Console.WriteLine("==================================================");
                     Console.WriteLine($"[忘記密碼] {data.email} 的重設連結（{TokenExpiryMinutes} 分鐘內有效）：");
                     Console.WriteLine(resetLink);
                     Console.WriteLine("==================================================");
 
-                    // 有設定 Brevo API key 才寄信；沒設定就只印 console（開發模式）
+                    // 有設定 Brevo API key 才寄信；沒設定就只印在 console
                     string? apiKey = config["Brevo:ApiKey"];
                     string? senderEmail = config["Brevo:SenderEmail"];
                     if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(senderEmail)) {

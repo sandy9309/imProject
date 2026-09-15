@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MR 空間設計助手</title>
+    <style>
+        /*  融合前端同學的 Segoe UI 字體與整體風格 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            /* 融入主頁 Hero 區背景色 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* 對話框主外殼 */
+        #chat-container {
+            width: 400px;
+            height: 600px;
+            background: white;
+            /* 改為乾淨的純白底色 */
+            border-radius: 15px;
+            /* 對齊 feature-card 的 15px 圓角 */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.15);
+            /* 帶有亮藍色的溫和陰影 */
+            overflow: hidden;
+        }
+
+        /* 對話框標頭：採用主網頁的深藍色 */
+        #chat-header {
+            background: #1e40af;
+            padding: 18px;
+            text-align: center;
+            font-weight: bold;
+            color: white;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* 訊息對話區域 */
+        #chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #ffffff;
+        }
+
+        /* 泡泡基本樣式 */
+        .msg {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        /* 使用者泡泡：採用主網頁的明亮藍 (#2563eb) */
+        .msg.user {
+            background: #92ace4;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        /* AI 泡泡：採用主網頁的輕盈卡片灰底 (#f8fafc)，字體顏色對齊 (#4b5563) */
+        .msg.ai {
+            background: #f8fafc;
+            color: #4b5563;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* 輸入區域外殼 */
+        #chat-input-area {
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            background: #f1f5f9;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        /* 輸入框樣式 */
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            /* 對齊按鈕的 8px 圓角 */
+            background: white;
+            color: #1e293b;
+            font-size: 0.95rem;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            border-color: #87e2e1;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        /* 發送按鈕：採用 primary-btn 樣式 */
+        #send-btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: 500;
+        }
+
+        #send-btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        /*  擺放按鈕：優化為金黃亮色，讓使用者在藍白風格中一眼看到重點 */
+        .spawn-btn {
+            background: #1d4ed8;
+            color: #f2f4f8;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            box-shadow: 0 4px 12px rgba(234, 179, 8, 0.2);
+        }
+
+        .spawn-btn:hover {
+            background: #395dc1;
+            transform: translateY(-2px);
+        }
+        
+        .chat-message-content {
+            white-space: pre-line; /* 讓 \n 換行符號能在 HTML 網頁上正常斷行顯示 */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="chat-container">
+        <div id="chat-header"> MR 空間設計助手</div>
+        <div id="chat-messages">
+            <div class="msg ai">您好！我是您的室內設計 AI 小幫手。您可以試著問我：「我想打造北歐風客廳，推薦沙發跟大茶几」。</div>
+        </div>
+        <div id="chat-input-area">
+            <input type="text" id="user-input" placeholder="輸入風格或家具需求..." autocomplete="off">
+            <button id="send-btn">發送</button>
+        </div>
+    </div>
+
+    <script>
+        const sendBtn = document.getElementById('send-btn');
+        const userInput = document.getElementById('user-input');
+        const chatMessages = document.getElementById('chat-messages');
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            appendMessage(text, 'user');
+            userInput.value = '';
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await res.json();
+                appendMessage(data.reply, 'ai');
+            } catch (e) {
+                appendMessage('連線失敗，請檢查後端伺服器是否開啟。', 'ai');
+            }
+        }
+
+        function appendMessage(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('msg', sender);
+
+            if (sender === 'ai') {
+                // 🎯 支援同時抓取多個家具 ID 
+                const idRegex = /\[FurnitureID:\s*(\d+)\]/g;
+                const allMatches = [...text.matchAll(idRegex)];
+
+                // 把暗號濾掉，留給使用者看乾淨漂亮的文字
+                let cleanText = text.replace(idRegex, '');
+
+                // 🎯 3. 【核心修正】把回傳文字中所有殘留的米字號 (*) 全部清除乾淨！
+                cleanText = cleanText.replace(/\*/g, '#');
+                msgDiv.innerHTML = cleanText;
+
+                // 如果回答內包含家具 ID，用迴圈把每一顆按鈕都長出來
+                if (allMatches.length > 0) {
+                    allMatches.forEach(match => {
+                        const furnitureId = match[1];
+                        const spawnBtn = document.createElement('button');
+                        spawnBtn.classList.add('spawn-btn');
+                        spawnBtn.innerHTML = ` 在 MR 場景中生成家具 (ID: ${furnitureId})`;
+
+                        spawnBtn.onclick = () => {
+                            alert(` 成功觸發 MR 系統！即將載入資料庫中 ID 為 ${furnitureId} 的 3D 模型！`);
+                        };
+                        msgDiv.appendChild(spawnBtn);
+                    });
+                }
+            } else {
+                msgDiv.innerText = text;
+            }
+
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        sendBtn.onclick = sendMessage;
+        userInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+    </script>
+
+</body>
+
+</html>

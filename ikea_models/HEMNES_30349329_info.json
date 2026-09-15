@@ -1,0 +1,11 @@
+{
+  "name": "HEMNES",
+  "category": "sofa",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/hemnes-daybed-frame-with-3-drawers-white__1180454_pe896328_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/30349329/PS01_S01_NV01/iqp3/glb_draco/30349329_PS01_S01_NV01_IQP3_2.0_d3e4c41dbbc7400fa675e049888d4a19.glb"
+}

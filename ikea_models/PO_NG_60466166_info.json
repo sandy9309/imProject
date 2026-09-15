@@ -1,0 +1,11 @@
+{
+  "name": "POÄNG",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/poaeng-chair-cushion-knisa-black__0561142_pe662708_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/20394317/PS01_S01_NV01/rqp3/glb/20394317_PS01_S01_NV01_RQP3_3.0_51d866b0fd5b4c7ea07ccb22650920f1.glb"
+}

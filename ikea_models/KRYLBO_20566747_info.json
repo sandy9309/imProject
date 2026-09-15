@@ -1,0 +1,11 @@
+{
+  "name": "KRYLBO",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/krylbo-chair-tonerud-blue__1208500_pe908601_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/90566744/PS01_S01_NV01/rqp3/glb/90566744_PS01_S01_NV01_RQP3_3.0_202ef48dd8e144678fe179ad006729fd.glb"
+}

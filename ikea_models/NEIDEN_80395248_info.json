@@ -1,0 +1,11 @@
+{
+  "name": "NEIDEN",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/neiden-bed-frame-pine__0749131_pe745500_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/80395248/PS01_S01_NV01/rqp3/glb/80395248_PS01_S01_NV01_RQP3_3.0_92cb0b1fa45e4ebe9acc6c1d4ecc17bf.glb"
+}

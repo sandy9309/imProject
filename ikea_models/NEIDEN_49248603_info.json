@@ -1,0 +1,11 @@
+{
+  "name": "NEIDEN",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/neiden-bed-frame-pine-luroey__0749131_pe745500_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/geomagical/49248603/PS01_S01_NV01/simple/glb_draco/G-49248603-3f02431f2142ac7f1d7b0c57d2c996642a2fcfc7_8446ef86480d490ba85c908b367b339a.glb"
+}

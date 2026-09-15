@@ -1,0 +1,11 @@
+{
+  "name": "TULLSTA",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/tullsta-armchair-nordvalla-medium-gray__0386142_pe559174_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/59284662/PS01_S01_NV01/isp1/glb_draco/59284662_PS01_S01_NV01_ISP1_2.0_29c50ebf8fc341d998d83683601ab58f.glb"
+}

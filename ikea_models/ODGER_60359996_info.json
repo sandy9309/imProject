@@ -1,0 +1,11 @@
+{
+  "name": "ODGER",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/odger-chair-white-beige__0727334_pe735606_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/60359996/PS01_S01_NV01/rqp3/glb/60359996_PS01_S01_NV01_RQP3_3.0_70c8c49628614f8a9b29e78f0f9e7f53.glb"
+}

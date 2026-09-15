@@ -1,0 +1,11 @@
+{
+  "name": "NORDLI",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/nordli-bed-frame-with-storage-anthracite__1151029_pe884733_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/00372788/PS01_S01_NV01/rqp3/glb_draco/00372788_PS01_S01_NV01_RQP3_3.0_3cca53b1b5a243f68bb1833c9772002d.glb"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "LILLÅNÄS",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/lillanaes-chair-chrome-plated-glose-black__1150328_pe893872_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/20534756/PS01_S01_NV01/rqp3/glb/20534756_PS01_S01_NV01_RQP3_3.0_75c79c15a27e497f85b873d13335c019.glb"
+}

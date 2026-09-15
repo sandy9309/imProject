@@ -1,0 +1,11 @@
+{
+  "name": "KALLAX",
+  "category": "storage",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/kallax-shelving-unit-with-underframe-white-white__1041422_pe841007_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/dimma/29442677/PS01_S01_NV01/rqp3/glb/29442677_637a46540ce948b18995b3342b418241.glb"
+}

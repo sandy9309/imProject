@@ -1,0 +1,11 @@
+{
+  "name": "FRÖSVI",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/froesvi-folding-chair-white__1284070_pe932743_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/80534329/PS01_S01_NV01/rqp3/glb/80534329_PS01_S01_NV01_RQP3_3.0_124e1e8a6353481f8c22a23240fd0971.glb"
+}

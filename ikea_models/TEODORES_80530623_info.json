@@ -1,0 +1,11 @@
+{
+  "name": "TEODORES",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/teodores-chair-black__1114240_pe871696_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/20530621/PS01_S01_NV01/rqp3/glb/20530621_PS01_S01_NV01_RQP3_3.0_89402b4cd40c404692b333af8738bc65.glb"
+}

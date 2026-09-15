@@ -1,0 +1,11 @@
+{
+  "name": "BRIMNES",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/brimnes-bed-frame-with-storage-headboard-black-luroey__1151053_pe884765_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/geomagical/09157421/PS01_S01_NV01/simple/glb_draco/G-09157421-8730ca058c39e86c2e75621199b86a97fd2a1faf_a93591162dab4ffe81a52ff446abb173.glb"
+}

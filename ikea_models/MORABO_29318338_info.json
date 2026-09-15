@@ -1,0 +1,11 @@
+{
+  "name": "MORABO",
+  "category": "sofa",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/morabo-sofa-gunnared-light-green-metal__0602120_pe680189_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/geomagical/49270321/PS01_S01_NV01/simple/glb_draco/G-49270321-c601dc9479c8979079cc99e26a59b3f916310cf7-simple_d8f016bb7b6ab585a03151e76aec44ad.glb"
+}

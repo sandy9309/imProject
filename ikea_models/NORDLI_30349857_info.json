@@ -1,0 +1,11 @@
+{
+  "name": "NORDLI",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/nordli-bed-frame-with-storage-white__1151058_pe884758_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/30349857/PS01_S01_NV01/rqp3/glb_draco/30349857_PS01_S01_NV01_RQP3_3.0_38ffa7ce7cd047ad9aa83596f7e624db.glb"
+}

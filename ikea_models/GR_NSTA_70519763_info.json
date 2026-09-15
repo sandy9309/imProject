@@ -1,0 +1,11 @@
+{
+  "name": "GRÖNSTA",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/groensta-chair-indoor-outdoor-white__1498967_pe1006480_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/70519763/PS01_S01_NV01/rqp3/glb_draco/70519763_PS01_S01_NV01_RQP3_3.0_20a71c0589fe45058ac2563628d7de7e.glb"
+}

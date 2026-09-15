@@ -1,0 +1,11 @@
+{
+  "name": "SKOGSTA",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/skogsta-chair-acacia__1542800_pe1018531_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/70544866/PS01_S01_NV01/rqp3/glb_draco/70544866_PS01_S01_NV01_RQP3_3.0_285c4a00623b42e0b49e96e3227b2d09.glb"
+}

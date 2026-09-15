@@ -1,0 +1,11 @@
+{
+  "name": "HEMNES",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/hemnes-bed-frame-black-brown__0948862_pe799356_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/30249551/PS01_S01_NV01/rqp3/glb/30249551_PS01_S01_NV01_RQP3_3.0_20d9f71759e04a868311bf4c8d3d2dea.glb"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "MANDAL",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/mandal-bed-frame-with-storage-birch-white__1463654_pe994484_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/90280483/PS01_S01_NV01/iqp3/glb_draco/90280483_PS01_S01_NV01_IQP3_2.0_171d705cc06b4635aa78d3ce58a3a0f5.glb"
+}

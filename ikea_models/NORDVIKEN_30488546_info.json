@@ -1,0 +1,11 @@
+{
+  "name": "NORDVIKEN",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/nordviken-chair-antique-stain__0832454_pe777681_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/00369111/PS01_S01_NV01/rqp3/glb/00369111_PS01_S01_NV01_RQP3_3.0_5dfb6fdecce549e5867725bfff560618.glb"
+}

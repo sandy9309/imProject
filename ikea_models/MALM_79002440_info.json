@@ -1,0 +1,11 @@
+{
+  "name": "MALM",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/malm-high-bed-frame-4-storage-boxes-white-luroey__1154393_pe886042_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/39385799/PS01_S01_NV01/isp3/glb/39385799_PS01_S01_NV01_ISP3_2.0_b67d902ebba45828476f8eb48fa2b869.glb"
+}

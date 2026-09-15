@@ -1,0 +1,11 @@
+{
+  "name": "MARIUS",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/marius-stool-white__0727398_pe735650_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/00246196/PS01_S01_NV01/rqp3/glb/00246196_PS01_S01_NV01_RQP3_3.0_8ea8e9ffc6924aeeaa9835b8ac687fe1.glb"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "LISABO",
+  "category": "table",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/lisabo-table-black-ash-veneer__1221473_pe913821_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/40563776/PS01_S01_NV01/rqp3/glb/40563776_PS01_S01_NV01_RQP3_3.0_6b76967754f4457c905e26d98fe8b319.glb"
+}

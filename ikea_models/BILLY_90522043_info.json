@@ -1,0 +1,11 @@
+{
+  "name": "BILLY",
+  "category": "storage",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/billy-bookcase-white__0644780_pe702956_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/70522044/PS01_S01_NV01/rqp1/glb/70522044_PS01_S01_NV01_RQP1_3.0_6c2bb2f68f224fdd99a6e1e5780959c3.glb"
+}

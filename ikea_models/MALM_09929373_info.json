@@ -1,0 +1,11 @@
+{
+  "name": "MALM",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/malm-bed-frame-white__0749130_pe745499_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/geomagical/29931600/PS01_S01_NV01/simple/glb_draco/G-29931600-0adb8bcb2ff5d5948b81a54149df809069ae4a0c_8c6daa228a6b4625affcfe414d46df15.glb"
+}

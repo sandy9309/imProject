@@ -1,0 +1,11 @@
+{
+  "name": "HEMNES",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/hemnes-bed-frame-white-stain__0948863_pe799334_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/40249560/PS01_S01_NV01/rqp3/glb/40249560_PS01_S01_NV01_RQP3_3.0_2904fecacf344cdd9e7a3f3e9d00b473.glb"
+}

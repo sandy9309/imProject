@@ -1,0 +1,11 @@
+{
+  "name": "LILLÅNÄS",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/lillanaes-chair-chrome-plated-gunnared-beige__1150348_pe884483_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/00534757/PS01_S01_NV01/rqp3/glb/00534757_PS01_S01_NV01_RQP3_3.0_11efcf8f483946ba8cfde26620bbfbf7.glb"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "TÄRNÖ",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/taernoe-table-2-chairs-outdoor-black-light-brown-stained__0736028_pe740355_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/dimma/69898415/PS01_S01_NV01/rqp3/glb/s69898415.glb_8d61511ab25d4e9fbe2de7853f1d3bdc.glb"
+}

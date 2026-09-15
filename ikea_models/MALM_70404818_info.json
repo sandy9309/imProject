@@ -1,0 +1,11 @@
+{
+  "name": "MALM",
+  "category": "bed",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/malm-storage-bed-white__0749127_pe745496_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/70404818/PS01_S01_NV01/rqp3/glb_draco/70404818_PS01_S01_NV01_RQP3_3.0_555b8bbe0b9d4c0ea4c38d07986eb9a9.glb"
+}

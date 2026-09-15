@@ -1,0 +1,11 @@
+{
+  "name": "TOBIAS",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/tobias-chair-brown-red-chrome-plated__1126419_pe875739_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/90532589/PS01_S01_NV01/rqp3/glb/90532589_PS01_S01_NV01_RQP3_3.0_ad5e99bc2a2b400f80cc47e4b27e8a52.glb"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "GUNDE",
+  "category": "chair",
+  "width": null,
+  "length_cm": null,
+  "height": null,
+  "price": 0,
+  "description": "",
+  "image_url": "https://www.ikea.com/us/en/images/products/gunde-folding-chair-black__0728313_pe736184_s5.jpg",
+  "model_url": "https://web-api.ikea.com/dimma/assets/1.2/00217797/PS01_S01_NV01/rqp3/glb_draco/00217797_PS01_S01_NV01_RQP3_3.0_80c35faef5c04beb9c974cdc54be739c.glb"
+}

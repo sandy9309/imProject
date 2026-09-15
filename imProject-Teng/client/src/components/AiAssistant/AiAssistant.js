@@ -212,6 +212,9 @@ const AiAssistant = () => {
                     </div>
                     {sortRecommendations(m.recs).map(id => {
                       const f = furnitureMap[id];
+                      // 家具資料可能在訊息回來後被更新，或推薦 ID 已從型錄移除。
+                      // 略過找不到的項目，避免整個 AI 小幫手因讀取 f.name 而崩潰。
+                      if (!f) return null;
                       return (
                         <div key={id} className="ai-rec-card">
                           <button

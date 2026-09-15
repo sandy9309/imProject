@@ -1368,7 +1368,16 @@ public class ModelLoader : MonoBehaviour
 
         // 使用實體左相機拍攝當下的姿態與內部參數，使虛擬家具疊在現實影像的正確位置。
         Pose cameraPose = _screenshotPassthroughCamera.GetCameraPose();
-        snapCam.transform.SetPositionAndRotation(cameraPose.position, cameraPose.rotation);
+        Transform trackingSpace = mainCam.transform.parent;
+        if (trackingSpace != null)
+        {
+            snapCam.transform.position = trackingSpace.TransformPoint(cameraPose.position);
+            snapCam.transform.rotation = trackingSpace.rotation * cameraPose.rotation;
+        }
+        else
+        {
+            snapCam.transform.SetPositionAndRotation(cameraPose.position, cameraPose.rotation);
+        }
         ApplyPassthroughProjection(snapCam, _screenshotPassthroughCamera);
         // 虛擬內容獨立畫在透明背景，避免 URP 清除相機時覆蓋現實影像。
         snapCam.clearFlags = CameraClearFlags.SolidColor;

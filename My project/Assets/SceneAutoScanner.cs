@@ -124,12 +124,40 @@ public class SceneAutoScanner : MonoBehaviour
 
     private void Awake()
     {
+        DisableArtificialLocomotion();
         ConfigureMixedRealityLighting();
         IsWaitingForChoice = false;
         StartupFlowComplete = false;
         ActivePlacementSpace = PlacementSpaceKind.None;
         ActiveManualBoundary.Clear();
         _hasPlacementReference = false;
+    }
+
+    private static void DisableArtificialLocomotion()
+    {
+        // OVRInteractionComprehensive includes a VR Locomotor by default. In a
+        // room-scale MR app it must stay disabled: its thumbstick movement shifts
+        // the player origin relative to the physical room and its tunneling effect
+        // shrinks the visible view to a dark circle.
+        int disabledComponents = 0;
+        foreach (MonoBehaviour behaviour in FindObjectsOfType<MonoBehaviour>(true))
+        {
+            if (behaviour == null) continue;
+            string componentNamespace = behaviour.GetType().Namespace;
+            if (string.IsNullOrEmpty(componentNamespace) ||
+                !componentNamespace.StartsWith("Oculus.Interaction.Locomotion",
+                    System.StringComparison.Ordinal)) continue;
+            behaviour.enabled = false;
+            disabledComponents++;
+        }
+
+        foreach (Transform candidate in FindObjectsOfType<Transform>(true))
+        {
+            if (candidate.name != "Locomotor" || !candidate.gameObject.scene.IsValid()) continue;
+            candidate.gameObject.SetActive(false);
+        }
+        Debug.Log($"[Scanner] Disabled artificial VR Locomotor for room-locked MR " +
+                  $"({disabledComponents} locomotion components).");
     }
 
     private static void ConfigureMixedRealityLighting()
@@ -1197,12 +1225,14 @@ public class SceneAutoScanner : MonoBehaviour
             if (floor != null)
             {
                 PlacementFloors.Remove(floor.GetComponent<Collider>());
+                floor.SetActive(false);
                 Destroy(floor);
             }
         _scannedFloorObjects.Clear();
         if (_manualFloorObject != null)
         {
             PlacementFloors.Remove(_manualFloorObject.GetComponent<Collider>());
+            _manualFloorObject.SetActive(false);
             Destroy(_manualFloorObject);
             _manualFloorObject = null;
         }
@@ -1211,6 +1241,7 @@ public class SceneAutoScanner : MonoBehaviour
             if (wallObject != null)
             {
                 PlacementWalls.Remove(wallObject.GetComponent<BoxCollider>());
+                wallObject.SetActive(false);
                 Destroy(wallObject);
             }
         }
@@ -1223,6 +1254,7 @@ public class SceneAutoScanner : MonoBehaviour
                 PlacementObstacles.Remove(obsObject.GetComponent<BoxCollider>());
                 foreach (var col in obsObject.GetComponentsInChildren<Collider>())
                     PlacementFloors.Remove(col);
+                obsObject.SetActive(false);
                 Destroy(obsObject);
             }
         }

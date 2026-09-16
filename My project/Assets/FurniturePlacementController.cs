@@ -144,7 +144,12 @@ public sealed class FurniturePlacementController : MonoBehaviour
             }
             rawInputPosition = rootTarget.position;
             rawInputRotation = rootTarget.rotation;
-            if (selected && Application.isPlaying)
+            // The right stick is also the furniture-list selector. While that menu
+            // is visible it must never rotate/push an already spawned object, even
+            // if a Meta grab releases one frame late.
+            bool menuOwnsThumbstick = ModelLoader.Instance != null &&
+                ModelLoader.Instance.IsFurnitureSelectionMenuActive;
+            if (selected && Application.isPlaying && !menuOwnsThumbstick)
             {
                 Vector2 stick = FilterThumbstick(OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.RTouch));
                 if (Camera.main != null && Mathf.Abs(stick.y) > 0.05f)

@@ -9,6 +9,7 @@ public class ModelLoader : MonoBehaviour
 {
     public static ModelLoader Instance { get; private set; }
     public bool HasActiveProject => _lastRefreshSucceeded && !string.IsNullOrWhiteSpace(_activeProjectId);
+    public bool IsFurnitureSelectionMenuActive => _projectMenuState == ProjectMenuState.Furniture;
 
     void Awake()
     {

@@ -186,6 +186,11 @@ function derivePreliminaryFilters(previousFilters, message) {
     if (category) next.category = category;
     if (color) next.color = color;
     if (material) next.material = material;
+    // 材質欄位尚無對應值時，先保留為風格偏好，避免假裝成已驗證的硬條件。
+    if (!material && /木|原木/.test(message)) next.style = '木質感';
+    if (!material && /金屬|鐵|鋼/.test(message)) next.style = '金屬質感';
+    if (!material && /皮革|皮質/.test(message)) next.style = '皮革質感';
+    if (!material && /布料|布質/.test(message)) next.style = '布質感';
     if (/顏色.{0,6}(不限|都可以|不拘)/.test(message)) next.color = '';
     if (/材質.{0,6}(不限|都可以|不拘)/.test(message)) next.material = '';
     if (/(類別|種類).{0,6}(不限|都可以|不拘)/.test(message)) next.category = '';
@@ -241,10 +246,12 @@ function detectSearchModeByRules(message, previousFilters) {
     const constraintWords = /(沙發|椅|桌|床|櫃|燈|架|家具|黑|白|灰|紅|藍|綠|黃|棕|木色|實木|木製|金屬|布料|皮革|玻璃|塑膠)/;
     const followUpWords = /(便宜一點|貴一點|大一點|小一點|換一個|其他|還有嗎|再看看|不要這個|材質不限|顏色不限|價格不限)/;
     const chatWords = /^(你好|嗨|哈囉|謝謝|感謝|再見|你是誰|你可以做什麼)[！!。.]?$|怎麼保養|如何清潔|是什麼|為什麼/;
+    const preferenceFragment = /^(木|原木|木材質|金屬|鐵|鋼|皮革|皮質|布料|布質)(材質)?的?[！!。.]?$/;
     const hasActiveFilters = Object.entries(previousFilters)
         .some(([key, value]) => key !== 'style' && (typeof value === 'number' ? value > 0 : Boolean(value)));
 
-    if (shoppingWords.test(normalizedMessage)
+    if (preferenceFragment.test(normalizedMessage)
+        || shoppingWords.test(normalizedMessage)
         || (constraintWords.test(normalizedMessage) && /(想要|需要|找|買|推薦|適合)/.test(normalizedMessage))
         || (hasActiveFilters && followUpWords.test(normalizedMessage))) return true;
     if (chatWords.test(normalizedMessage)) return false;
@@ -300,11 +307,13 @@ app.post('/api/chat', async (req, res) => {
         const preliminaryFilters = searchMode
             ? derivePreliminaryFilters(previousFilters, message)
             : previousFilters;
-        const candidates = searchMode
+        // 只有材質或風格、但尚未指定家具類別時先追問，不推薦一批互不相關的商品。
+        const needsCategory = searchMode && !preliminaryFilters.category;
+        const candidates = searchMode && !needsCategory
             ? selectCandidates(catalog, preliminaryFilters, message, history)
             : [];
         console.log(searchMode
-            ? `對話模式：家具搜尋；候選家具：${candidates.length}/${catalog.length} 筆`
+            ? `對話模式：家具搜尋；${needsCategory ? '等待家具類別' : `候選家具：${candidates.length}/${catalog.length} 筆`}`
             : '對話模式：一般聊天；本輪不搜尋家具');
         const historyText = history.length
             ? history.map(item => `${item.role}：${item.text}`).join('\n')
@@ -320,6 +329,7 @@ app.post('/api/chat', async (req, res) => {
         const systemInstruction = `
 你是親切、自然的室內設計與家具 AI 助理，必須延續最近的對話內容。
 本輪模式：${searchMode ? '家具搜尋' : '一般聊天'}
+是否還需要詢問家具類別：${needsCategory ? '是' : '否'}
 資料庫允許的類別：${formatOptions(furnitureOptions.categories)}
 資料庫允許的顏色：${formatOptions(furnitureOptions.colors)}
 資料庫允許的材質：${formatOptions(furnitureOptions.materials)}
@@ -338,7 +348,11 @@ app.post('/api/chat', async (req, res) => {
 7. 家具搜尋模式的 reply 要說明沿用了哪些條件；若沒有符合項目，指出可以放寬的條件。
 8. 一般聊天模式要像自然對話一樣回答，可以回應問候、空間規劃及家具知識；recommendations 必須是空陣列，而且 filters 必須原樣保留。
 9. 若問題完全偏離室內設計、居家生活與家具，可以簡短回答後自然引導回你的專長。
-10. 只回傳指定 JSON 結構。`;
+10. 絕對不要向使用者提到資料庫、欄位、JSON、查詢、過濾選項、程式或系統內部運作；要改用自然的購物助理語氣。
+11. 若「是否還需要詢問家具類別」為是，先自然確認偏好並詢問想找的家具種類，recommendations 必須回傳空陣列，不要提前推薦互不相關的商品。
+12. 如果沒有可驗證的材質資料，不要聲稱商品一定是該材質；可以用名稱、描述或顏色判斷為相近質感，並以「偏好」表達。
+13. 沒有完全符合的商品時，只說目前沒有完全符合的品項並提出可放寬的條件，不得解釋內部資料缺少什麼。
+14. 只回傳指定 JSON 結構。`;
 
         // 每個請求各自記錄開始時間，避免多人同時詢問時共用 console.time 標籤而互相衝突。
         const geminiStartedAt = Date.now();
@@ -386,7 +400,7 @@ app.post('/api/chat', async (req, res) => {
         const filters = searchMode ? normalizeFilters(aiResult.filters) : previousFilters;
         const catalogById = new Map(catalog.map(item => [Number(item.id), item]));
         const recommendations = [...new Set(
-            (searchMode && Array.isArray(aiResult.recommendations) ? aiResult.recommendations : [])
+            (searchMode && !needsCategory && Array.isArray(aiResult.recommendations) ? aiResult.recommendations : [])
                 .map(Number)
                 .filter(Number.isInteger)
                 .filter(id => {

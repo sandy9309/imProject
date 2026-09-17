@@ -18,6 +18,15 @@ app.use(express.static('public'));
 const EMPTY_FILTERS = Object.freeze({
     category: '', color: '', material: '', maxPrice: 0, roomAreaPing: 0, style: ''
 });
+// 將資料庫中的詳細材料說明歸納成使用者容易表達的搜尋群組。
+const MATERIAL_GROUPS = Object.freeze({
+    木質: ['木', '竹', '塑合板', '纖維板', '膠合板', '單板層積材', '蜂巢紙'],
+    金屬: ['金屬', '鋼', '鐵', '鋁', '不鏽鋼', '鍍鉻', '鋅'],
+    布質: ['布', '棉', '聚酯纖維', '尼龍', '不織布', '毛氈'],
+    皮革: ['皮革', '頭層皮', '牛皮', '皮質'],
+    玻璃: ['玻璃'],
+    塑膠: ['塑膠', '塑料', '聚丙烯', '聚乙烯', '聚碳酸酯', '聚醯胺', 'EVA', 'POM', '熱塑性']
+});
 const MAX_AI_CANDIDATES = Math.min(
     Math.max(Number(process.env.MAX_AI_CANDIDATES) || 40, 10),
     100
@@ -33,11 +42,33 @@ const cleanNumber = value => {
     return Number.isFinite(number) && number > 0 ? number : 0;
 };
 
+function detectMaterialGroups(material) {
+    const text = cleanText(material).toLocaleLowerCase('zh-TW');
+    if (!text) return [];
+    // 「塑膠封邊」只是板材邊緣處理，不能因此把整件木質家具歸類成塑膠家具。
+    const classificationText = text.replaceAll('塑膠封邊', '');
+    return Object.entries(MATERIAL_GROUPS)
+        .filter(([, keywords]) => keywords.some(keyword => classificationText.includes(keyword.toLocaleLowerCase('zh-TW'))))
+        .map(([group]) => group);
+}
+
+function normalizeMaterialFilter(value) {
+    const text = cleanText(value);
+    if (!text) return '';
+    if (/木|原木/.test(text)) return '木質';
+    if (/金屬|鋼|鐵|鋁/.test(text)) return '金屬';
+    if (/布|棉|聚酯|尼龍/.test(text)) return '布質';
+    if (/皮/.test(text)) return '皮革';
+    if (/玻璃/.test(text)) return '玻璃';
+    if (/塑膠|塑料|聚丙烯|聚乙烯/.test(text)) return '塑膠';
+    return detectMaterialGroups(text)[0] || '';
+}
+
 function normalizeFilters(value = EMPTY_FILTERS) {
     return {
         category: cleanText(value.category),
         color: cleanText(value.color),
-        material: cleanText(value.material),
+        material: normalizeMaterialFilter(value.material),
         maxPrice: cleanNumber(value.maxPrice),
         roomAreaPing: cleanNumber(value.roomAreaPing),
         style: cleanText(value.style)
@@ -59,7 +90,8 @@ async function loadFurnitureCatalog() {
         furnitureOptions = {
             categories: distinctValues(items, 'category'),
             colors: distinctValues(items, 'color'),
-            materials: distinctValues(items, 'material')
+            materials: Object.keys(MATERIAL_GROUPS)
+                .filter(group => items.some(item => detectMaterialGroups(item.material).includes(group)))
         };
         console.log(`家具目錄載入完成，共 ${items.length} 筆；重啟服務前不再重複讀取資料庫。`);
         return items;
@@ -99,7 +131,7 @@ function includesNormalized(source, expected) {
 function matchesHardFilters(item, filters) {
     if (!includesNormalized(item.category, filters.category)) return false;
     if (!includesNormalized(item.color, filters.color)) return false;
-    if (!includesNormalized(item.material, filters.material)) return false;
+    if (filters.material && !detectMaterialGroups(item.material).includes(filters.material)) return false;
     return !(filters.maxPrice > 0 && Number(item.price) > filters.maxPrice);
 }
 
@@ -153,6 +185,16 @@ function findMentionedOption(message, options, aliases) {
     return '';
 }
 
+function findMentionedMaterialGroup(message) {
+    if (/木|原木|竹/.test(message)) return '木質';
+    if (/金屬|鋼|鐵|鋁/.test(message)) return '金屬';
+    if (/布|棉|聚酯|尼龍/.test(message)) return '布質';
+    if (/皮革|皮質|牛皮/.test(message)) return '皮革';
+    if (/玻璃/.test(message)) return '玻璃';
+    if (/塑膠|塑料|聚丙烯|聚乙烯/.test(message)) return '塑膠';
+    return '';
+}
+
 // 將口語同義詞換成資料庫與規則較容易辨識的說法，不要求使用者輸入完全相同的字。
 function normalizeSearchTerms(message) {
     const replacements = [
@@ -181,7 +223,7 @@ function derivePreliminaryFilters(previousFilters, message) {
     const next = { ...previousFilters };
     const category = findMentionedOption(message, furnitureOptions.categories, ['沙發', '椅', '桌', '床', '櫃', '燈', '架']);
     const color = findMentionedOption(message, furnitureOptions.colors, ['黑', '白', '灰', '紅', '藍', '綠', '黃', '棕', '木色']);
-    const material = findMentionedOption(message, furnitureOptions.materials, ['實木', '木', '金屬', '布', '皮', '玻璃', '塑膠']);
+    const material = findMentionedMaterialGroup(message);
 
     if (category) next.category = category;
     if (color) next.color = color;
@@ -320,7 +362,9 @@ app.post('/api/chat', async (req, res) => {
             : '無先前對話';
         const aiKnowledgeBase = candidates.map(f => (
             `ID: ${f.id} | 名稱: ${f.name} | 類別: ${f.category || ''}` +
-            ` | 顏色: ${f.color || ''} | 材質: ${f.material || ''}` +
+            ` | 顏色: ${f.color || ''}` +
+            ` | 材料分類: ${detectMaterialGroups(f.material).join('、') || '未分類'}` +
+            ` | 材質摘要: ${cleanText(f.material).slice(0, 160)}` +
             ` | 價格: ${Number(f.price) || 0}元` +
             ` | 尺寸: ${f.width || 0}x${f.length_cm || 0}x${f.height || 0}cm` +
             ` | 描述: ${f.description || ''}`
@@ -332,7 +376,7 @@ app.post('/api/chat', async (req, res) => {
 是否還需要詢問家具類別：${needsCategory ? '是' : '否'}
 資料庫允許的類別：${formatOptions(furnitureOptions.categories)}
 資料庫允許的顏色：${formatOptions(furnitureOptions.colors)}
-資料庫允許的材質：${formatOptions(furnitureOptions.materials)}
+可驗證的材質分類：${formatOptions(furnitureOptions.materials)}
 上一輪累積條件：${JSON.stringify(previousFilters)}
 程式預先解析條件：${JSON.stringify(preliminaryFilters)}
 最近對話：\n${historyText}
@@ -341,7 +385,7 @@ app.post('/api/chat', async (req, res) => {
 規則：
 1. 家具搜尋模式才根據最新訊息更新 filters；沒有改動的條件必須沿用上一輪。
 2. 使用者說不限、取消或都可以時，對應文字欄位回傳空字串，數字欄位回傳 0。
-3. category、color、material 優先使用資料庫實際值；無法確認時用空字串。
+3. category、color 優先使用可用選項，material 只能使用「可驗證的材質分類」；無法確認時用空字串。
 4. category、color、material、maxPrice 是硬條件，推薦項目必須全部符合。
 5. roomAreaPing、style 是軟偏好，用於尺寸與風格排序，不是絕對排除條件。
 6. recommendations 只能包含真實整數 ID，最多 8 筆；沒有符合項目時回傳空陣列。

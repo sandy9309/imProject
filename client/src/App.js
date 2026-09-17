@@ -18,6 +18,7 @@ import GuideTour from './components/Guide/GuideTour';
 import GuidePage from './pages/Guide/GuidePage';
 import ScrollToTop from './components/ScrollToTop/ScrollToTop';
 import AutoLogout from './components/AutoLogout/AutoLogout';
+import BackToTop from './components/BackToTop/BackToTop';
 
 function App() {
   return (
@@ -27,7 +28,8 @@ function App() {
       <Navbar /> 
       <UiRoot /> 
       <GuideTour />   
-      <AiAssistant /> 
+      <AiAssistant />
+      <BackToTop />  
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

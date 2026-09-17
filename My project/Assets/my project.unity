@@ -306,7 +306,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_LineWidth: 0.005
   m_OverrideInteractorLineLength: 1
-  m_LineLength: 10
+  m_LineLength: 5
   m_AutoAdjustLineLength: 0
   m_MinLineLength: 0.5
   m_UseDistanceToHitAsMaxLineLength: 1
@@ -440,7 +440,7 @@ MonoBehaviour:
   m_BendingEnabledInteractionLayers:
     m_Bits: 4294967295
   m_OverrideInteractorLineOrigin: 1
-  m_LineOriginTransform: {fileID: 0}
+  m_LineOriginTransform: {fileID: 49244635}
   m_LineOriginOffset: 0
 --- !u!120 &49244638
 LineRenderer:
@@ -561,7 +561,7 @@ MonoBehaviour:
   m_InteractionManager: {fileID: 0}
   m_InteractionLayers:
     m_Bits: 1
-  m_Handedness: 0
+  m_Handedness: 1
   m_AttachTransform: {fileID: 0}
   m_KeepSelectedTargetValid: 1
   m_DisableVisualsWhenBlockedInGroup: 1
@@ -680,8 +680,8 @@ MonoBehaviour:
   m_AllowHoverHapticsWhileSelecting: 1
   m_LineType: 0
   m_BlendVisualLinePoints: 1
-  m_MaxRaycastDistance: 30
-  m_RayOriginTransform: {fileID: 0}
+  m_MaxRaycastDistance: 5
+  m_RayOriginTransform: {fileID: 49244635}
   m_ReferenceFrame: {fileID: 0}
   m_Velocity: 16
   m_Acceleration: 9.8
@@ -9486,7 +9486,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &1015420040
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10912,7 +10912,7 @@ MonoBehaviour:
     - {fileID: 5618556046422172173, guid: 31818101cde292945ab80af5d14bec54, type: 3}
     - {fileID: 5618556046422172173, guid: c2bd5595e9fe2493a92d4bc0bb264603, type: 3}
     SceneJsons: []
-    LoadSceneOnStartup: 1
+    LoadSceneOnStartup: 0
     EnableHighFidelityScene: 0
     SeatWidth: 0.6
     SceneJson: 
@@ -13349,7 +13349,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1442916261
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13567,7 +13567,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_LineWidth: 0.005
   m_OverrideInteractorLineLength: 1
-  m_LineLength: 10
+  m_LineLength: 5
   m_AutoAdjustLineLength: 0
   m_MinLineLength: 0.5
   m_UseDistanceToHitAsMaxLineLength: 1
@@ -13701,7 +13701,7 @@ MonoBehaviour:
   m_BendingEnabledInteractionLayers:
     m_Bits: 4294967295
   m_OverrideInteractorLineOrigin: 1
-  m_LineOriginTransform: {fileID: 0}
+  m_LineOriginTransform: {fileID: 1444326022}
   m_LineOriginOffset: 0
 --- !u!120 &1444326025
 LineRenderer:
@@ -13822,7 +13822,7 @@ MonoBehaviour:
   m_InteractionManager: {fileID: 0}
   m_InteractionLayers:
     m_Bits: 1
-  m_Handedness: 0
+  m_Handedness: 2
   m_AttachTransform: {fileID: 0}
   m_KeepSelectedTargetValid: 1
   m_DisableVisualsWhenBlockedInGroup: 1
@@ -13941,8 +13941,8 @@ MonoBehaviour:
   m_AllowHoverHapticsWhileSelecting: 1
   m_LineType: 0
   m_BlendVisualLinePoints: 1
-  m_MaxRaycastDistance: 30
-  m_RayOriginTransform: {fileID: 0}
+  m_MaxRaycastDistance: 5
+  m_RayOriginTransform: {fileID: 1444326022}
   m_ReferenceFrame: {fileID: 0}
   m_Velocity: 16
   m_Acceleration: 9.8
@@ -16239,7 +16239,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1706721016}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fd9b1352ddb1e0e44a341398a540e829, type: 3}
   m_Name: 
@@ -18016,6 +18016,9 @@ MonoBehaviour:
   pushPullSpeed: 1
   rotationSpeed: 90
   wallBuffer: 0.1
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &1880989858
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18988,6 +18991,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99a93a388e70d7e44b37846d317d7acd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  initialLoadWaitSeconds: 2
+  autoScanWhenNoSavedScene: 1
+  wallColliderThickness: 0.05
+  wallColliderLayer: 8
+  manualWallHeight: 2.6
+  useFloorRaycast: 1
+  OcclusionMaterial: {fileID: 2100000, guid: a7af99ddb809a8f44bdb6fcc909b46f5, type: 2}
+  manualSetupRayDistance: 8
+  resetManualWallsHoldSeconds: 2
 --- !u!114 &1953137551
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20593,6 +20605,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   apiBaseUrl: http://163.13.202.116:5050/api/projects/
+  requestTimeoutSeconds: 10
+  projectSyncIntervalSeconds: 5
   headCamera: {fileID: 60330921}
   idDisplay: {fileID: 280878343}
   debugText: {fileID: 879263027}
@@ -21995,6 +22009,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 99a93a388e70d7e44b37846d317d7acd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  initialLoadWaitSeconds: 2
+  autoScanWhenNoSavedScene: 1
+  wallColliderThickness: 0.05
+  wallColliderLayer: 8
+  manualWallHeight: 2.6
+  useFloorRaycast: 1
+  OcclusionMaterial: {fileID: 0}
+  manualSetupRayDistance: 8
+  resetManualWallsHoldSeconds: 2
 --- !u!114 &3001774293689589086
 MonoBehaviour:
   m_ObjectHideFlags: 0
